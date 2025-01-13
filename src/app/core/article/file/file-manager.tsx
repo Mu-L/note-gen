@@ -95,7 +95,7 @@ export function FileManager() {
             >
             </div>
             {fileTree.map((item) => (
-              <Tree key={item.name} item={item} />
+              <Tree key={item.name + item.parent?.name} item={item} />
             ))}
             <div
               className="flex-1 min-h-1"

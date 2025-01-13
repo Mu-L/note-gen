@@ -15,7 +15,7 @@ export function FolderItem({ item }: { item: DirTree }) {
   const [name, setName] = useState(item.name)
   const [isDragging, setIsDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const { activeFilePath, loadFileTree, setActiveFilePath, collapsibleList, setCollapsibleList, fileTree, setFileTree } = useArticleStore()
+  const { activeFilePath, loadFileTree, setActiveFilePath, collapsibleList, setCollapsibleList, fileTree, setFileTree, newFileOnFolder } = useArticleStore()
   const path = item.parent?.name ? item.parent.name + '/' + item.name : item.name
 
   async function handleDeleteFolder(evnet: React.MouseEvent<HTMLDivElement, MouseEvent>) {
@@ -113,6 +113,10 @@ export function FolderItem({ item }: { item: DirTree }) {
     setIsDragging(false)
   }
 
+  function newFileHandler() {
+    newFileOnFolder(item.name)
+  }
+
   useEffect(() => {
     if (item.isEditing) {
       setName(name)
@@ -121,10 +125,10 @@ export function FolderItem({ item }: { item: DirTree }) {
   }, [item])
 
   return (
-    <CollapsibleTrigger className="w-full">
+    <CollapsibleTrigger className="w-full select-none">
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className={`${isDragging ? 'file-on-drop' : ''} file-manange-item flex`}>
+          <div className={`${isDragging ? 'file-on-drop' : ''} file-manange-item flex select-none`}>
             <ChevronRight className="transition-transform size-4 ml-1" />
             {
               isEditing ?
@@ -151,26 +155,31 @@ export function FolderItem({ item }: { item: DirTree }) {
                   onDrop={(e) => handleDrop(e)}
                   onDragOver={e => handleDragOver(e)}
                   onDragLeave={(e) => handleDragleave(e)}
-                  className={`${item.isLocale ? '' : 'opacity-50'} flex gap-1 items-center flex-1`}
+                  className={`${item.isLocale ? '' : 'opacity-50'} flex gap-1 items-center flex-1 select-none`}
                 >
-                  <div className="relative">
-                    {item.isLocale ? <Folder className="size-4" /> : <FolderDown className="size-4" /> }
-                    {item.sha && item.isLocale && <Cloud className="size-2.5 absolute left-0 bottom-0 z-10 bg-primary-foreground" />}
+                  <div className="flex flex-1 gap-1 select-none relative">
+                    <div className="relative">
+                      {item.isLocale ? <Folder className="size-4" /> : <FolderDown className="size-4" /> }
+                      {item.sha && item.isLocale && <Cloud className="size-2.5 absolute left-0 bottom-0 z-10 bg-primary-foreground" />}
+                    </div>
+                    <span className="text-xs line-clamp-1">{item.name}</span>
                   </div>
-                  <span className="select-none text-xs line-clamp-1">{item.name}</span>
                 </div>
             }
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
+          <ContextMenuItem inset onClick={newFileHandler}>
+            新建文件
+          </ContextMenuItem>
           <ContextMenuItem inset onClick={handleShowFileManager}>
             查看目录
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem inset>
+          <ContextMenuItem inset disabled>
             剪切
           </ContextMenuItem>
-          <ContextMenuItem inset>
+          <ContextMenuItem inset disabled>
             复制
           </ContextMenuItem>
           <ContextMenuItem inset disabled>

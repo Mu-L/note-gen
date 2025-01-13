@@ -29,15 +29,23 @@ export function FileItem({ item }: { item: DirTree }) {
     if (path.includes('/')) {
       const dirIndex = cacheTree.findIndex(item => item.name === path.split('/')[0])
       const fileIndex = cacheTree[dirIndex].children?.findIndex(file => file.name === path.split('/')[1])
+      console.log(fileIndex);
       const file = cacheTree[dirIndex].children?.find(file => file.name === path.split('/')[1])
+      console.log(file);
+      console.log(fileTree);
       if (file && fileIndex !== undefined && fileIndex !== -1) {
-        file.isLocale = false
-        cacheTree[dirIndex].children?.splice(fileIndex, 1, file)
+        if (file.sha) {
+          file.isLocale = false
+          cacheTree[dirIndex].children?.splice(fileIndex, 1, file)
+        } else {
+          cacheTree[dirIndex].children?.splice(fileIndex, 1)
+        }
       }
     } else {
       const index = cacheTree.findIndex(file => file.name === activeFilePath)
       cacheTree.splice(index, 1)
     }
+    console.log(cacheTree);
     setFileTree(cacheTree)
     setActiveFilePath('')
     setCurrentArticle('')
@@ -226,10 +234,10 @@ export function FileItem({ item }: { item: DirTree }) {
           查看目录
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem inset>
+        <ContextMenuItem inset disabled>
           剪切
         </ContextMenuItem>
-        <ContextMenuItem inset>
+        <ContextMenuItem inset disabled>
           复制
         </ContextMenuItem>
         <ContextMenuItem inset disabled>

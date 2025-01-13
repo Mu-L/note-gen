@@ -28,6 +28,7 @@ interface NoteState {
   loadCollapsibleFiles: (folderName: string) => Promise<void>
   newFolder: () => void
   newFile: () => void
+  newFileOnFolder: (path: string) => void
 
   collapsibleList: string[]
   initCollapsibleList: () => Promise<void>
@@ -207,6 +208,28 @@ const useArticleStore = create<NoteState>((set, get) => ({
       const fileTree = get().fileTree
       fileTree.unshift(newFile)
       set({ fileTree })
+    }
+  },
+
+  newFileOnFolder: async (path: string) => {
+    const dirIndex = get().fileTree.findIndex(item => item.name === path)
+    if (dirIndex!== undefined && dirIndex!== -1) {
+      const fileTree = get().fileTree
+      fileTree[dirIndex].isEditing = true
+      const newFile: DirTree = {
+        name: '',
+        isFile: true,
+        isSymlink: false,
+        parent: fileTree[dirIndex],
+        isEditing: true,
+        isDirectory: false,
+        isLocale: true,
+      }
+      fileTree[dirIndex].children?.unshift(newFile)
+      console.log(newFile);
+      set({ fileTree })
+      set({ collapsibleList: [...get().collapsibleList, path]})
+      console.log(fileTree);
     }
   },
 
