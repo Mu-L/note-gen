@@ -6,6 +6,7 @@
 import CryptoJS from 'crypto-js'
 import { arch, platform } from '@tauri-apps/plugin-os'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
+import { getVersion } from '@tauri-apps/api/app'
 
 // 配置常量
 const API_CONFIG = {
@@ -97,16 +98,23 @@ function generateSignature(
 
 /**
  * 获取当前应用版本号
- * 从 tauri.conf.json 的 version 字段读取，例如 "0.22.2" -> 22
+ * 从运行时获取版本号，转换为数字格式
+ * 例如: "0.22.2" -> 22002, "1.22.2" -> 1022002
+ * 每个点分隔的数字占3位，1000进一位
  */
 async function getVersionCode(): Promise<number> {
   try {
-    // 从环境变量或默认值获取版本号
-    // 在构建时，可以通过环境变量注入版本号
-    const version = '0.22.2' // 与 tauri.conf.json 保持一致
+    // 从运行时获取版本号
+    const version = await getVersion()
     const versionParts = version.split('.')
-    // 使用中间的版本号作为 versionCode
-    return parseInt(versionParts[1] || '1', 10)
+    
+    // 确保有3个部分，不足的补0
+    const major = parseInt(versionParts[0] || '0', 10)
+    const minor = parseInt(versionParts[1] || '0', 10)
+    const patch = parseInt(versionParts[2] || '0', 10)
+    
+    // 转换为数字: major * 1000000 + minor * 1000 + patch
+    return major * 1000000 + minor * 1000 + patch
   } catch (error) {
     console.error('Failed to get version code:', error)
     return 1
@@ -204,6 +212,8 @@ export async function reportAppStart(): Promise<boolean> {
       target: deviceInfo.target,
       arch: deviceInfo.arch,
     }
+
+    console.log('Event data:', eventData)
     
     return await reportEvent(EventType.APP_START, eventData)
   } catch (error) {

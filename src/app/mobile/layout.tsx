@@ -14,6 +14,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import './mobile-styles.scss'
 import useImageStore from "@/stores/imageHosting";
 import { initMcp } from "@/lib/mcp/init"
+import { reportAppStart } from "@/lib/event-report"
 
 export default function RootLayout({
   children,
@@ -28,6 +29,8 @@ export default function RootLayout({
     initMainHosting()
     initAllDatabases()
     initMcp()
+    // 上报应用启动事件
+    reportAppStart()
   }, [])
 
   const { initVectorDb } = useVectorStore()
