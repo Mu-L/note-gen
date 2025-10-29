@@ -22,10 +22,14 @@ export function LanguageSettings() {
         return "English"
       case "zh":
         return "中文"
+      case "zh-TW":
+        return "繁體中文"
+      case "pt-BR":
+        return "Português"
       case "ja":
         return "日本語"
       default:
-        return "English"
+        return "中文"
     }
   }
 
@@ -46,19 +50,29 @@ export function LanguageSettings() {
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="en">
-              <div className="flex items-center gap-2">
-                <span>English</span>
-              </div>
-            </SelectItem>
             <SelectItem value="zh">
               <div className="flex items-center gap-2">
                 <span>中文</span>
               </div>
             </SelectItem>
+            <SelectItem value="zh-TW">
+              <div className="flex items-center gap-2">
+                <span>繁體中文</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="en">
+              <div className="flex items-center gap-2">
+                <span>English</span>
+              </div>
+            </SelectItem>
             <SelectItem value="ja">
               <div className="flex items-center gap-2">
                 <span>日本語</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="pt-BR">
+              <div className="flex items-center gap-2">
+                <span>Português</span>
               </div>
             </SelectItem>
           </SelectContent>

@@ -12,13 +12,11 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { usePathname, useRouter } from 'next/navigation'
-import { ModeToggle } from "./mode-toggle"
 import Link from "next/link"
 import AppStatus from "./app-status"
 import { Store } from "@tauri-apps/plugin-store"
 import { PinToggle } from "./pin-toggle"
 import { useTranslations } from 'next-intl'
-import { LanguageSwitch } from "./language-switch"
 import { useSidebarStore } from "@/stores/sidebar"
 import { useEffect, useState } from "react"
 import useImageStore from "@/stores/imageHosting"
@@ -132,9 +130,7 @@ export function AppSidebar({ onSearchClick }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <LanguageSwitch />
         <PinToggle />
-        <ModeToggle />
         <SidebarMenuButton isActive={pathname.includes('/core/setting')} asChild className="md:h-8 md:p-0"
           tooltip={{
             children: t('common.settings'),
