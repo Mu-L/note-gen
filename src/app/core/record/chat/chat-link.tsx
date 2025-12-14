@@ -5,7 +5,7 @@ import useChatStore from "@/stores/chat"
 import { useTranslations } from "next-intl"
 import { TooltipButton } from "@/components/tooltip-button"
 
-export function ChatLink({ inputType }: { inputType?: string }) {
+export function ChatLink() {
   const { currentTag } = useTagStore()
   const { marks } = useMarkStore()
   const { isLinkMark, setIsLinkMark } = useChatStore()
@@ -18,7 +18,7 @@ export function ChatLink({ inputType }: { inputType?: string }) {
         tooltipText={isLinkMark ? `${t('on')} ${currentTag?.name}(${marks.length})` : t('off')}
         size="icon"
         side="bottom"
-        disabled={marks.length === 0 || inputType === 'gen'}
+        disabled={marks.length === 0}
         onClick={() => setIsLinkMark(!isLinkMark)}
       />
     </div>

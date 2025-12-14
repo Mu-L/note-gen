@@ -17,6 +17,7 @@
     "pin": "ピン留め",
     "unpin": "ピン留めを解除",
     "settings": "設定",
+    "back": "戻る",
     "sync": "同期",
     "language": "言語",
     "success": "成功",
@@ -945,6 +946,10 @@
         "moveSelectedTags": "選択した{count}項目を移動",
         "deleteSelected": "選択した{count}項目を削除",
         "deleteSelectedForever": "選択した{count}項目を完全削除",
+        "organizeNotes": "ノート整理",
+        "organizeSuccess": "ノート整理成功：{title}",
+        "organizeError": "ノート整理失敗",
+        "currentTag": "現在のタグ",
         "text": "テキスト記録",
         "recording": "音声記録",
         "scan": "画像スキャン",
@@ -1423,6 +1428,9 @@
         }
       },
       "toolbar": {
+        "organize": {
+          "tooltip": "ノート整理"
+        },
         "mark": {
           "title": "使用記録",
           "tooltip": "使用記録",

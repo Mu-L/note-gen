@@ -42,7 +42,7 @@ export function ChatHeader() {
   const renderToolbarItem = (id: string) => {
     switch (id) {
       case 'chatLink':
-        return <ChatLink key={id} inputType="chat" />
+        return <ChatLink key={id} />
       case 'fileLink':
         return <FileLink key={id} onFileLinkClick={openFileSelector} disabled={!primaryModel || loading} />
       case 'mcpButton':

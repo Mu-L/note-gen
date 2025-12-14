@@ -1,5 +1,5 @@
 import * as React from "react"
-import { MessageCircle, FileText, Languages } from "lucide-react"
+import { MessageCircle, Languages } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTranslations } from "next-intl"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -19,11 +19,6 @@ const inputModes = [
     value: 'translate',
     icon: Languages,
     labelKey: 'translate'
-  },
-  {
-    value: 'gen',
-    icon: FileText,
-    labelKey: 'organize'
   },
 ]
 

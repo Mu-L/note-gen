@@ -17,6 +17,7 @@
     "pin": "置頂",
     "unpin": "取消置頂",
     "settings": "設置",
+    "back": "返回",
     "sync": "同步",
     "language": "語言",
     "success": "成功",
@@ -965,7 +966,11 @@
         "selectedCount": "已選擇 {count} 項",
         "moveSelectedTags": "轉移選中的 {count} 項",
         "deleteSelected": "刪除選中的 {count} 項",
-        "deleteSelectedForever": "徹底刪除選中的 {count} 項"
+        "deleteSelectedForever": "徹底刪除選中的 {count} 項",
+        "organizeNotes": "整理筆記",
+        "organizeSuccess": "筆記整理成功：{title}",
+        "organizeError": "整理筆記失敗",
+        "currentTag": "當前標籤"
       }
     },
     "chat": {
@@ -1275,6 +1280,9 @@
         "uploading": "正在上傳圖片"
       },
       "toolbar": {
+        "organize": {
+          "tooltip": "整理筆記"
+        },
         "mark": {
           "title": "使用記錄",
           "tooltip": "使用記錄",

@@ -6,15 +6,12 @@ import { Textarea } from "@/components/ui/textarea"
 import useChatStore from "@/stores/chat"
 import useMarkStore from "@/stores/mark"
 import { fetchAiPlaceholder } from "@/lib/ai"
-import { MarkGen } from "./mark-gen"
 import { useTranslations } from 'next-intl'
 import { useLocalStorage } from 'react-use';
 import { ModelSelect } from "./model-select"
 import { PromptSelect } from "./prompt-select"
 import { ChatLanguage } from "./chat-language"
-import { InputModeSelect } from "./input-mode-select"
 import { ChatSend } from "./chat-send"
-import { TranslateSend } from "./translate-send"
 import { LinkedFileDisplay, FileLink } from "./file-link"
 import { FileSelector } from "./file-selector"
 import { ChatLink } from "./chat-link"
@@ -53,13 +50,10 @@ export function ChatInput() {
   const [isComposing, setIsComposing] = useState(false)
   const [placeholder, setPlaceholder] = useState('')
   const t = useTranslations()
-  const [inputType, setInputType] = useLocalStorage('chat-input-type', 'chat')
   const [inputHistory, setInputHistory] = useLocalStorage<string[]>('chat-input-history', [])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [linkedFile, setLinkedFile] = useState<MarkdownFile | null>(null)
-  const markGenRef = useRef<any>(null)
   const chatSendRef = useRef<any>(null)
-  const translateSendRef = useRef<any>(null)
   const isMobile = useIsMobile()
 
   // 拖拽传感器配置（仅桌面端）
@@ -158,10 +152,6 @@ export function ChatInput() {
     }
   }
 
-  // 切换输入类型
-  function inputTypeChangeHandler(value: string) {
-    setInputType(value)
-  }
 
   // 插入占位符
   function insertPlaceholder() {
@@ -249,13 +239,7 @@ export function ChatInput() {
           onKeyDown={(e) => {
             if (e.key === "Enter" && !isComposing && !e.shiftKey && e.keyCode === 13) {
               e.preventDefault()
-              if (inputType === "gen") {
-                markGenRef.current?.openGen()
-              } else if (inputType === "chat") {
-                chatSendRef.current?.sendChat()
-              } else if (inputType === "translate") {
-                translateSendRef.current?.sendTranslate()
-              }
+              chatSendRef.current?.sendChat()
             }
             if (e.key === "Tab") {
               e.preventDefault()
@@ -333,7 +317,7 @@ export function ChatInput() {
                     case 'chatLanguage':
                       return <ChatLanguage key={item.id} />
                     case 'chatLink':
-                      return <ChatLink key={item.id} inputType="chat" />
+                      return <ChatLink key={item.id} />
                     case 'fileLink':
                       return <FileLink key={item.id} onFileLinkClick={() => setShowFileSelector(true)} disabled={!primaryModel || loading} />
                     case 'mcpButton':
@@ -356,16 +340,7 @@ export function ChatInput() {
           )}
         </div>
         <div className="flex items-center justify-end gap-2 pr-1">
-          <InputModeSelect value={inputType || 'chat'} onChange={inputTypeChangeHandler} />
-          {
-            inputType === 'gen' ? (
-              <MarkGen inputValue={text} ref={markGenRef} />
-            ) : inputType === 'chat' ? (
-              <ChatSend inputValue={text} onSent={handleSent} linkedFile={linkedFile} ref={chatSendRef} />
-            ) : inputType === 'translate' ? (
-              <TranslateSend inputValue={text} onSent={handleSent} ref={translateSendRef} />
-            ) : null
-          }
+          <ChatSend inputValue={text} onSent={handleSent} linkedFile={linkedFile} ref={chatSendRef} />
         </div>
       </div>
 

@@ -16,6 +16,7 @@
     "pin": "Fixar",
     "unpin": "Desafixar",
     "settings": "Configurações",
+    "back": "Voltar",
     "sync": "Sincronizar",
     "language": "Idioma",
     "confirm": "Confirmar",
@@ -989,6 +990,10 @@
         "moveSelectedTags": "Mover {count} itens selecionados",
         "deleteSelected": "Excluir {count} itens selecionados",
         "deleteSelectedForever": "Excluir {count} itens selecionados permanentemente",
+        "organizeNotes": "Organizar Notas",
+        "organizeSuccess": "Notas organizadas com sucesso: {title}",
+        "organizeError": "Falha ao organizar notas",
+        "currentTag": "Tag Atual",
         "text": "Gravar Texto",
         "recording": "Gravação de Áudio",
         "scan": "Digitalizar Imagem",
@@ -1327,6 +1332,9 @@
         }
       },
       "toolbar": {
+        "organize": {
+          "tooltip": "Organizar Notas"
+        },
         "mark": {
           "title": "Registros",
           "tooltip": "Registros",

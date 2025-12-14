@@ -16,6 +16,7 @@
     "pin": "Pin",
     "unpin": "Unpin",
     "settings": "Settings",
+    "back": "Back",
     "sync": "Sync",
     "language": "Language",
     "confirm": "Confirm",
@@ -994,18 +995,10 @@
         "enableVectorDb": "Enable Vector Database",
         "multiSelect": "Multi Select",
         "exitMultiSelect": "Exit Multi Select",
-        "selectAll": "Select All",
-        "deselectAll": "Deselect All",
-        "selectedCount": "Selected {count} items",
-        "moveSelectedTags": "Move selected {count} items",
-        "deleteSelected": "Delete selected {count} items",
-        "deleteSelectedForever": "Delete selected {count} items forever",
-        "text": "Record Text",
-        "recording": "Audio Recording",
-        "scan": "Scan Image",
-        "image": "Upload Image",
-        "link": "Record Link",
-        "file": "Upload File"
+        "organizeNotes": "Organize Notes",
+        "organizeSuccess": "Notes organized successfully: {title}",
+        "organizeError": "Failed to organize notes",
+        "currentTag": "Current Tag"
       }
     },
     "chat": {
@@ -1346,6 +1339,9 @@
         }
       },
       "toolbar": {
+        "organize": {
+          "tooltip": "Organize Notes"
+        },
         "mark": {
           "title": "Records",
           "tooltip": "Records",
