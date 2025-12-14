@@ -72,7 +72,14 @@
           "desc": "Customize the display order and visibility of chat toolbar buttons",
           "button": "Configure",
           "dialogTitle": "Configure Chat Toolbar",
-          "dialogDesc": "Drag tools to adjust order, use switches to show or hide"
+          "dialogDesc": "Drag tools to adjust order, use switches to show or hide",
+          "groups": {
+            "pc": "PC",
+            "mobile": "Mobile",
+            "bottom": "Bottom Toolbar",
+            "topLeft": "Top Toolbar - Left",
+            "topRight": "Top Toolbar - Right"
+          }
         },
         "recordToolbar": {
           "title": "Record Toolbar",

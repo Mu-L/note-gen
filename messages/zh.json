@@ -70,7 +70,14 @@
           "desc": "自定义对话工具栏按钮的显示顺序和可见性",
           "button": "设置",
           "dialogTitle": "配置对话工具栏",
-          "dialogDesc": "拖动工具调整排序，使用开关控制显示或隐藏"
+          "dialogDesc": "拖动工具调整排序，使用开关控制显示或隐藏",
+          "groups": {
+            "pc": "PC 端",
+            "mobile": "移动端",
+            "bottom": "底部工具栏",
+            "topLeft": "顶部工具栏 - 左侧",
+            "topRight": "顶部工具栏 - 右侧"
+          }
         },
         "recordToolbar": {
           "title": "记录工具栏",

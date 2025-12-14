@@ -72,7 +72,14 @@
           "desc": "Personalize a ordem de exibição e a visibilidade dos botões da barra de ferramentas do chat para uma experiência de chat personalizada",
           "button": "Configurar",
           "dialogTitle": "Configurar Barra de Ferramentas do Chat",
-          "dialogDesc": "Arraste as ferramentas para ajustar a ordem, use as chaves para mostrar ou ocultar"
+          "dialogDesc": "Arraste as ferramentas para ajustar a ordem, use as chaves para mostrar ou ocultar",
+          "groups": {
+            "pc": "PC",
+            "mobile": "Móvel",
+            "bottom": "Barra de Ferramentas Inferior",
+            "topLeft": "Barra de Ferramentas Superior - Esquerda",
+            "topRight": "Barra de Ferramentas Superior - Direita"
+          }
         },
         "recordToolbar": {
           "title": "Barra de Ferramentas de Registro",

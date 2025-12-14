@@ -15,7 +15,15 @@ import { ChatLanguage } from "./chat-language"
 import { InputModeSelect } from "./input-mode-select"
 import { ChatSend } from "./chat-send"
 import { TranslateSend } from "./translate-send"
-import { LinkedFileDisplay } from "./file-link"
+import { LinkedFileDisplay, FileLink } from "./file-link"
+import { FileSelector } from "./file-selector"
+import { ChatLink } from "./chat-link"
+import { McpButton } from "./mcp-button"
+import { RagSwitch } from "./rag-switch"
+import ChatPlaceholder from "./chat-placeholder"
+import { ClipboardMonitor } from "./clipboard-monitor"
+import { ClearContext } from "./clear-context"
+import { ClearChat } from "./clear-chat"
 import { MarkdownFile } from "@/lib/files"
 import emitter from "@/lib/emitter"
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -38,8 +46,9 @@ import { CSS } from '@dnd-kit/utilities'
 
 export function ChatInput() {
   const [text, setText] = useState("")
-  const { primaryModel, chatToolbarConfig, setChatToolbarConfig } = useSettingStore()
+  const { primaryModel, chatToolbarConfigPc, setChatToolbarConfigPc, chatToolbarConfigMobile } = useSettingStore()
   const { chats, loading, locale, isLinkMark, isPlaceholderEnabled } = useChatStore()
+  const [showFileSelector, setShowFileSelector] = useState(false)
   const { marks, trashState } = useMarkStore()
   const [isComposing, setIsComposing] = useState(false)
   const [placeholder, setPlaceholder] = useState('')
@@ -162,22 +171,27 @@ export function ChatInput() {
     }
   }
 
-  // 处理拖拽结束
+  // 处理拖拽结束（仅 PC 端底部工具栏）
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
 
     if (over && active.id !== over.id) {
-      const oldIndex = chatToolbarConfig.findIndex((item) => item.id === active.id)
-      const newIndex = chatToolbarConfig.findIndex((item) => item.id === over.id)
+      const bottomTools = ['modelSelect', 'promptSelect', 'chatLanguage']
+      const bottomItems = chatToolbarConfigPc.filter(item => bottomTools.includes(item.id))
+      const oldIndex = bottomItems.findIndex((item) => item.id === active.id)
+      const newIndex = bottomItems.findIndex((item) => item.id === over.id)
       
-      const newItems = arrayMove(chatToolbarConfig, oldIndex, newIndex)
-      // 更新 order
-      const updatedItems = newItems.map((item, index) => ({
-        ...item,
-        order: index
-      }))
-      // 保存配置
-      setChatToolbarConfig(updatedItems)
+      const reorderedItems = arrayMove(bottomItems, oldIndex, newIndex)
+      const allItems = [...chatToolbarConfigPc]
+      
+      reorderedItems.forEach((item, index) => {
+        const globalIndex = allItems.findIndex(i => i.id === item.id)
+        if (globalIndex !== -1) {
+          allItems[globalIndex] = { ...item, order: bottomItems[0].order + index }
+        }
+      })
+      
+      setChatToolbarConfigPc(allItems)
     }
   }
 
@@ -289,12 +303,12 @@ export function ChatInput() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={chatToolbarConfig.filter(item => item.enabled).map(item => item.id)}
+                items={chatToolbarConfigPc.filter(item => ['modelSelect', 'promptSelect', 'chatLanguage'].includes(item.id) && item.enabled).map(item => item.id)}
                 strategy={horizontalListSortingStrategy}
               >
                 <div className="flex overflow-x-auto scrollbar-hide md:overflow-visible">
-                  {chatToolbarConfig
-                    .filter(item => item.enabled)
+                  {chatToolbarConfigPc
+                    .filter(item => ['modelSelect', 'promptSelect', 'chatLanguage'].includes(item.id) && item.enabled)
                     .sort((a, b) => a.order - b.order)
                     .map(item => (
                       <SortableToolbarItem
@@ -306,8 +320,8 @@ export function ChatInput() {
               </SortableContext>
             </DndContext>
           ) : (
-            <div className="flex overflow-x-auto scrollbar-hide md:overflow-visible">
-              {chatToolbarConfig
+            <div className="flex overflow-x-auto scrollbar-hide md:overflow-visible gap-1">
+              {chatToolbarConfigMobile
                 .filter(item => item.enabled)
                 .sort((a, b) => a.order - b.order)
                 .map(item => {
@@ -318,6 +332,22 @@ export function ChatInput() {
                       return <PromptSelect key={item.id} />
                     case 'chatLanguage':
                       return <ChatLanguage key={item.id} />
+                    case 'chatLink':
+                      return <ChatLink key={item.id} inputType="chat" />
+                    case 'fileLink':
+                      return <FileLink key={item.id} onFileLinkClick={() => setShowFileSelector(true)} disabled={!primaryModel || loading} />
+                    case 'mcpButton':
+                      return <McpButton key={item.id} />
+                    case 'ragSwitch':
+                      return <RagSwitch key={item.id} />
+                    case 'chatPlaceholder':
+                      return <ChatPlaceholder key={item.id} />
+                    case 'clipboardMonitor':
+                      return <ClipboardMonitor key={item.id} />
+                    case 'clearContext':
+                      return <ClearContext key={item.id} />
+                    case 'clearChat':
+                      return <ClearChat key={item.id} />
                     default:
                       return null
                   }
@@ -339,6 +369,17 @@ export function ChatInput() {
         </div>
       </div>
 
+      {/* 文件选择器（移动端） */}
+      {showFileSelector && (
+        <FileSelector
+          isOpen={showFileSelector}
+          onClose={() => setShowFileSelector(false)}
+          onFileSelect={(file) => {
+            setLinkedFile(file)
+            setShowFileSelector(false)
+          }}
+        />
+      )}
     </footer>
   )
 }
