@@ -9,6 +9,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useSidebarStore } from '@/stores/sidebar'
 import { PinToggle } from './pin-toggle'
+import { SyncToggle } from './title-bar-toolbars/sync-toggle'
+import AppStatus from './app-status'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import useSettingStore from '@/stores/setting'
@@ -194,6 +196,8 @@ export function TitleBar({ onSearchClick }: TitleBarProps) {
             </TooltipContent>
           </Tooltip>
           
+          <SyncToggle />
+          
           <PinToggle />
           
           <Tooltip>
@@ -221,6 +225,8 @@ export function TitleBar({ onSearchClick }: TitleBarProps) {
               <p>{pathname.includes('/core/setting') ? t('common.back') : t('common.settings')}</p>
             </TooltipContent>
           </Tooltip>
+          
+          <AppStatus inTitlebar />
         </div>
 
         {/* Windows 控制按钮 */}

@@ -22,7 +22,8 @@
     "language": "語言",
     "success": "成功",
     "error": "失敗",
-    "defaultFileName": "未命名文件"
+    "defaultFileName": "未命名文件",
+    "restartToApply": "，請重啟應用使配置生效"
   },
   "settings": {
     "others": "高級",
@@ -771,7 +772,9 @@
         "file": "文件",
         "link": "連結",
         "upload": "上傳記錄",
-        "download": "下載記錄"
+        "download": "下載記錄",
+        "uploadTo": "從本地同步到 {provider}",
+        "downloadFrom": "從 {provider} 同步到本地"
       },
       "note": {
         "organizeAs": "整理為",

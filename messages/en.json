@@ -24,7 +24,8 @@
     "prompt": "Prompt",
     "success": "Success",
     "error": "Failed",
-    "defaultFileName": "Untitled"
+    "defaultFileName": "Untitled",
+    "restartToApply": ", please restart the application for the configuration to take effect"
   },
   "settings": {
     "others": "Advanced",
@@ -803,7 +804,9 @@
         "file": "File",
         "link": "Link",
         "upload": "Upload Record",
-        "download": "Download Record"
+        "download": "Download Record",
+        "uploadTo": "Sync from local to {provider}",
+        "downloadFrom": "Sync from {provider} to local"
       },
       "uploadSuccess": "Record upload success",
       "downloadSuccess": "Record download success",

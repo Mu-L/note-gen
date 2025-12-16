@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import baseConfig from '../config'
 import { useTranslations } from 'next-intl'
 import useSettingStore from "@/stores/setting"
-import UploadStore from "./upload-store";
 import { Separator } from "@/components/ui/separator";
 
 export function SettingTab() {
@@ -62,7 +61,6 @@ export function SettingTab() {
           })
         }
       </ul>
-      <UploadStore />
     </div>
   )
 }

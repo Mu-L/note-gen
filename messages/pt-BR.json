@@ -24,7 +24,8 @@
     "prompt": "Instrução",
     "success": "Sucesso",
     "error": "Falha",
-    "defaultFileName": "Sem Título"
+    "defaultFileName": "Sem Título",
+    "restartToApply": ", por favor reinicie o aplicativo para que a configuração entre em vigor"
   },
   "settings": {
     "others": "Avançado",
@@ -798,7 +799,9 @@
         "file": "Arquivo",
         "link": "Vínculo",
         "upload": "Upload de Registro",
-        "download": "Download de Registro"
+        "download": "Download de Registro",
+        "uploadTo": "Sincronizar do local para {provider}",
+        "downloadFrom": "Sincronizar de {provider} para local"
       },
       "uploadSuccess": "Upload de registro bem-sucedido",
       "downloadSuccess": "Download de registro bem-sucedido",

@@ -22,7 +22,8 @@
     "language": "言語",
     "success": "成功",
     "error": "失敗",
-    "defaultFileName": "無題のドキュメント"
+    "defaultFileName": "無題のドキュメント",
+    "restartToApply": "、設定を有効にするにはアプリケーションを再起動してください"
   },
   "settings": {
     "others": "その他",
@@ -757,7 +758,9 @@
         "file": "ファイル",
         "link": "リンク",
         "upload": "アップロード",
-        "download": "ダウンロード"
+        "download": "ダウンロード",
+        "uploadTo": "ローカルから {provider} へ同期",
+        "downloadFrom": "{provider} からローカルへ同期"
       },
       "uploadSuccess": "記録アップロード成功",
       "downloadSuccess": "記録ダウンロード成功",
