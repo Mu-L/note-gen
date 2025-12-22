@@ -22,7 +22,7 @@
 
 NoteGen is a cross-platform `Markdown` note-taking application dedicated to using AI to bridge recording and writing, organizing fragmented knowledge into a readable note.
 
-![](https://s2.loli.net/2025/06/13/UbVGPrhFl3etnQz.png)
+![](https://s2.loli.net/2025/12/22/jlpEP2c6ogwHhIA.png)
 
 ## Features
 

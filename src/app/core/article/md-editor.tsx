@@ -748,7 +748,7 @@ export function MdEditor() {
     <CustomToolbar editor={editor} />
     <div 
       id="aritcle-md-editor" 
-      className="flex-1"
+      className="flex-1 min-h-0 overflow-hidden"
       style={{minWidth: 0}}
     ></div>
     <CustomFooter editor={editor} />
