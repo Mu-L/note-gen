@@ -127,15 +127,17 @@ export default function History({editor}: {editor?: Vditor}) {
     const backupMethod = await store.get<string>('primaryBackupMethod') || 'github';
     
     let res;
+    let contentLoaded = false;
     switch (backupMethod) {
       case 'github':
         try {
           const githubRepo2 = await getSyncRepoName('github');
-          res = await getGithubFiles({path: `${activeFilePath}?ref=${sha}`, repo: githubRepo2});
+          res = await getGithubFiles({path: activeFilePath, repo: githubRepo2, ref: sha});
           if (res && res.content) {
             const content = decodeBase64ToString(res.content)
             setCurrentArticle(content);
             await saveCurrentArticle(content)
+            contentLoaded = true;
           } else {
             setCurrentArticle(cacheArticle);
           }
@@ -152,6 +154,7 @@ export default function History({editor}: {editor?: Vditor}) {
             const content = decodeBase64ToString(res.content)
             setCurrentArticle(content);
             await saveCurrentArticle(content)
+            contentLoaded = true;
           } else {
             setCurrentArticle(cacheArticle);
           }
@@ -169,6 +172,7 @@ export default function History({editor}: {editor?: Vditor}) {
             const content = decodeBase64ToString(fileContent.content)
             setCurrentArticle(content);
             await saveCurrentArticle(content)
+            contentLoaded = true;
           } else {
             setCurrentArticle(cacheArticle);
           }
@@ -186,6 +190,7 @@ export default function History({editor}: {editor?: Vditor}) {
             const content = decodeBase64ToString(giteaFileContent.content)
             setCurrentArticle(content);
             await saveCurrentArticle(content)
+            contentLoaded = true;
           } else {
             setCurrentArticle(cacheArticle);
           }
@@ -196,6 +201,33 @@ export default function History({editor}: {editor?: Vditor}) {
         break;
       default:
         break;
+    }
+    
+    // 如果成功加载了历史内容，将编辑器滚动到顶部
+    if (contentLoaded && editor) {
+      setTimeout(() => {
+        try {
+          const vditor = editor as any;
+          if (vditor.vditor) {
+            // 根据不同的编辑模式获取对应的编辑器元素
+            let editorElement: HTMLElement | null = null;
+            if (vditor.vditor.ir?.element) {
+              editorElement = vditor.vditor.ir.element;
+            } else if (vditor.vditor.wysiwyg?.element) {
+              editorElement = vditor.vditor.wysiwyg.element;
+            } else if (vditor.vditor.sv?.element) {
+              editorElement = vditor.vditor.sv.element;
+            }
+            
+            // 滚动到顶部
+            if (editorElement) {
+              editorElement.scrollTop = 0;
+            }
+          }
+        } catch (error) {
+          console.error('滚动编辑器到顶部失败:', error);
+        }
+      }, 100);
     }
     
     setCommitsLoading(false);

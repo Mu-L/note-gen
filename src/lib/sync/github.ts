@@ -118,7 +118,7 @@ export async function uploadFile(
   }
 }
 
-export async function getFiles({ path, repo }: { path: string, repo: string }) {
+export async function getFiles({ path, repo, ref }: { path: string, repo: string, ref?: string }) {
   const store = await Store.load('store.json');
   const accessToken = await store.get('accessToken')
   if (!accessToken) return;
@@ -146,7 +146,9 @@ export async function getFiles({ path, repo }: { path: string, repo: string }) {
       proxy
     };
     
-    const url = `https://api.github.com/repos/${githubUsername}/${repo}/contents/${path}`;
+    // 如果有 ref 参数，添加到 URL 查询参数中
+    const refParam = ref ? `?ref=${ref}` : '';
+    const url = `https://api.github.com/repos/${githubUsername}/${repo}/contents/${path}${refParam}`;
     
     try {
       const response = await fetch(url, requestOptions);

@@ -160,7 +160,6 @@ export default function ExportFormatSelector({editor}: {editor?: Vditor}) {
       // 使用 Tauri 保存文件
       await writeFile(selected, new Uint8Array(pdfArrayBuffer));
 
-      console.log('PDF 导出成功');
     } catch (error) {
       console.error('PDF 导出失败:', error);
     }

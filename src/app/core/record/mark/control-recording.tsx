@@ -77,11 +77,8 @@ export function ControlRecording() {
         throw new Error(t('recording.noAudioData'))
       }
       
-      console.log('原始录音格式:', audioBlob.type, '大小:', audioBlob.size)
-      
       // 转换为 WAV 格式
       const wavBlob = await convertToWav(audioBlob)
-      console.log('转换后格式:', wavBlob.type, '大小:', wavBlob.size)
       
       // 创建队列ID
       const queueId = `recording-${Date.now()}`
@@ -122,8 +119,6 @@ export function ControlRecording() {
     const filename = `recording_${timestamp}.${extension}`
     const audioDir = 'recordings'
     
-    console.log('保存音频文件:', filename, 'Blob类型:', audioBlob.type, 'Blob大小:', audioBlob.size)
-    
     // 确保目录存在
     const dirExists = await exists(audioDir, { baseDir: BaseDirectory.AppData })
     if (!dirExists) {
@@ -150,11 +145,8 @@ export function ControlRecording() {
         throw new Error('音频数据为空')
       }
       
-      console.log('音频 Blob 大小:', audioBlob.size, '类型:', audioBlob.type)
-      
       // 保存音频文件
       audioPath = await saveAudioFile(audioBlob)
-      console.log('音频文件已保存:', audioPath)
       
       // 调用STT API识别
       let transcription = ''

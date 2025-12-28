@@ -319,7 +319,7 @@ export function MdEditor() {
   const setContent = (content: string) => {
     if (!editor) return
     try {
-      editor.setValue(content)
+      editor.setValue(content, false)
       editor.renderPreview(content)
     } catch (error) {
       console.error('Error setting editor content:', error)

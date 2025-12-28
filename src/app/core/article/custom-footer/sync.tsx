@@ -62,7 +62,7 @@ export default function Sync({editor}: {editor?: Vditor}) {
             const githubCommits = await getGithubFileCommits({ path: activeFilePath, repo: githubRepo });
             if (githubCommits?.length > 0) {
               const lastCommit = githubCommits[0];
-              const githubContent = await getGithubFiles({path: `${activeFilePath}?ref=${lastCommit.sha}`, repo: githubRepo});
+              const githubContent = await getGithubFiles({path: activeFilePath, repo: githubRepo, ref: lastCommit.sha});
               if (githubContent?.content) {
                 contentText = decodeBase64ToString(githubContent.content);
               }
