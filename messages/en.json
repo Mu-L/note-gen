@@ -1218,6 +1218,10 @@
     "results": "{count} search results",
     "noResults": "No search results",
     "tryDifferentKeywords": "Try using different keywords",
+    "mode": {
+      "fuzzy": "Fuzzy",
+      "exact": "Exact"
+    },
     "item": {
       "record": "Record",
       "article": "Article",

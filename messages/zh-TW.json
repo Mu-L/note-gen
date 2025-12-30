@@ -1188,6 +1188,10 @@
     "results": "{count} 個搜索結果",
     "noResults": "暫無搜索結果",
     "tryDifferentKeywords": "嘗試使用不同的關鍵字搜索",
+    "mode": {
+      "fuzzy": "模糊",
+      "exact": "精確"
+    },
     "item": {
       "record": "記錄",
       "article": "文章",

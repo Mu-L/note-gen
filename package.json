@@ -78,6 +78,7 @@
     "next-themes": "^0.4.3",
     "openai": "^4.78.1",
     "pdfjs-dist": "^4.10.38",
+    "pinyin": "^4.0.0",
     "react": "19.1.0",
     "react-advanced-cropper": "^0.20.1",
     "react-dom": "19.1.0",
