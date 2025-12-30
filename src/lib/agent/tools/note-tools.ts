@@ -184,6 +184,12 @@ export const updateMarkdownFileTool: Tool = {
         await writeTextFile(path, params.content, { baseDir })
       }
       
+      // 如果更新的是当前打开的文件，刷新编辑器内容
+      const articleStore = useArticleStore.getState()
+      if (articleStore.activeFilePath === params.filePath) {
+        articleStore.setCurrentArticle(params.content)
+      }
+      
       return {
         success: true,
         message: `成功更新文件: ${params.filePath}`,
@@ -309,6 +315,63 @@ export const searchMarkdownFilesTool: Tool = {
   },
 }
 
+export const modifyCurrentNoteTool: Tool = {
+  name: 'modify_current_note',
+  description: '修改当前打开的笔记内容。使用前提：必须先用 read_markdown_file 读取当前笔记的内容，了解现有内容后再调用此工具进行修改。此工具会自动获取当前打开的笔记路径，无需指定文件名。',
+  category: 'note',
+  requiresConfirmation: true,
+  parameters: [
+    {
+      name: 'content',
+      type: 'string',
+      description: '修改后的完整笔记内容（Markdown 格式）。必须基于已读取的原内容进行修改，不能凭空生成。',
+      required: true,
+    },
+  ],
+  execute: async (params): Promise<ToolResult> => {
+    try {
+      const articleStore = useArticleStore.getState()
+      const currentFilePath = articleStore.activeFilePath
+      
+      if (!currentFilePath) {
+        return {
+          success: false,
+          error: '当前没有打开任何笔记，请先打开一个笔记文件',
+        }
+      }
+      
+      if (!params.content || typeof params.content !== 'string') {
+        return {
+          success: false,
+          error: '缺少必需参数 content 或参数类型错误',
+        }
+      }
+      
+      const workspace = await getWorkspacePath()
+      
+      if (workspace.isCustom) {
+        await writeTextFile(currentFilePath, params.content)
+      } else {
+        const { path, baseDir } = await getFilePathOptions(currentFilePath)
+        await writeTextFile(path, params.content, { baseDir })
+      }
+      
+      articleStore.setCurrentArticle(params.content)
+      
+      return {
+        success: true,
+        data: { filePath: currentFilePath },
+        message: `成功修改当前笔记: ${currentFilePath}`,
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: `修改当前笔记失败: ${error}`,
+      }
+    }
+  },
+}
+
 export const noteTools: Tool[] = [
   listMarkdownFilesTool,
   readMarkdownFileTool,
@@ -316,4 +379,5 @@ export const noteTools: Tool[] = [
   updateMarkdownFileTool,
   deleteMarkdownFileTool,
   searchMarkdownFilesTool,
+  modifyCurrentNoteTool,
 ]

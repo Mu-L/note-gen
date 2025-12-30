@@ -147,6 +147,16 @@ export function AgentExecutionStatus() {
         )
       })}
       
+      {/* 正在思考的加载状态 */}
+      {agentState.isThinking && !agentState.currentThought && (
+        <div className="w-full space-y-1 mb-2 bg-accent border rounded overflow-hidden">
+          <div className="flex items-center gap-2 py-1.5 px-3 rounded bg-muted min-w-0">
+            <Loader2 className="size-4 animate-spin text-blue-500 flex-shrink-0" />
+            <span className="text-sm text-muted-foreground flex-1 truncate min-w-0">{t('thinking')}</span>
+          </div>
+        </div>
+      )}
+      
       {/* 当前 ReAct 循环 - 展示 Thought、Action、Observation */}
       {(agentState.currentThought || agentState.currentAction || agentState.currentObservation) && (
         <div className="w-full space-y-1 mb-2 bg-accent border rounded overflow-hidden">

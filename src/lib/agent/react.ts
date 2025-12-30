@@ -202,12 +202,22 @@ ${userInput}
     try {
       const { fetchAiStream } = await import('@/lib/ai')
       let response = ''
+      let lastUpdateLength = 0
       
       await fetchAiStream(prompt, (content) => {
         response = content
-        // 实时更新思考内容
-        this.config.onThought?.(content)
+        
+        // 实时更新，但只在内容有实质性增长时更新（避免频繁更新）
+        if (content.length - lastUpdateLength > 10 || content.includes('Action:') || content.includes('Final Answer:')) {
+          this.config.onThought?.(content)
+          lastUpdateLength = content.length
+        }
       })
+      
+      // 确保最终内容被更新
+      if (response.length !== lastUpdateLength) {
+        this.config.onThought?.(response)
+      }
       
       return response
     } catch (error) {

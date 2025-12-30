@@ -38,13 +38,20 @@ export class AgentHandler {
             thoughtHistory: newHistory,
             currentThought: '',
             currentAction: undefined,
-            currentObservation: undefined
+            currentObservation: undefined,
+            isThinking: true  // 标记正在等待 AI 生成新的思考
           })
+        } else {
+          // 第一次迭代
+          store.setAgentState({ isThinking: true })
         }
       },
       onThought: (thought: string) => {
         // 流式输出时只更新当前思考，不保存到历史
-        store.setAgentState({ currentThought: thought })
+        store.setAgentState({ 
+          currentThought: thought,
+          isThinking: false  // 开始输出内容，取消思考状态
+        })
         this.config.onThought?.(thought)
       },
       onAction: (action, params) => {

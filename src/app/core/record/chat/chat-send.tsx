@@ -115,7 +115,16 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
     agentHandlerRef.current = agentHandler
 
     try {
-      await agentHandler.execute(inputValue)
+      // 构建上下文信息：如果有当前打开的笔记，自动传入其内容
+      let context = ''
+      const useArticleStore = (await import('@/stores/article')).default
+      const articleStore = useArticleStore.getState()
+      
+      if (articleStore.activeFilePath && articleStore.currentArticle) {
+        context = `## 当前打开的笔记\n文件路径: ${articleStore.activeFilePath}\n\n内容:\n${articleStore.currentArticle}`
+      }
+      
+      await agentHandler.execute(inputValue, context)
     } catch (error) {
       console.error('Agent execution error:', error)
     } finally {
