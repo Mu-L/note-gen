@@ -133,13 +133,7 @@ export const MarkGen = forwardRef<{ openGen: () => void }, MarkGenProps>(({ inpu
     };
     const marksByRange = marks.filter(item => dayjs(item.createdAt).isAfter(subtractDate))
     const scanMarks = marksByRange.filter(item => item.type === 'scan')
-    const textMarks = marksByRange.filter(item => item.type === 'text').map(item => {
-      if (!item.content) return item
-      if (isRemoveThinking) {
-        item.content = item.content.replace(/<thinking>[\s\S]*?<thinking>/g, '');
-      }
-      return item
-    })
+    const textMarks = marksByRange.filter(item => item.type === 'text')
     const imageMarks = marksByRange.filter(item => item.type === 'image')
     const linkMarks = marksByRange.filter(item => item.type === 'link')
     const fileMarks = marksByRange.filter(item => item.type === 'file')
@@ -217,10 +211,9 @@ export const MarkGen = forwardRef<{ openGen: () => void }, MarkGenProps>(({ inpu
     } finally {
       abortControllerRef.current = null
       setLoading(false)
-      const cleanedContent = cache_content.replace(/<thinking>[\s\S]*?<thinking>/g, '');
       await saveChat({
         ...message,
-        content: cleanedContent
+        content: cache_content
       }, true)
     }
   }

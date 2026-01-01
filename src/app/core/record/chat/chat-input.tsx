@@ -233,9 +233,9 @@ export function ChatInput() {
     const request_content = `
       ${[...scanMarks, ...textMarks, ...imageMarks, ...fileMarks, ...linkMarks]
         .slice(0, 5)
-        .map(item => item.content?.replace(/<thinking>[\s\S]*?<thinking>/g, '').slice(0, 60))
+        .map(item => item.content?.slice(0, 60))
         .join(';\n\n')}
-      ${chatsAfterClear.slice(0, 5).map(item => item.content?.replace(/<thinking>[\s\S]*?<thinking>/g, '').slice(0, 60)).join(';\n\n')}
+      ${chatsAfterClear.slice(0, 5).map(item => item.content?.slice(0, 60)).join(';\n\n')}
     `.trim()
     // 使用非流式请求获取placeholder内容
     const content = await fetchAiPlaceholder(request_content)

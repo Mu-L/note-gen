@@ -39,6 +39,7 @@ export async function fetchAi(text: string): Promise<string> {
  * @param t 翻译函数（可选）
  * @param chatId 当前chat ID，用于关联MCP工具调用记录（可选）
  * @param imageUrls 图片URL数组（可选）
+ * @param onThinkingUpdate 每次收到思考内容时的回调函数（可选）
  */
 export async function fetchAiStream(
   text: string, 
@@ -47,7 +48,8 @@ export async function fetchAiStream(
   mcpTools?: any[],
   t?: (key: string, params?: Record<string, any>) => string,
   chatId?: number,
-  imageUrls?: string[]
+  imageUrls?: string[],
+  onThinkingUpdate?: (thinking: string) => void
 ): Promise<string> {
   try {
 
@@ -125,7 +127,6 @@ export async function fetchAiStream(
     let fullContent = ''
     const toolCalls: any[] = []
     let hasToolCalls = false
-    let hasAddedThinkingTag = false // 标记是否已添加 <thinking> 开始标签
     
     for await (const chunk of stream) {
       if (abortSignal?.aborted) {
@@ -135,6 +136,10 @@ export async function fetchAiStream(
       const delta = chunk.choices[0]?.delta
       const thinkingContent = (delta as any)?.reasoning_content || ''
       const content = delta?.content || ''
+      
+      if (thinkingContent) {
+        console.log('[fetchAiStream] Delta has reasoning_content:', thinkingContent.substring(0, 50))
+      }
       
       // 处理工具调用
       if (delta?.tool_calls) {
@@ -174,24 +179,21 @@ export async function fetchAiStream(
         continue
       }
       
-      // 处理思考内容（包裹在 <thinking> 标签中）
+      // 处理思考内容（通过独立回调）
       if (thinkingContent) {
         thinking += thinkingContent
-        // 第一次遇到 thinking 内容时，添加开始标签
-        if (!hasAddedThinkingTag) {
-          fullContent += '<thinking>'
-          hasAddedThinkingTag = true
+        console.log('[fetchAiStream] Received thinking content:', thinkingContent)
+        console.log('[fetchAiStream] Total thinking:', thinking)
+        if (onThinkingUpdate) {
+          console.log('[fetchAiStream] Calling onThinkingUpdate')
+          onThinkingUpdate(thinking)
+        } else {
+          console.log('[fetchAiStream] onThinkingUpdate callback is not provided')
         }
-        fullContent += thinkingContent
       }
       
       // 处理普通内容
       if (content) {
-        // 如果之前有 thinking 内容，先关闭标签
-        if (hasAddedThinkingTag && thinking.length > 0) {
-          fullContent += '</thinking>'
-          hasAddedThinkingTag = false
-        }
         fullContent += content
       }
       
@@ -324,7 +326,6 @@ export async function fetchAiStream(
         currentToolCalls = []
         thinking = ''
         fullContent = ''
-        let hasAddedThinkingTagInLoop = false // 标记是否已添加 <thinking> 开始标签
         
         // 处理响应
         for await (const chunk of nextStream) {
@@ -370,22 +371,14 @@ export async function fetchAiStream(
             continue
           }
           
-          // 处理思考内容（包裹在 <thinking> 标签中）
+          // 处理思考内容（通过独立回调）
           if (thinkingContent) {
             thinking += thinkingContent
-            // 第一次遇到 thinking 内容时，添加开始标签
-            if (!hasAddedThinkingTagInLoop) {
-              fullContent += '<thinking>'
-              hasAddedThinkingTagInLoop = true
+            if (onThinkingUpdate) {
+              onThinkingUpdate(thinking)
             }
-            fullContent += thinkingContent
           }
           if (content) {
-            // 如果之前有 thinking 内容，先关闭标签
-            if (hasAddedThinkingTagInLoop && thinking.length > 0) {
-              fullContent += '</thinking>'
-              hasAddedThinkingTagInLoop = false
-            }
             fullContent += content
           }
           onUpdate(fullContent)

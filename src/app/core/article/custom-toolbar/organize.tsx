@@ -156,13 +156,7 @@ export function OrganizeToolbar() {
       
       const marksByRange = marks.filter(item => dayjs(item.createdAt).isAfter(subtractDate))
       const scanMarks = marksByRange.filter(item => item.type === 'scan')
-      const textMarks = marksByRange.filter(item => item.type === 'text').map(item => {
-        if (!item.content) return item
-        if (isRemoveThinking) {
-          item.content = item.content.replace(/<thinking>[\s\S]*?<thinking>/g, '');
-        }
-        return item
-      })
+      const textMarks = marksByRange.filter(item => item.type === 'text')
       const imageMarks = marksByRange.filter(item => item.type === 'image')
       const linkMarks = marksByRange.filter(item => item.type === 'link')
       const fileMarks = marksByRange.filter(item => item.type === 'file')
@@ -234,7 +228,7 @@ export function OrganizeToolbar() {
       }, signal)
       
       // 4. Extract title and rename file if it's a new file
-      const cleanedContent = fullContent.replace(/<thinking>[\s\S]*?<thinking>/g, '')
+      const cleanedContent = fullContent
       
       if (filePath.startsWith('整理笔记_')) {
         const titleMatch = cleanedContent.match(/^#\s+(.+)$/m)

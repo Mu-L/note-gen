@@ -8,6 +8,8 @@ export default function ChatThinking({chat}: { chat: Chat }) {
   const thinkingContent = chat.thinking || ''
   const isThinking = !chat.content && !!chat.thinking // 还在思考中（有 thinking 但没有 content）
   
+  console.log('[ChatThinking] Render - chat.id:', chat.id, 'thinking:', !!chat.thinking, 'thinking length:', thinkingContent.length, 'isThinking:', isThinking)
+  
   const [isExpanded, setIsExpanded] = useState(isThinking)
   const contentRef = useRef<HTMLDivElement>(null)
   
@@ -27,7 +29,12 @@ export default function ChatThinking({chat}: { chat: Chat }) {
     }
   }, [thinkingContent, isThinking, isExpanded])
   
-  if (!chat.thinking) return null
+  if (!chat.thinking) {
+    console.log('[ChatThinking] No thinking content, returning null')
+    return null
+  }
+  
+  console.log('[ChatThinking] Rendering thinking panel')
   
   // 提取标题（第一行或前50个字符）
   const extractTitle = (text: string): string => {

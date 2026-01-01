@@ -311,24 +311,31 @@ ${ragContext}
     
     // 使用流式方式获取AI结果
     let cache_content = '';
+    let cache_thinking = '';
+    console.log('[chat-send] Starting fetchAiStream with thinking callback')
     try {
       await fetchAiStream(request_content, async (content) => {
         cache_content = content
-        
-        // 分离 thinking 内容和普通内容
-        // 匹配已闭合的 <thinking> 标签或未闭合的（思考中）
-        const thinkingMatch = content.match(/<thinking>([\s\S]*?)(?:<\/thinking>|$)/)
-        const thinking = thinkingMatch ? thinkingMatch[1] : undefined
-        // 移除 thinking 标签及其内容（包括未闭合的）
-        const contentWithoutThinking = content.replace(/<thinking>[\s\S]*?(?:<\/thinking>|$)/g, '').trim()
+        console.log('[chat-send] Content callback, length:', content.length)
         
         // 每次收到流式内容时更新消息
         await saveChat({
           ...message,
-          content: contentWithoutThinking,
-          thinking
+          content: content,
+          thinking: cache_thinking || undefined
         }, false)
-      }, signal, mcpTools, t, message.id, imageUrls)
+      }, signal, mcpTools, t, message.id, imageUrls, async (thinking) => {
+        console.log('[chat-send] Thinking callback received:', thinking.substring(0, 100))
+        cache_thinking = thinking
+        
+        // 每次收到思考内容时更新消息
+        await saveChat({
+          ...message,
+          content: cache_content,
+          thinking: thinking
+        }, false)
+        console.log('[chat-send] Saved chat with thinking, length:', thinking.length)
+      })
     } catch (error: any) {
       // 如果不是中止错误，则记录错误信息
       if (error.name !== 'AbortError') {
@@ -338,15 +345,12 @@ ${ragContext}
       abortControllerRef.current = null
       setLoading(false)
       
-      // 最终保存时也分离 thinking 内容
-      const thinkingMatch = cache_content.match(/<thinking>([\s\S]*?)(?:<\/thinking>|$)/)
-      const thinking = thinkingMatch ? thinkingMatch[1] : undefined
-      const contentWithoutThinking = cache_content.replace(/<thinking>[\s\S]*?(?:<\/thinking>|$)/g, '').trim()
-      
+      console.log('[chat-send] Final save - content length:', cache_content.length, 'thinking length:', cache_thinking.length)
+      // 最终保存
       await saveChat({
         ...message,
-        content: contentWithoutThinking,
-        thinking,
+        content: cache_content,
+        thinking: cache_thinking || undefined,
         ragSources: ragSources.length > 0 ? JSON.stringify(ragSources) : undefined,
       }, true)
     }
