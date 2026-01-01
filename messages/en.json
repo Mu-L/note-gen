@@ -1390,6 +1390,9 @@
       "copySuccess": "Copy Success",
       "copySuccessDescription": "Copied to clipboard",
       "floatbar": {
+        "quote": {
+          "tooltip": "Quote"
+        },
         "readAloud": {
           "start": "Read Aloud",
           "stop": "Stop Reading",

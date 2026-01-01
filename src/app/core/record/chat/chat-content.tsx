@@ -168,6 +168,22 @@ function Message({ chat }: { chat: Chat }) {
     }
   })() : []
   
+  // 解析引用数据
+  const quoteData = chat.quoteData ? (() => {
+    try {
+      return JSON.parse(chat.quoteData) as {
+        quote: string
+        fullContent: string
+        fileName: string
+        startLine: number
+        endLine: number
+        articlePath: string
+      }
+    } catch {
+      return null
+    }
+  })() : null
+  
   // 如果是空内容的 AI 消息且 Agent 正在运行，不显示（避免双头像）
   if (chat.role === 'system' && !chat.content && agentState.isRunning) {
     return null
@@ -228,6 +244,25 @@ function Message({ chat }: { chat: Chat }) {
           {/* 显示用户消息中的图片 */}
           {chat.role === 'user' && images.length > 0 && (
             <ChatImages images={images} />
+          )}
+          {/* 显示用户消息中的引用 */}
+          {chat.role === 'user' && quoteData && (
+            <div className="mb-2 p-2 border-l-2 border-primary bg-muted/50 rounded">
+              <div className="text-xs text-primary-foreground/80 mb-1 font-medium">
+                {quoteData.startLine !== -1 && quoteData.endLine !== -1 ? (
+                  quoteData.startLine === quoteData.endLine ? (
+                    `引用自 ${quoteData.fileName} 第 ${quoteData.startLine} 行`
+                  ) : (
+                    `引用自 ${quoteData.fileName} 第 ${quoteData.startLine}-${quoteData.endLine} 行`
+                  )
+                ) : (
+                  `引用自 ${quoteData.fileName}`
+                )}
+              </div>
+              <div className="text-xs text-primary-foreground/70 line-clamp-3 whitespace-pre-wrap">
+                {quoteData.fullContent}
+              </div>
+            </div>
           )}
           {chat.role === 'user' && content && (
             <div className="whitespace-pre-wrap">{content}</div>

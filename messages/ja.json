@@ -1441,6 +1441,9 @@
         "uploading": "画像をアップロードしています"
       },
       "floatbar": {
+        "quote": {
+          "tooltip": "引用"
+        },
         "readAloud": {
           "start": "朗读",
           "stop": "停止",

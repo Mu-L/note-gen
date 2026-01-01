@@ -1384,6 +1384,9 @@
       "copySuccess": "复制成功",
       "copySuccessDescription": "已复制到剪贴板",
       "floatbar": {
+        "quote": {
+          "tooltip": "引用"
+        },
         "readAloud": {
           "start": "朗读",
           "stop": "停止朗读",

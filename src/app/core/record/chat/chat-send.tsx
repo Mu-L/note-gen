@@ -19,14 +19,24 @@ import { getOpenAIFunctions } from "@/lib/mcp/tools"
 import { AgentHandler } from "@/lib/agent/agent-handler"
 import { ImageAttachment } from "./image-attachments"
 
+interface QuoteData {
+  quote: string
+  fullContent: string
+  fileName: string
+  startLine: number
+  endLine: number
+  articlePath: string
+}
+
 interface ChatSendProps {
   inputValue: string;
   onSent?: () => void;
   linkedFile?: MarkdownFile | null;
   attachedImages?: ImageAttachment[];
+  quoteData?: QuoteData | null;
 }
 
-export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ inputValue, onSent, linkedFile, attachedImages = [] }, ref) => {
+export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ inputValue, onSent, linkedFile, attachedImages = [], quoteData = null }, ref) => {
   const { primaryModel } = useSettingStore()
   const { currentTagId } = useTagStore()
   const { insert, loading, setLoading, saveChat, chats, chatMode, setAgentState } = useChatStore()
@@ -164,6 +174,7 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
       inserted: false,
       image: undefined,
       images: imageUrls.length > 0 ? JSON.stringify(imageUrls) : undefined,
+      quoteData: quoteData ? JSON.stringify(quoteData) : undefined,
     })
 
     const message = await insert({
@@ -190,6 +201,27 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
     let ragContext = ''
     let ragSources: string[] = []
     let linkedFileContent = ''
+    let quoteContent = ''
+    
+    // 如果有引用内容，构建引用上下文
+    if (quoteData) {
+      const { fileName, startLine, endLine, fullContent } = quoteData
+      let lineInfo = ''
+      if (startLine !== -1 && endLine !== -1) {
+        if (startLine === endLine) {
+          lineInfo = `第 ${startLine} 行`
+        } else {
+          lineInfo = `第 ${startLine}-${endLine} 行`
+        }
+      }
+      
+      quoteContent = `
+用户引用了笔记 "${fileName}" ${lineInfo}的以下内容：
+${fullContent}
+
+请基于这段引用内容回答用户的问题。
+`
+    }
     
     // 如果有关联文件，读取文件内容
     if (linkedFile) {
@@ -236,6 +268,7 @@ ${ragContext}
     }
 
     const request_content = `
+      ${quoteContent.trim()}
       ${[...scanMarks, ...textMarks, ...imageMarks, ...fileMarks, ...linkMarks].length ? 'You can refer to the following content notes:' : ''}
       ${scanMarks.length ? 'The following are screenshots after using OCR to identify text fragments:' : ''}
       ${scanMarks.map((item, index) => `${index + 1}. ${item.content}`).join(';\n\n')}

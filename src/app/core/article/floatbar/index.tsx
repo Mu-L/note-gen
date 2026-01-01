@@ -1,5 +1,5 @@
 'use client'
-import Question from "./question";
+import Quote from "./quote";
 import Polish from "./polish";
 import Eraser from "./eraser";
 import Expansion from "./expansion";
@@ -34,7 +34,7 @@ export default function FloatBar({left, top, value, editor}: {left?: number, top
       style={{left: adjustedLeft + 'px', top: (top || 0) < 64 ? (top || 0) + 82 + 'px' : (top || 0) + 'px'}}>
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          <Question editor={editor} value={value} />
+          <Quote value={value} />
           <Polish editor={editor} value={value} />
           <Eraser editor={editor} value={value} />
           <Expansion editor={editor} value={value} />

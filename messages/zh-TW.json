@@ -1325,6 +1325,9 @@
       "copySuccess": "複製成功",
       "copySuccessDescription": "已複製到剪貼簿",
       "floatbar": {
+        "quote": {
+          "tooltip": "引用"
+        },
         "readAloud": {
           "start": "朗讀",
           "stop": "停止朗讀",

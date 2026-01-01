@@ -1352,6 +1352,9 @@
       "copySuccess": "Cópia Bem-sucedida",
       "copySuccessDescription": "Copiado para a área de transferência",
       "floatbar": {
+        "quote": {
+          "tooltip": "Citar"
+        },
         "readAloud": {
           "start": "Ler em Voz Alta",
           "stop": "Parar Leitura",

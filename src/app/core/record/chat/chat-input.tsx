@@ -30,6 +30,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { ImageAttachments, ImageAttachment } from "./image-attachments"
 import { ImageIcon } from "lucide-react"
 import { TooltipButton } from "@/components/tooltip-button"
+import { QuoteDisplay } from "./quote-display"
 import { convertFileSrc } from "@tauri-apps/api/core"
 import { writeFile } from "@tauri-apps/plugin-fs"
 import { BaseDirectory } from "@tauri-apps/plugin-fs"
@@ -64,6 +65,14 @@ export function ChatInput() {
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [linkedFile, setLinkedFile] = useState<MarkdownFile | null>(null)
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([])
+  const [quoteData, setQuoteData] = useState<{
+    quote: string
+    fullContent: string
+    fileName: string
+    startLine: number
+    endLine: number
+    articlePath: string
+  } | null>(null)
   const chatSendRef = useRef<any>(null)
   const isMobile = useIsMobile()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -121,6 +130,10 @@ export function ChatInput() {
 
   function removeImage(id: string) {
     setAttachedImages(prev => prev.filter(img => img.id !== id))
+  }
+
+  function removeQuote() {
+    setQuoteData(null)
   }
 
   async function handleSelectLocalImages() {
@@ -199,6 +212,7 @@ export function ChatInput() {
     setText('')
     setHistoryIndex(-1)
     setAttachedImages([])
+    setQuoteData(null)
     const textarea = document.querySelector('textarea')
     if (textarea) {
       textarea.style.height = 'auto'
@@ -298,9 +312,24 @@ export function ChatInput() {
     emitter.on('fileSelected', (event: unknown) => {
       setLinkedFile(event as MarkdownFile)
     })
+    emitter.on('insert-quote', (event: unknown) => {
+      const data = event as {
+        quote: string
+        fullContent: string
+        fileName: string
+        startLine: number
+        endLine: number
+        articlePath: string
+      }
+      // 设置引用数据
+      setQuoteData(data)
+      // 聚焦到输入框
+      textareaRef.current?.focus()
+    })
     return () => {
       emitter.off('revertChat')
       emitter.off('fileSelected')
+      emitter.off('insert-quote')
     }
   }, [])
 
@@ -341,6 +370,9 @@ export function ChatInput() {
         onFileRemove={removeLinkedFile}
       />
       <div className="group relative flex flex-col border rounded-xl z-10 gap-1 p-1 w-full bg-background focus-within:border-primary transition-colors">
+        {quoteData && (
+          <QuoteDisplay quoteData={quoteData} onRemove={removeQuote} />
+        )}
         <ImageAttachments images={attachedImages} onRemove={removeImage} />
         <div className="relative w-full flex items-start">
           <Textarea
@@ -466,7 +498,7 @@ export function ChatInput() {
               disabled={!primaryModel || loading}
             />
             <ChatModeSelect />
-            <ChatSend inputValue={text} onSent={handleSent} linkedFile={linkedFile} attachedImages={attachedImages} ref={chatSendRef} />
+            <ChatSend inputValue={text} onSent={handleSent} linkedFile={linkedFile} attachedImages={attachedImages} quoteData={quoteData} ref={chatSendRef} />
           </div>
         </div>
 
