@@ -785,7 +785,7 @@ const useSettingStore = create<SettingState>((set, get) => ({
     await store.set('enableImageRecognition', enable)
     await store.save()
   },
-  primaryImageMethod: 'ocr',
+  primaryImageMethod: 'vlm',
   setPrimaryImageMethod: async (method: 'ocr' | 'vlm') => {
     set({ primaryImageMethod: method })
     const store = await Store.load('store.json');
