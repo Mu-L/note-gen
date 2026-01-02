@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -29,8 +30,7 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem
-  ;
+    --radius: 0.5rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -38,7 +38,15 @@
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%}
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --component-inactive-color: var(--muted-foreground);
+    --component-bg: var(--card);
+    --component-shadow: var(--border);
+    --component-active-bg: var(--secondary);
+    --component-line-inactive-color: var(--border);
+    --component-active-color-default: var(--accent-foreground);
+  }
+
   .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
@@ -63,8 +71,7 @@
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%
-  ;
+    --chart-5: 340 75% 55%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -72,8 +79,22 @@
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%}
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --component-inactive-color: var(--muted-foreground);
+    --component-bg: var(--card);
+    --component-shadow: var(--border);
+    --component-active-bg: var(--secondary);
+    --component-line-inactive-color: var(--muted-foreground);
+    --component-active-color-default: var(--accent-foreground);
+  }
+  .theme {
+    --color-chart-2: var(--color-chart-2);
+    --color-chart-3: var(--color-chart-3);
+    --color-chart-4: var(--color-chart-4);
+    --color-chart-5: var(--color-chart-5);
+  }
 }
+
 @layer base {
   * {
     @apply border-border;
@@ -89,42 +110,44 @@ html, body {
 
 .file-manange-item {
   @apply flex items-center gap-1 py-1 text-sm cursor-pointer w-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-black dark:text-white;
-  &.active{
-    @apply bg-third text-third-foreground dark:bg-third-foreground dark:text-white font-bold;
-    .bg-primary-foreground{
-      @apply bg-third dark:bg-third-foreground;
-    }
-  }
 }
 
-:not(table) {
-  &::-webkit-scrollbar {
-    @apply w-2 h-2;
-  }
-
-  &::-webkit-scrollbar-track {
-    @apply bg-transparent
-  }
-
-  &::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-border border-[1px] border-transparent border-solid bg-clip-padding;
-  }
+.file-manange-item.active {
+  @apply bg-third text-third-foreground dark:bg-third-foreground dark:text-white font-bold;
 }
 
-.setting-anchor{
+.file-manange-item.active .bg-primary-foreground {
+  @apply bg-third dark:bg-third-foreground;
+}
+
+:not(table)::-webkit-scrollbar {
+  @apply w-2 h-2;
+}
+
+:not(table)::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+:not(table)::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-border border-[1px] border-transparent border-solid bg-clip-padding;
+}
+
+.setting-anchor {
   @apply text-sm w-full hover:bg-accent px-4 py-2 rounded cursor-pointer flex gap-2 items-center;
-  svg {
-    @apply size-4;
-  }
 }
 
-.search-highlight i{
+.setting-anchor svg {
+  @apply size-4;
+}
+
+.search-highlight i {
   @apply bg-secondary-foreground text-secondary;
 }
 
 .setting-input {
   @apply px-1 h-5 min-h-5 py-0 rounded-sm border-none outline-none shadow-none;
 }
+
 .setting-select {
   @apply h-6 min-h-6;
 }
@@ -133,13 +156,31 @@ ol {
   list-style-type: decimal;
 }
 
-/* 隐藏滚动条的工具类 */
 .scrollbar-hide {
-  /* 隐藏滚动条但保持滚动功能 */
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari and Opera */
+  display: none;
+}
+
+@theme inline {
+  @keyframes iconBounce {
+  0%, 100% {
+    transform: translateY(0);
+    }
+  20% {
+    transform: translateY(-0.3em);
+    }
+  40% {
+    transform: translateY(0);
+    }
+  60% {
+    transform: translateY(-0.1em);
+    }
+  80% {
+    transform: translateY(0);
+    }
+  }
 }
