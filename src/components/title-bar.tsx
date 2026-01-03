@@ -23,6 +23,21 @@ import { ControlScan } from '@/app/core/record/mark/control-scan'
 import { ControlImage } from '@/app/core/record/mark/control-image'
 import { ControlLink } from '@/app/core/record/mark/control-link'
 import { ControlFile } from '@/app/core/record/mark/control-file'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  horizontalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { DraggableToolbarItem } from './draggable-toolbar-item'
+import { useToolbarShortcuts } from '@/hooks/use-toolbar-shortcuts'
 
 type Platform = 'macos' | 'windows' | 'linux' | 'unknown'
 
@@ -36,10 +51,11 @@ export function TitleBar({ onSearchClick }: TitleBarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { leftSidebarVisible, rightSidebarVisible, toggleLeftSidebar, toggleRightSidebar } = useSidebarStore()
-  const { recordToolbarConfig } = useSettingStore()
+  const { recordToolbarConfig, setRecordToolbarConfig } = useSettingStore()
   const { activeFilePath } = useArticleStore()
   const { hasUpdate } = useUpdateStore()
   const t = useTranslations()
+  const { isModifierPressed } = useToolbarShortcuts()
 
   const getFileName = () => {
     if (!activeFilePath) return ''
@@ -49,6 +65,33 @@ export function TitleBar({ onSearchClick }: TitleBarProps) {
 
   const searchPlaceholder = getFileName() || t('navigation.searchPlaceholder')
 
+
+  // 拖拽传感器配置
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
+    })
+  )
+
+  // 处理拖拽结束
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      const oldIndex = recordToolbarConfig.findIndex((item) => item.id === active.id)
+      const newIndex = recordToolbarConfig.findIndex((item) => item.id === over.id)
+      
+      const newItems = arrayMove(recordToolbarConfig, oldIndex, newIndex)
+      const updatedItems = newItems.map((item, index) => ({
+        ...item,
+        order: index
+      }))
+      setRecordToolbarConfig(updatedItems)
+    }
+  }
 
   useEffect(() => {
     // 检查是否为移动设备
@@ -124,27 +167,53 @@ export function TitleBar({ onSearchClick }: TitleBarProps) {
         {/* 左侧记录工具栏按钮 */}
         <div className="flex items-center gap-0.5 px-2 shrink-0" data-tauri-drag-region="false">
           <TooltipProvider>
-            {recordToolbarConfig
-              .filter(item => item.enabled)
-              .sort((a, b) => a.order - b.order)
-              .map(item => {
-                switch (item.id) {
-                  case 'text':
-                    return <ControlText key={item.id} />
-                  case 'recording':
-                    return <ControlRecording key={item.id} />
-                  case 'scan':
-                    return <ControlScan key={item.id} />
-                  case 'image':
-                    return <ControlImage key={item.id} />
-                  case 'link':
-                    return <ControlLink key={item.id} />
-                  case 'file':
-                    return <ControlFile key={item.id} />
-                  default:
-                    return null
-                }
-              })}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={recordToolbarConfig.filter(item => item.enabled).map(item => item.id)}
+                strategy={horizontalListSortingStrategy}
+              >
+                <div className="flex">
+                  {recordToolbarConfig
+                    .filter(item => item.enabled)
+                    .sort((a, b) => a.order - b.order)
+                    .map((item, index) => {
+                      const renderToolbarItem = () => {
+                        switch (item.id) {
+                          case 'text':
+                            return <ControlText />
+                          case 'recording':
+                            return <ControlRecording />
+                          case 'scan':
+                            return <ControlScan />
+                          case 'image':
+                            return <ControlImage />
+                          case 'link':
+                            return <ControlLink />
+                          case 'file':
+                            return <ControlFile />
+                          default:
+                            return null
+                        }
+                      }
+                      
+                      return (
+                        <DraggableToolbarItem
+                          key={item.id}
+                          id={item.id}
+                          shortcutNumber={index + 1}
+                          showShortcut={isModifierPressed && index < 9}
+                        >
+                          {renderToolbarItem()}
+                        </DraggableToolbarItem>
+                      )
+                    })}
+                </div>
+              </SortableContext>
+            </DndContext>
           </TooltipProvider>
         </div>
 

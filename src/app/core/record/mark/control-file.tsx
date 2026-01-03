@@ -6,6 +6,8 @@ import { readTextFile } from "@tauri-apps/plugin-fs";
 import useTagStore from "@/stores/tag";
 import useMarkStore from "@/stores/mark";
 import { insertMark } from "@/db/marks";
+import { useEffect } from 'react'
+import emitter from '@/lib/emitter'
 
 // 常见的代码格式
 const codeExtensions = [
@@ -27,6 +29,15 @@ export function ControlFile() {
   const t = useTranslations();
   const { currentTagId, fetchTags, getCurrentTag } = useTagStore()
   const { fetchMarks } = useMarkStore()
+
+  useEffect(() => {
+    emitter.on('toolbar-shortcut-file', () => {
+      selectFile()
+    })
+    return () => {
+      emitter.off('toolbar-shortcut-file')
+    }
+  }, [])
 
   async function selectFile() {
     const filePath = await open({

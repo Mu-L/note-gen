@@ -15,6 +15,8 @@ import { readFile, writeFile, BaseDirectory, exists, mkdir } from '@tauri-apps/p
 import { useRef } from 'react'
 import { isMobileDevice } from '@/lib/check'
 import { convertToWav } from '@/lib/audio-converter'
+import { useEffect } from 'react'
+import emitter from '@/lib/emitter'
 
 export function ControlRecording() {
   const t = useTranslations();
@@ -35,6 +37,20 @@ export function ControlRecording() {
     startRecording,
     stopRecording
   } = useRecordingStore()
+  
+  // 监听快捷键
+  useEffect(() => {
+    emitter.on('toolbar-shortcut-recording', () => {
+      if (isRecording) {
+        handleStop()
+      } else {
+        handleStart()
+      }
+    })
+    return () => {
+      emitter.off('toolbar-shortcut-recording')
+    }
+  }, [isRecording])
 
   // 格式化录音时长
   const formatDuration = (seconds: number) => {

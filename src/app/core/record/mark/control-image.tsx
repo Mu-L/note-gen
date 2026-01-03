@@ -11,8 +11,9 @@ import useSettingStore from "@/stores/setting"
 import { v4 as uuid } from 'uuid'
 import { open } from '@tauri-apps/plugin-dialog';
 import { uploadImage } from "@/lib/imageHosting"
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { isMobileDevice } from '@/lib/check'
+import emitter from '@/lib/emitter'
 
 export function ControlImage() {
   const t = useTranslations();
@@ -21,6 +22,15 @@ export function ControlImage() {
   const { fetchMarks, addQueue, setQueue, removeQueue } = useMarkStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isMobile = isMobileDevice()
+
+  useEffect(() => {
+    emitter.on('toolbar-shortcut-image', () => {
+      selectImages()
+    })
+    return () => {
+      emitter.off('toolbar-shortcut-image')
+    }
+  }, [])
 
   async function selectImages() {
     try {

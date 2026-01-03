@@ -40,8 +40,12 @@ export function ControlText() {
     emitter.on('quickRecordTextHandler', () => {
       setOpen(true)
     })
+    emitter.on('toolbar-shortcut-text', () => {
+      setOpen(true)
+    })
     return () => {
       emitter.off('quickRecordTextHandler')
+      emitter.off('toolbar-shortcut-text')
     }
   }, [])
 

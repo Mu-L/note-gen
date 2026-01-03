@@ -15,9 +15,10 @@ import { insertMark } from "@/db/marks"
 import useMarkStore from "@/stores/mark"
 import useTagStore from "@/stores/tag"
 import { Link } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { fetch } from '@tauri-apps/plugin-http'
 import { v4 as uuidv4 } from 'uuid'
+import emitter from '@/lib/emitter'
 
 export function ControlLink() {
   const t = useTranslations();
@@ -27,6 +28,15 @@ export function ControlLink() {
 
   const { currentTagId, fetchTags, getCurrentTag } = useTagStore()
   const { fetchMarks, addQueue, setQueue, removeQueue } = useMarkStore()
+
+  useEffect(() => {
+    emitter.on('toolbar-shortcut-link', () => {
+      setOpen(true)
+    })
+    return () => {
+      emitter.off('toolbar-shortcut-link')
+    }
+  }, [])
 
   async function handleSuccess() {
     if (!url) return

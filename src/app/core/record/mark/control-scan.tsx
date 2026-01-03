@@ -31,6 +31,7 @@ import useSettingStore from "@/stores/setting"
 import ocr from "@/lib/ocr"
 import { fetchAiDesc, fetchAiDescByImage } from "@/lib/ai/description"
 import { insertMark } from "@/db/marks"
+import emitter from '@/lib/emitter'
 
 export function ControlScan() {
   const t = useTranslations();
@@ -132,6 +133,16 @@ export function ControlScan() {
       initCropper()
     }
   }, [image, open])
+
+  useEffect(() => {
+    emitter.on('toolbar-shortcut-scan', () => {
+      createScreenShot()
+      setOpen(true)
+    })
+    return () => {
+      emitter.off('toolbar-shortcut-scan')
+    }
+  }, [])
 
   return (
     <div className="hidden md:block">
