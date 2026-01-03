@@ -1261,10 +1261,12 @@
     "logout": "Logout",
     "setting": "Settings",
     "files": "Notes",
-    "hideLeftSidebar": "Hide Left Sidebar",
     "showLeftSidebar": "Show Left Sidebar",
-    "hideRightSidebar": "Hide Right Sidebar",
+    "hideLeftSidebar": "Hide Left Sidebar",
+    "showCenterPanel": "Show Editor",
+    "hideCenterPanel": "Hide Editor",
     "showRightSidebar": "Show Right Sidebar",
+    "hideRightSidebar": "Hide Right Sidebar",
     "searchPlaceholder": "Search notes or records..."
   },
   "marks": {

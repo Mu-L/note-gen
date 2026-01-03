@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { platform } from '@tauri-apps/plugin-os'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { isMobileDevice } from '@/lib/check'
-import { Search, Settings, Minus, Square, X, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, Cog } from 'lucide-react'
+import { Search, Settings, Minus, Square, X, PanelLeft, PanelRight, SquarePen, Cog } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useSidebarStore } from '@/stores/sidebar'
@@ -50,7 +50,10 @@ export function TitleBar({ onSearchClick }: TitleBarProps) {
   const [isMobile, setIsMobile] = useState(true)
   const pathname = usePathname()
   const router = useRouter()
-  const { leftSidebarVisible, rightSidebarVisible, toggleLeftSidebar, toggleRightSidebar } = useSidebarStore()
+  const { leftSidebarVisible, centerPanelVisible, rightSidebarVisible, toggleLeftSidebar, toggleCenterPanel, toggleRightSidebar } = useSidebarStore()
+  
+  // 检查是否只有一个面板开启
+  const onlyOneVisible = [leftSidebarVisible, centerPanelVisible, rightSidebarVisible].filter(Boolean).length === 1
   const { recordToolbarConfig, setRecordToolbarConfig } = useSettingStore()
   const { activeFilePath } = useArticleStore()
   const { hasUpdate } = useUpdateStore()
@@ -239,14 +242,39 @@ export function TitleBar({ onSearchClick }: TitleBarProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
-                onClick={toggleLeftSidebar}
+                className={`h-8 w-8 ${onlyOneVisible && leftSidebarVisible ? 'cursor-not-allowed' : ''}`}
+                onClick={() => {
+                  if (!(onlyOneVisible && leftSidebarVisible)) {
+                    toggleLeftSidebar()
+                  }
+                }}
               >
-                {leftSidebarVisible ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+                <PanelLeft className={`h-4 w-4 ${!leftSidebarVisible ? 'opacity-50' : ''}`} />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
               <p>{leftSidebarVisible ? t('navigation.hideLeftSidebar') : t('navigation.showLeftSidebar')}</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* 中间面板切换按钮 */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 ${onlyOneVisible && centerPanelVisible ? 'cursor-not-allowed' : ''}`}
+                onClick={() => {
+                  if (!(onlyOneVisible && centerPanelVisible)) {
+                    toggleCenterPanel()
+                  }
+                }}
+              >
+                <SquarePen className={`h-4 w-4 ${!centerPanelVisible ? 'opacity-50' : ''}`} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>{centerPanelVisible ? t('navigation.hideCenterPanel') : t('navigation.showCenterPanel')}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -256,10 +284,14 @@ export function TitleBar({ onSearchClick }: TitleBarProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
-                onClick={toggleRightSidebar}
+                className={`h-8 w-8 ${onlyOneVisible && rightSidebarVisible ? 'cursor-not-allowed' : ''}`}
+                onClick={() => {
+                  if (!(onlyOneVisible && rightSidebarVisible)) {
+                    toggleRightSidebar()
+                  }
+                }}
               >
-                {rightSidebarVisible ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
+                <PanelRight className={`h-4 w-4 ${!rightSidebarVisible ? 'opacity-50' : ''}`} />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
