@@ -8,8 +8,6 @@ export default function ChatThinking({chat}: { chat: Chat }) {
   const thinkingContent = chat.thinking || ''
   const isThinking = !chat.content && !!chat.thinking // 还在思考中（有 thinking 但没有 content）
   
-  console.log('[ChatThinking] Render - chat.id:', chat.id, 'thinking:', !!chat.thinking, 'thinking length:', thinkingContent.length, 'isThinking:', isThinking)
-  
   const [isExpanded, setIsExpanded] = useState(isThinking)
   const contentRef = useRef<HTMLDivElement>(null)
   

@@ -138,7 +138,7 @@ export async function fetchAiStream(
       const content = delta?.content || ''
       
       if (thinkingContent) {
-        console.log('[fetchAiStream] Delta has reasoning_content:', thinkingContent.substring(0, 50))
+        // 处理思考内容
       }
       
       // 处理工具调用
@@ -182,13 +182,8 @@ export async function fetchAiStream(
       // 处理思考内容（通过独立回调）
       if (thinkingContent) {
         thinking += thinkingContent
-        console.log('[fetchAiStream] Received thinking content:', thinkingContent)
-        console.log('[fetchAiStream] Total thinking:', thinking)
         if (onThinkingUpdate) {
-          console.log('[fetchAiStream] Calling onThinkingUpdate')
           onThinkingUpdate(thinking)
-        } else {
-          console.log('[fetchAiStream] onThinkingUpdate callback is not provided')
         }
       }
       

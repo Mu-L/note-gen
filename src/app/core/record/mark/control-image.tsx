@@ -36,21 +36,17 @@ export function ControlImage() {
 
   async function selectImages() {
     try {
-      console.log('selectImages called, isMobile:', isMobile)
-      
       // 移动端使用 HTML5 file input
       if (isMobile) {
-        console.log('Mobile device detected, triggering file input')
         if (fileInputRef.current) {
           fileInputRef.current.click()
         } else {
-          console.error('File input ref is null')
+          console.error('File input ref not available')
         }
         return
       }
 
       // PC端使用 Tauri dialog
-      console.log('Desktop device, using Tauri dialog')
       const filePaths = await open({
         multiple: true,
         directory: false,
@@ -75,20 +71,15 @@ export function ControlImage() {
   // 处理移动端文件选择
   async function handleFileInputChange(event: React.ChangeEvent<HTMLInputElement>) {
     try {
-      console.log('handleFileInputChange called')
       const files = event.target.files
       if (!files || files.length === 0) {
-        console.log('No files selected')
         return
       }
-
-      console.log(`Selected ${files.length} files`)
       
       // 切换到记录标签页（在耗时操作之前）
       await setLeftSidebarTab('notes')
       
       for (let i = 0; i < files.length; i++) {
-        console.log(`Processing file ${i + 1}:`, files[i].name)
         await uploadMobileFile(files[i])
       }
       
@@ -104,45 +95,37 @@ export function ControlImage() {
     const queueId = uuid()
     
     try {
-      console.log('uploadMobileFile started for:', file.name)
       addQueue({ queueId, tagId: currentTagId!, progress: t('record.mark.progress.cacheImage'), type: 'image', startTime: Date.now() })
       
       const ext = file.name.substring(file.name.lastIndexOf('.') + 1) || 'jpg'
-      console.log('File extension:', ext)
       
       const isImageFolderExists = await exists('image', { baseDir: BaseDirectory.AppData})
       if (!isImageFolderExists) {
-        console.log('Creating image folder')
         await mkdir('image', { baseDir: BaseDirectory.AppData})
       }
       
       // 将文件保存到本地
       const filename = `${queueId}.${ext}`
-      console.log('Saving file as:', filename)
       const arrayBuffer = await file.arrayBuffer()
       const uint8Array = new Uint8Array(arrayBuffer)
       await writeFile(`image/${filename}`, uint8Array, { baseDir: BaseDirectory.AppData })
-      console.log('File saved successfully')
       
       let content = ''
       let desc = ''
       
       // Skip image recognition if disabled
       if (!enableImageRecognition) {
-        console.log('Image recognition disabled')
         setQueue(queueId, { progress: t('record.mark.progress.save') });
         content = ''
         desc = ''
       } else if (primaryImageMethod === 'vlm') {
         // 使用 VLM 识别图片
-        console.log('Using VLM for image recognition')
         setQueue(queueId, { progress: t('record.mark.progress.aiAnalysis') });
         const base64 = await fileToBase64(file)
         content = await fetchAiDescByImage(base64) || 'VLM Error'
         desc = content
       } else {
         // 使用 OCR 识别图片
-        console.log('Using OCR for image recognition')
         setQueue(queueId, { progress: t('record.mark.progress.ocr') });
         content = await ocr(`image/${filename}`)
         setQueue(queueId, { progress: t('record.mark.progress.aiAnalysis') });
@@ -163,10 +146,8 @@ export function ControlImage() {
       
       // 尝试上传图片到图床（如果配置了图床）
       try {
-        console.log('Attempting to upload to image hosting')
         const url = await uploadImage(file)
         if (url) {
-          console.log('Image uploaded to hosting:', url)
           setQueue(queueId, { progress: t('record.mark.progress.uploadImage') });
           mark.url = url
         }
@@ -175,14 +156,11 @@ export function ControlImage() {
         // 继续使用本地文件
       }
       
-      console.log('Saving mark to database')
       removeQueue(queueId)
       await insertMark(mark)
       await fetchMarks()
       await fetchTags()
       getCurrentTag()
-      
-      console.log('Upload completed successfully')
     } catch (error) {
       console.error('Error in uploadMobileFile:', error)
       removeQueue(queueId)

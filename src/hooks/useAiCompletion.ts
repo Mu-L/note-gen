@@ -25,11 +25,9 @@ export function useAiCompletion(options: UseAiCompletionOptions = {}) {
     
     // 如果上下文太短，不生成补全
     if (context.trim().length < 10) {
-      console.log('[useAiCompletion] Context too short, skipping')
       return
     }
 
-    console.log('[useAiCompletion] Generating completion with context length:', context.length)
     setIsLoading(true)
     abortControllerRef.current = new AbortController()
 
@@ -37,11 +35,8 @@ export function useAiCompletion(options: UseAiCompletionOptions = {}) {
       const result = await fetchCompletion(context, abortControllerRef.current.signal)
       
       if (result) {
-        console.log('[useAiCompletion] Generated completion:', result.substring(0, 100))
         completionRef.current = result
         setCompletion(result)
-      } else {
-        console.log('[useAiCompletion] No completion generated')
       }
     } catch (error: any) {
       if (error.name !== 'AbortError') {
@@ -56,19 +51,17 @@ export function useAiCompletion(options: UseAiCompletionOptions = {}) {
   // 接受补全
   const acceptCompletion = useCallback(() => {
     const currentCompletion = completionRef.current
-    console.log('[useAiCompletion] acceptCompletion called, completion:', currentCompletion)
     if (currentCompletion) {
-      console.log('[useAiCompletion] Calling onAccept with:', currentCompletion.substring(0, 50))
-      
       // 先清除预览元素
       const previews = document.querySelectorAll('.ai-completion-preview')
       previews.forEach(preview => preview.remove())
       
+      // 调用回调
       options.onAccept?.(currentCompletion)
+      
+      // 清除状态
       completionRef.current = ''
       setCompletion('')
-    } else {
-      console.log('[useAiCompletion] No completion to accept')
     }
   }, [options])
 

@@ -13,7 +13,6 @@ export function isMobileDevice() {
   try {
     const platformName = platform();
     cachedResult = platformName === 'android' || platformName === 'ios';
-    console.log('Platform detected:', platformName, '| isMobile:', cachedResult);
     return cachedResult;
   } catch (error) {
     console.error('Error detecting platform:', error);
@@ -21,7 +20,6 @@ export function isMobileDevice() {
     if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
       const userAgent = navigator.userAgent.toLowerCase();
       cachedResult = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-      console.log('Fallback to user agent detection, isMobile:', cachedResult);
       return cachedResult;
     }
     cachedResult = false;

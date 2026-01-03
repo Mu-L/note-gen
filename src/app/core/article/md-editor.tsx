@@ -59,7 +59,6 @@ export function MdEditor() {
   // 同步 autoCompletionEnabled 到 ref
   useEffect(() => {
     const newValue = autoCompletionEnabled !== undefined ? autoCompletionEnabled : true
-    console.log('[md-editor] Auto-completion enabled changed:', autoCompletionEnabled, '-> ref value:', newValue)
     autoCompletionEnabledRef.current = newValue
   }, [autoCompletionEnabled])
 
@@ -67,7 +66,6 @@ export function MdEditor() {
   useEffect(() => {
     const handleEnabledChange = (enabled: unknown) => {
       const newValue = enabled !== undefined ? (enabled as boolean) : true
-      console.log('[md-editor] Received enabled change event:', enabled, '-> updating ref to:', newValue)
       autoCompletionEnabledRef.current = newValue
     }
 
@@ -80,35 +78,25 @@ export function MdEditor() {
   // AI 内联补全
   const { completion, isLoading: isCompletionLoading, generateCompletion, acceptCompletion, cancelCompletion } = useAiCompletion({
     onAccept: (completionText) => {
-      console.log('[md-editor] onAccept called with text:', completionText.substring(0, 50))
-      console.log('[md-editor] Text length:', completionText.length, 'First char code:', completionText.charCodeAt(0), 'Last char code:', completionText.charCodeAt(completionText.length - 1))
-      
       const currentEditor = editorRef.current
       if (currentEditor) {
-        console.log('[md-editor] Inserting value into editor')
         // 设置标志，表示刚刚接受了补全
         justAcceptedCompletionRef.current = true
         
         // 立即清除防抖定时器，防止触发新的补全
         if (completionTimerRef.current) {
-          console.log('[md-editor] Clearing completion timer')
           clearTimeout(completionTimerRef.current)
           completionTimerRef.current = null
         }
         
         // 再次确保去除前后空格
         const cleanText = completionText.trim()
-        console.log('[md-editor] Clean text:', cleanText.substring(0, 50), 'Length:', cleanText.length)
         currentEditor.insertValue(cleanText)
-        console.log('[md-editor] Value inserted')
         
         // 500ms 后清除标志
         setTimeout(() => {
-          console.log('[md-editor] Clearing justAcceptedCompletion flag')
           justAcceptedCompletionRef.current = false
         }, 500)
-      } else {
-        console.log('[md-editor] Editor is not available')
       }
     },
   })
@@ -148,8 +136,8 @@ export function MdEditor() {
       theme: theme === 'dark' ? 'dark' : 'classic',
       toolbar: toolbarConfig,
       typewriterMode,
-      customWysiwygToolbar: (type: TWYSISYGToolbar, element: HTMLElement) => {
-        console.log(type, element)
+      customWysiwygToolbar: () => {
+        // Custom toolbar handling
       },
       outline: {
         enable: enableOutline,
@@ -226,16 +214,13 @@ export function MdEditor() {
             if (hadCompletion) {
               setTimeout(() => {
                 // 检查是否启用了自动补全
-                console.log('[md-editor] Cursor move regeneration check, enabled:', autoCompletionEnabledRef.current)
                 if (!autoCompletionEnabledRef.current) {
-                  console.log('[md-editor] Auto-completion is disabled, skipping regeneration after cursor move')
                   return
                 }
                 
                 const content = vditor.getValue()
                 const cursorPos = content.length
                 if (content.trim().length > 20) {
-                  console.log('[md-editor] Cursor moved, regenerating completion')
                   generateCompletion(content, cursorPos)
                 }
               }, 100)
@@ -245,9 +230,7 @@ export function MdEditor() {
           // Tab 键：接受补全
           if (e.key === 'Tab') {
             const currentCompletion = completionRef.current
-            console.log('[md-editor] Tab key pressed, completion:', currentCompletion ? currentCompletion.substring(0, 50) : 'none')
             if (currentCompletion) {
-              console.log('[md-editor] Preventing default and accepting completion')
               e.preventDefault()
               acceptCompletion()
             }
@@ -257,7 +240,6 @@ export function MdEditor() {
           if (e.key === 'Escape') {
             const currentCompletion = completionRef.current
             if (currentCompletion) {
-              console.log('[md-editor] ESC pressed, canceling completion')
               e.preventDefault()
               cancelCompletion()
             }
@@ -268,16 +250,13 @@ export function MdEditor() {
             e.preventDefault()
             
             // 检查是否启用了自动补全
-            console.log('[md-editor] Manual trigger check, enabled:', autoCompletionEnabledRef.current)
             if (!autoCompletionEnabledRef.current) {
-              console.log('[md-editor] Auto-completion is disabled, ignoring manual trigger')
               return
             }
             
             const content = vditor.getValue()
             // 使用内容长度作为光标位置（假设光标在末尾）
             const cursorPos = content.length
-            console.log('[md-editor] Manual trigger, cursor position:', cursorPos)
             generateCompletion(content, cursorPos)
           }
         }
@@ -287,7 +266,6 @@ export function MdEditor() {
         const handleClick = () => {
           const currentCompletion = completionRef.current
           if (currentCompletion) {
-            console.log('[md-editor] Editor clicked, canceling completion')
             cancelCompletion()
           }
         }
@@ -297,7 +275,6 @@ export function MdEditor() {
         const handleBeforeInput = () => {
           const previews = document.querySelectorAll('.ai-completion-preview, [data-ai-preview="true"]')
           if (previews.length > 0) {
-            console.log('[md-editor] Before input, removing', previews.length, 'preview nodes')
             previews.forEach(preview => preview.remove())
             cancelCompletion()
           }
@@ -315,7 +292,6 @@ export function MdEditor() {
         // 立即清除所有补全预览 DOM 节点，防止被保留
         const previews = document.querySelectorAll('.ai-completion-preview')
         if (previews.length > 0) {
-          console.log('[md-editor] Input detected, removing', previews.length, 'preview nodes')
           previews.forEach(preview => preview.remove())
         }
         
@@ -341,18 +317,13 @@ export function MdEditor() {
           completionTimerRef.current = setTimeout(() => {
             // 如果刚刚接受了补全，不触发新的补全
             if (justAcceptedCompletionRef.current) {
-              console.log('[md-editor] Just accepted completion, skipping auto-trigger')
               return
             }
             
             // 检查是否启用了自动补全
-            console.log('[md-editor] Auto-trigger check, enabled:', autoCompletionEnabledRef.current)
             if (!autoCompletionEnabledRef.current) {
-              console.log('[md-editor] Auto-completion is disabled, skipping')
               return
             }
-            
-            console.log('[md-editor] Auto-trigger timer fired')
             
             // 获取真实的光标位置（使用 DOM Selection API）
             let cursorPos = value.length // 默认使用文档末尾
@@ -369,18 +340,13 @@ export function MdEditor() {
                   cursorPos = preCaretRange.toString().length
                 }
               }
-            } catch (error) {
-              console.log('[md-editor] Error getting cursor position:', error)
+            } catch {
+              // Error getting cursor position, use default
             }
-            
-            console.log('[md-editor] Cursor position:', cursorPos, 'Content length:', value.length)
             
             // 只在内容足够长时才触发
             if (value.trim().length > 20) {
-              console.log('[md-editor] Triggering completion')
               generateCompletion(value, cursorPos)
-            } else {
-              console.log('[md-editor] Content too short, skipping completion')
             }
           }, 200) // 减少延时到 200ms，提高响应速度
         }
