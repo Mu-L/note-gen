@@ -44,6 +44,7 @@ export function MdEditor() {
   // 移动端强制使用即时渲染模式
   const defaultMode = isMobileDevice() ? 'ir' : 'ir'
   const [localMode, setLocalMode] = useLocalStorage<'ir' | 'sv' | 'wysiwyg'>('useLocalMode', defaultMode)
+  const [autoCompletionEnabled] = useLocalStorage<boolean>('auto-completion-enabled', true)
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   const isCreatingFileRef = useRef(false)
   const activeFilePathRef = useRef(activeFilePath)
@@ -53,6 +54,28 @@ export function MdEditor() {
   const completionRef = useRef<string>('') // 用 ref 存储最新的 completion 值
   const editorRef = useRef<Vditor | undefined>(undefined) // 用 ref 存储最新的 editor 实例
   const justAcceptedCompletionRef = useRef(false) // 标记是否刚刚接受了补全
+  const autoCompletionEnabledRef = useRef(autoCompletionEnabled !== undefined ? autoCompletionEnabled : true) // 用 ref 存储最新的开关状态
+  
+  // 同步 autoCompletionEnabled 到 ref
+  useEffect(() => {
+    const newValue = autoCompletionEnabled !== undefined ? autoCompletionEnabled : true
+    console.log('[md-editor] Auto-completion enabled changed:', autoCompletionEnabled, '-> ref value:', newValue)
+    autoCompletionEnabledRef.current = newValue
+  }, [autoCompletionEnabled])
+
+  // 监听开关组件的状态变化事件
+  useEffect(() => {
+    const handleEnabledChange = (enabled: unknown) => {
+      const newValue = enabled !== undefined ? (enabled as boolean) : true
+      console.log('[md-editor] Received enabled change event:', enabled, '-> updating ref to:', newValue)
+      autoCompletionEnabledRef.current = newValue
+    }
+
+    emitter.on('auto-completion-enabled-changed', handleEnabledChange)
+    return () => {
+      emitter.off('auto-completion-enabled-changed', handleEnabledChange)
+    }
+  }, [])
   
   // AI 内联补全
   const { completion, isLoading: isCompletionLoading, generateCompletion, acceptCompletion, cancelCompletion } = useAiCompletion({
@@ -89,6 +112,11 @@ export function MdEditor() {
       }
     },
   })
+
+  // 同步 AI 补全加载状态到 emitter
+  useEffect(() => {
+    emitter.emit('ai-completion-loading', isCompletionLoading)
+  }, [isCompletionLoading])
 
   function getLang() {
     switch (currentLocale) {
@@ -197,6 +225,13 @@ export function MdEditor() {
             // 如果之前有补全，在光标移动后重新生成
             if (hadCompletion) {
               setTimeout(() => {
+                // 检查是否启用了自动补全
+                console.log('[md-editor] Cursor move regeneration check, enabled:', autoCompletionEnabledRef.current)
+                if (!autoCompletionEnabledRef.current) {
+                  console.log('[md-editor] Auto-completion is disabled, skipping regeneration after cursor move')
+                  return
+                }
+                
                 const content = vditor.getValue()
                 const cursorPos = content.length
                 if (content.trim().length > 20) {
@@ -231,6 +266,14 @@ export function MdEditor() {
           // Ctrl/Cmd + Space：手动触发补全
           if (e.key === ' ' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault()
+            
+            // 检查是否启用了自动补全
+            console.log('[md-editor] Manual trigger check, enabled:', autoCompletionEnabledRef.current)
+            if (!autoCompletionEnabledRef.current) {
+              console.log('[md-editor] Auto-completion is disabled, ignoring manual trigger')
+              return
+            }
+            
             const content = vditor.getValue()
             // 使用内容长度作为光标位置（假设光标在末尾）
             const cursorPos = content.length
@@ -299,6 +342,13 @@ export function MdEditor() {
             // 如果刚刚接受了补全，不触发新的补全
             if (justAcceptedCompletionRef.current) {
               console.log('[md-editor] Just accepted completion, skipping auto-trigger')
+              return
+            }
+            
+            // 检查是否启用了自动补全
+            console.log('[md-editor] Auto-trigger check, enabled:', autoCompletionEnabledRef.current)
+            if (!autoCompletionEnabledRef.current) {
+              console.log('[md-editor] Auto-completion is disabled, skipping')
               return
             }
             

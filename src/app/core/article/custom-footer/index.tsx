@@ -6,6 +6,7 @@ import PrimarySync from "./primary-sync";
 import Copy from "./copy";
 import Export from "./export";
 import VectorCalc from "./vector-calc";
+import AutoCompletionToggle from "./auto-completion-toggle";
 import useArticleStore from "@/stores/article";
 
 export default function CustomFooter({editor}: {editor?: Vditor}) {
@@ -13,6 +14,7 @@ export default function CustomFooter({editor}: {editor?: Vditor}) {
   return <div className="h-6 w-full px-2 border-t shadow-sm items-center flex justify-between overflow-hidden">
     <div className="flex items-center gap-1">
       {activeFilePath && <TextNumber />}
+      <AutoCompletionToggle />
       <Copy editor={editor} disabled={!activeFilePath} />
       <Export editor={editor} disabled={!activeFilePath} />
     </div>
