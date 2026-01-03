@@ -76,6 +76,12 @@
           "placeholder": "在此输入自定义 CSS 代码。",
           "save": "保存",
           "cancel": "取消"
+        },
+        "tray": {
+          "enabled": {
+            "title": "启用托盘",
+            "desc": "关闭窗口时选择最小化到托盘或直接关闭软件"
+          }
         }
       },
       "tools": {

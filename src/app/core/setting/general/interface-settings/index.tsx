@@ -6,6 +6,7 @@ import { LanguageSettings } from './language'
 import { ScaleSettings } from './scale'
 import { ContentTextScaleSettings } from './content-text-scale'
 import { CustomCssSettings } from './custom-css'
+import { TraySettings } from './tray-settings'
 
 export function InterfaceSettings() {
   const t = useTranslations('settings.general.interface')
@@ -18,6 +19,7 @@ export function InterfaceSettings() {
       <ScaleSettings />
       <ContentTextScaleSettings />
       <CustomCssSettings />
+      <TraySettings />
     </div>
   )
 }

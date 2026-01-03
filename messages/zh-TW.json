@@ -63,6 +63,12 @@
           "placeholder": "在此輸入自訂 CSS 代碼。",
           "save": "保存",
           "cancel": "取消"
+        },
+        "tray": {
+          "enabled": {
+            "title": "啟用托盤",
+            "desc": "關閉窗口時選擇最小化到托盤或直接關閉軟件"
+          }
         }
       },
       "tools": {

@@ -65,6 +65,12 @@
           "placeholder": "Insira o código CSS personalizado aqui",
           "save": "Salvar",
           "cancel": "Cancelar"
+        },
+        "tray": {
+          "enabled": {
+            "title": "Habilitar Bandeja",
+            "desc": "Escolher minimizar para bandeja ou fechar aplicativo ao fechar janela"
+          }
         }
       },
       "tools": {

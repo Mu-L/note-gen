@@ -65,6 +65,12 @@
           "placeholder": "Enter custom CSS code here",
           "save": "Save",
           "cancel": "Cancel"
+        },
+        "tray": {
+          "enabled": {
+            "title": "Enable Tray",
+            "desc": "Choose to minimize to tray or close app when window is closed"
+          }
         }
       },
       "tools": {

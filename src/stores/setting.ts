@@ -208,6 +208,10 @@ interface SettingState {
   // 记录工具栏配置
   recordToolbarConfig: RecordToolbarItem[]
   setRecordToolbarConfig: (config: RecordToolbarItem[]) => Promise<void>
+
+  // 托盘设置
+  trayEnabled: boolean
+  setTrayEnabled: (enabled: boolean) => Promise<void>
 }
 
 export interface ChatToolbarItem {
@@ -921,6 +925,15 @@ const useSettingStore = create<SettingState>((set, get) => ({
     set({ recordToolbarConfig: config })
     const store = await Store.load('store.json');
     await store.set('recordToolbarConfig', config)
+    await store.save()
+  },
+
+  // 托盘设置
+  trayEnabled: true,
+  setTrayEnabled: async (enabled: boolean) => {
+    set({ trayEnabled: enabled })
+    const store = await Store.load('store.json');
+    await store.set('trayEnabled', enabled)
     await store.save()
   },
 }))
