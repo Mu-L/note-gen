@@ -8,15 +8,15 @@ pub fn get_device_id() -> Result<String, String> {
         .map_err(|e| format!("Failed to get device ID: {}", e))
 }
 
-/// 获取设备唯一标识 - iOS 实现
-#[cfg(target_os = "ios")]
+/// 获取设备唯一标识 - Android 实现
+#[cfg(target_os = "android")]
 #[command]
 pub fn get_device_id() -> Result<String, String> {
     get_or_create_device_id()
 }
 
-/// 获取设备唯一标识 - Android 实现
-#[cfg(target_os = "android")]
+/// 获取设备唯一标识 - iOS 实现
+#[cfg(target_os = "ios")]
 #[command]
 pub fn get_device_id() -> Result<String, String> {
     get_or_create_device_id()
@@ -25,15 +25,11 @@ pub fn get_device_id() -> Result<String, String> {
 /// 移动端通用的设备 ID 获取逻辑
 #[cfg(any(target_os = "android", target_os = "ios"))]
 fn get_or_create_device_id() -> Result<String, String> {
-    use std::path::PathBuf;
+    // 使用更简单的方法：直接使用临时目录
+    // 这样可以确保跨平台兼容性和权限访问
+    let app_data_dir = std::env::temp_dir();
     
-    // 移动端使用应用的缓存目录（有写入权限）
-    // Android: /data/data/<package>/cache
-    // iOS: Library/Caches
-    let cache_dir = dirs::cache_dir()
-        .ok_or_else(|| "Failed to get cache directory".to_string())?;
-    
-    let device_id_file = cache_dir.join("device_id.txt");
+    let device_id_file = app_data_dir.join("note-gen-device-id.txt");
     
     // 如果文件存在，读取已有的 ID
     if device_id_file.exists() {
