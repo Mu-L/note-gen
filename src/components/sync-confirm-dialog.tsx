@@ -19,12 +19,14 @@ import 'dayjs/locale/ja'
 import 'dayjs/locale/pt-br'
 import { useI18n } from '@/hooks/useI18n'
 import { useSyncConfirmStore } from '@/stores/sync-confirm'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 // 初始化 dayjs 插件
 dayjs.extend(relativeTime)
 
 export function SyncConfirmDialog() {
   const { currentLocale } = useI18n()
+  const isMobile = useIsMobile()
   const {
     isOpen,
     fileName,
@@ -126,23 +128,16 @@ export function SyncConfirmDialog() {
               </div>
             </div>
           )}
-
-          {/* 确认提示 */}
-          <div className="border-l-4 border-blue-500 bg-blue-50 p-3 rounded">
-            <p className="text-sm text-blue-800">
-              确认要拉取远程版本并覆盖本地文件吗？此操作无法撤销。
-            </p>
-          </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleIgnore}>
+        <DialogFooter className={isMobile ? "flex-row gap-2" : ""}>
+          <Button variant="outline" onClick={handleIgnore} className={isMobile ? "flex-1" : ""}>
             忽略
           </Button>
-          <Button variant="outline" onClick={handleCancel}>
+          <Button variant="outline" onClick={handleCancel} className={isMobile ? "flex-1" : ""}>
             取消
           </Button>
-          <Button onClick={handleConfirm}>
+          <Button onClick={handleConfirm} className={isMobile ? "flex-1" : ""}>
             确认拉取
           </Button>
         </DialogFooter>

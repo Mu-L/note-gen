@@ -16,6 +16,7 @@ import { hasNetworkConnection, getLocalFileMetadata } from '@/lib/sync/auto-sync
 import useArticleStore from '@/stores/article'
 import { useTranslations } from 'next-intl'
 import emitter from '@/lib/emitter'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface PendingUpdate {
   fileName: string
@@ -46,6 +47,7 @@ export default function PullButton() {
   const t = useTranslations('article.footer.pull')
   const [pendingUpdate, setPendingUpdate] = useState<PendingUpdate | null>(null)
   const [ignoredCommits, setIgnoredCommits] = useState<Set<string>>(new Set())
+  const isMobile = useIsMobile()
 
   // 初始化 dayjs 插件
   dayjs.extend(relativeTime)
@@ -324,7 +326,7 @@ export default function PullButton() {
             >
               <Download className="!size-3" />
               <span className="text-xs">{t('pull')}</span>
-              {pendingUpdate.commitInfo && (
+              {!isMobile && pendingUpdate.commitInfo && (
                 <span className="ml-1 text-xs text-green-600">
                   ({formatTime(pendingUpdate.commitInfo.date)})
                 </span>
