@@ -7,6 +7,8 @@ import { useMemo } from 'react'
 import { Settings } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { isMobileDevice } from '@/lib/check'
+import { BackgroundRippleEffect } from '@/components/ui/background-ripple-effect'
+import { TypewriterEffectSmooth } from '@/components/ui/typewriter-effect'
 
 export default function ChatEmpty() {
   const t = useTranslations('record.chat.empty')
@@ -39,37 +41,32 @@ export default function ChatEmpty() {
   }, [primaryModel, aiModelList, t])
 
   return (
-    <div className="relative w-full flex-1 flex flex-col items-center justify-center h-full p-8 overflow-hidden">
-      {/* Dashed background pattern - only visible when empty */}
-      <div 
-        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, currentColor 1px, transparent 1px),
-            linear-gradient(to bottom, currentColor 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-          backgroundPosition: 'center center'
-        }}
-      />
+    <div className="relative w-full flex-1 flex flex-col items-center justify-center h-full overflow-hidden">
+      {/* Background Ripple Effect - 完全撑开 */}
+      <BackgroundRippleEffect />
       
-      {/* Gradient fade overlay on edges */}
+      {/* Gradient fade overlay on edges for better content visibility */}
       <div 
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-0 pointer-events-none z-10"
         style={{
           background: `
-            linear-gradient(to right, var(--background) 0%, transparent 15%, transparent 85%, var(--background) 100%),
-            linear-gradient(to bottom, var(--background) 0%, transparent 15%, transparent 85%, var(--background) 100%)
+            linear-gradient(to right, var(--background) 0%, transparent 10%, transparent 90%, var(--background) 100%),
+            linear-gradient(to bottom, var(--background) 0%, transparent 10%, transparent 90%, var(--background) 100%)
           `
         }}
       />
       
-      <div className="relative max-w-[340px] w-full space-y-6">
+      {/* Content Container - 单独设置 padding */}
+      <div className="relative max-w-[340px] w-full space-y-6 z-20 p-8">
         {/* Header */}
         <div className="text-center space-y-3">
-          <h2 className="text-xl font-semibold tracking-tight">
-            {t('title')}
-          </h2>
+          <div className="flex justify-center">
+            <TypewriterEffectSmooth
+              words={[{ text: t('title') }]}
+              className="text-2xl font-semibold tracking-tight"
+              cursorClassName="bg-primary h-6 w-0.5 translate-y-1"
+            />
+          </div>
           <p className="text-muted-foreground text-sm">
             {t('subtitle')}
           </p>

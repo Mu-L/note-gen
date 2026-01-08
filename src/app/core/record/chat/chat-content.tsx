@@ -59,11 +59,15 @@ export default function ChatContent() {
     }
   }, [agentState.currentThought, agentState.thoughtHistory, agentState.pendingConfirmation])
 
-  return <div id="chats-wrapper" className="flex-1 relative overflow-y-auto overflow-x-hidden w-full flex flex-col items-end p-4 gap-6">
+  return <div id="chats-wrapper" className="flex-1 relative overflow-y-auto overflow-x-hidden w-full flex flex-col items-end gap-6">
     {
-      chats.length ? chats.map((chat) => {
-        return <Message key={chat.id} chat={chat} />
-      }) : <ChatEmpty />
+      chats.length ? (
+        <div className="w-full p-4">
+          {chats.map((chat) => {
+            return <Message key={chat.id} chat={chat} />
+          })}
+        </div>
+      ) : <ChatEmpty />
     }
     
     {/* Agent 执行状态 - 在底部实时显示，包裹在 MessageWrapper 中保持布局一致 */}
@@ -93,7 +97,7 @@ function MessageWrapper({ chat, children }: { chat: Chat, children: React.ReactN
           onMouseEnter={() => setShowDelete(true)}
           onMouseLeave={() => setShowDelete(false)}
         >
-          <div className='text-sm leading-6 break-words text-primary-foreground'>
+          <div className='text-sm leading-6 wrap-break-word text-primary-foreground'>
             {children}
           </div>
           {showDelete && (
@@ -114,7 +118,7 @@ function MessageWrapper({ chat, children }: { chat: Chat, children: React.ReactN
   // AI 消息：左对齐，无边框，无图标
   return (
     <div className="flex w-full min-w-0">
-      <div className='text-sm leading-6 flex-1 break-words min-w-0 overflow-hidden'>
+      <div className='text-sm leading-6 flex-1 wrap-break-word min-w-0 overflow-hidden'>
         {children}
       </div>
     </div>
@@ -131,7 +135,7 @@ function AgentExecutionStatusWrapper() {
 
   return (
     <div className="flex w-full min-w-0">
-      <div className='text-sm leading-6 flex-1 break-words min-w-0 overflow-hidden'>
+      <div className='text-sm leading-6 flex-1 wrap-break-word min-w-0 overflow-hidden'>
         <AgentExecutionStatus />
       </div>
     </div>
