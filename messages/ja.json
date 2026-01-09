@@ -1185,6 +1185,7 @@
   "navigation": {
     "chat": "チャット",
     "record": "記録",
+    "quickRecord": "クイック記録",
     "write": "執筆",
     "search": "検索",
     "githubImageHosting": "Github 画像ホスティング",
@@ -1634,5 +1635,8 @@
       "model": "AIモデル認識",
       "modelDesc": "STTモデルが必要、より正確"
     }
+  },
+  "quickRecord": {
+    "description": "記録ツールを選択して、素早く記録を作成"
   }
 }

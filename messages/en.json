@@ -1270,6 +1270,7 @@
   "navigation": {
     "chat": "Chat",
     "record": "Record",
+    "quickRecord": "Quick Record",
     "write": "Write",
     "search": "Search",
     "githubImageHosting": "Github Image Hosting",
@@ -1650,5 +1651,8 @@
       "pending": "Pending {progress}%",
       "synced": "Synced"
     }
+  },
+  "quickRecord": {
+    "description": "Click to select a recording tool and quickly create records"
   }
 }

@@ -1293,6 +1293,7 @@
   "navigation": {
     "chat": "对话",
     "record": "记录",
+    "quickRecord": "快捷记录",
     "write": "写作",
     "search": "搜索",
     "githubImageHosting": "Github 图床",
@@ -1607,5 +1608,8 @@
       "model": "大模型识别",
       "modelDesc": "需配置STT模型，更准确"
     }
+  },
+  "quickRecord": {
+    "description": "点击选择记录工具，快速创建记录"
   }
 }

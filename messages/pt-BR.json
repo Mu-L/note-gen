@@ -1250,6 +1250,7 @@
   "navigation": {
     "chat": "Conversa",
     "record": "Registro",
+    "quickRecord": "Registro Rápido",
     "write": "Escrever",
     "search": "Pesquisar",
     "githubImageHosting": "Hospedagem de Imagens Github",
@@ -1674,5 +1675,8 @@
       "pending": "Pendente {progress}%",
       "synced": "Sincronizado"
     }
+  },
+  "quickRecord": {
+    "description": "Clique para selecionar uma ferramenta de registro e criar registros rapidamente"
   }
 }

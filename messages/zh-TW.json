@@ -1240,6 +1240,7 @@
   "navigation": {
     "chat": "對話",
     "record": "記錄",
+    "quickRecord": "快捷記錄",
     "write": "寫作",
     "search": "搜索",
     "githubImageHosting": "Github 圖床",
@@ -1521,5 +1522,8 @@
     "tools": "個工具",
     "connecting": "連線中",
     "disconnected": "未連接"
+  },
+  "quickRecord": {
+    "description": "點擊選擇記錄工具，快速創建記錄"
   }
 }
