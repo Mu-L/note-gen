@@ -1060,6 +1060,9 @@
         "image": "Carregar Imagem",
         "link": "Gravar Link",
         "file": "Carregar Arquivo"
+      },
+      "list": {
+        "title": "Registros"
       }
     },
     "chat": {

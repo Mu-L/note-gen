@@ -19,7 +19,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Menu, Trash2, XCircle } from 'lucide-react'
-import { useIsMobile } from '@/hooks/use-mobile'
 import {
   DndContext,
   closestCenter,
@@ -40,7 +39,6 @@ export function MarkHeader() {
   const t = useTranslations('record.mark');
   const { trashState, setTrashState, fetchAllTrashMarks, fetchMarks } = useMarkStore()
   const { recordToolbarConfig, setRecordToolbarConfig } = useSettingStore()
-  const isMobile = useIsMobile()
 
   // 拖拽传感器配置（仅桌面端）
   const sensors = useSensors(
@@ -84,36 +82,38 @@ export function MarkHeader() {
 
   return (
     <div className="flex justify-between items-center h-12 border-b px-2">
-      {/* 桌面端显示工具栏，移动端隐藏 */}
-      {!isMobile && (
-        <div className="flex">
-          <TooltipProvider>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
+      {/* 工具栏 */}
+      <div className="flex">
+        <TooltipProvider>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={recordToolbarConfig.filter(item => item.enabled).map(item => item.id)}
+              strategy={horizontalListSortingStrategy}
             >
-              <SortableContext
-                items={recordToolbarConfig.filter(item => item.enabled).map(item => item.id)}
-                strategy={horizontalListSortingStrategy}
-              >
-                <div className="flex">
-                  {recordToolbarConfig
-                    .filter(item => item.enabled)
-                    .sort((a, b) => a.order - b.order)
-                    .map(item => (
-                      <SortableToolbarItem key={item.id} id={item.id} />
-                    ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          </TooltipProvider>
-        </div>
-      )}
+              <div className="flex">
+                {recordToolbarConfig
+                  .filter(item => item.enabled)
+                  .sort((a, b) => a.order - b.order)
+                  .map(item => (
+                    <SortableToolbarItem key={item.id} id={item.id} />
+                  ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </TooltipProvider>
+      </div>
+
+      {/* 菜单按钮 */}
       <div className="flex items-center gap-1">
-        {
-          trashState ? 
-          <Button variant="ghost" size="icon" onClick={() => setTrashState(false)}><XCircle /></Button> :
+        {trashState ? (
+          <Button variant="ghost" size="icon" onClick={() => setTrashState(false)}>
+            <XCircle />
+          </Button>
+        ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -126,7 +126,7 @@ export function MarkHeader() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        }
+        )}
       </div>
     </div>
   )

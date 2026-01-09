@@ -1043,6 +1043,9 @@
         "organizeSuccess": "Notes organized successfully: {title}",
         "organizeError": "Failed to organize notes",
         "currentTag": "Current Tag"
+      },
+      "list": {
+        "title": "Records"
       }
     },
     "chat": {

@@ -1015,6 +1015,9 @@
         "organizeSuccess": "筆記整理成功：{title}",
         "organizeError": "整理筆記失敗",
         "currentTag": "當前標籤"
+      },
+      "list": {
+        "title": "記錄"
       }
     },
     "chat": {
