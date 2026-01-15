@@ -207,7 +207,7 @@ html, body {
 }
 
 .dark .file-manange-item:hover {
-  background-color: hsl(var(--third-foreground));
+  background-color: hsl(var(--muted));
 }
 
 .file-manange-item.active {
@@ -217,8 +217,8 @@ html, body {
 }
 
 .dark .file-manange-item.active {
-  background-color: hsl(var(--third-foreground));
-  color: rgb(255 255 255);
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
 }
 
 .file-manange-item.active .bg-primary-foreground {
@@ -226,7 +226,7 @@ html, body {
 }
 
 .dark .file-manange-item.active .bg-primary-foreground {
-  background-color: hsl(var(--third-foreground));
+  background-color: hsl(var(--secondary-foreground));
 }
 
 :not(table)::-webkit-scrollbar {
