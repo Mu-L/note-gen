@@ -53,6 +53,7 @@ export function AgentExecutionStatus() {
       isThinking={agentState.isThinking}
       currentThought={agentState.currentThought}
       thoughtHistory={agentState.thoughtHistory}
+      completedSteps={agentState.completedSteps}
       currentAction={agentState.currentAction}
       currentObservation={agentState.currentObservation}
       toolCalls={agentState.toolCalls}

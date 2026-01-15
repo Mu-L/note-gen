@@ -46,7 +46,8 @@ export interface AgentState {
   isRunning: boolean
   isThinking: boolean // 是否正在等待 AI 生成新的思考
   currentThought: string
-  thoughtHistory: string[] // 累积的思考历史
+  thoughtHistory: string[] // 累积的思考历史（已弃用，保留用于兼容）
+  completedSteps: ReActStep[] // 已完成的完整步骤（包含 thought, action, observation）
   currentAction?: string
   currentObservation?: string
   toolCalls: ToolCall[]

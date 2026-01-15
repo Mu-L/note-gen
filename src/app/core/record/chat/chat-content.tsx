@@ -230,7 +230,11 @@ function Message({ chat }: { chat: Chat }) {
         <div className="w-full">
           {/* Agent 执行历史 - 显示保存的历史记录 */}
           {chat.role === 'system' && chat.agentHistory && (
-            <AgentHistory historyJson={chat.agentHistory} />
+            <div className="flex w-full min-w-0">
+              <div className='text-sm leading-6 flex-1 wrap-break-word min-w-0 overflow-hidden'>
+                <AgentHistory historyJson={chat.agentHistory} />
+              </div>
+            </div>
           )}
           
           {/* MCP 工具调用展示 */}

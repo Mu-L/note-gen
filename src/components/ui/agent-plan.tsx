@@ -60,6 +60,7 @@ interface AgentPlanProps {
   isThinking?: boolean;
   currentThought?: string;
   thoughtHistory?: string[];
+  completedSteps?: ReActStep[]; // 已完成的完整步骤
   currentAction?: string;
   currentObservation?: string;
   toolCalls?: ToolCall[];
@@ -100,6 +101,7 @@ export function AgentPlan({
   isThinking = false,
   currentThought = "",
   thoughtHistory = [],
+  completedSteps = [],
   currentAction = "",
   currentObservation = "",
   toolCalls = [],
@@ -171,23 +173,50 @@ export function AgentPlan({
   const convertLiveData = (): DisplayStep[] => {
     const steps: DisplayStep[] = [];
 
-    // Add thought history steps
-    thoughtHistory.forEach((thought, index) => {
-      const confirmation = confirmationHistory[index];
-      let status: DisplayStep["status"] = "completed";
+    // 优先使用 completedSteps（包含完整的步骤信息）
+    if (completedSteps && completedSteps.length > 0) {
+      completedSteps.forEach((step, index) => {
+        const confirmation = confirmationHistory[index];
+        let status: DisplayStep["status"] = "completed";
 
-      if (confirmation) {
-        status =
-          confirmation.status === "confirmed" ? "completed" : "failed";
-      }
+        if (step.observation) {
+          status =
+            step.observation.includes("失败") ||
+            step.observation.includes("错误")
+              ? "failed"
+              : "completed";
+        } else if (!step.action) {
+          status = "pending";
+        }
 
-      steps.push({
-        id: `thought-history-${index}`,
-        thought,
-        status,
-        confirmation,
+        steps.push({
+          id: `completed-${index}`,
+          thought: step.thought,
+          action: step.action,
+          observation: step.observation,
+          status,
+          confirmation,
+        });
       });
-    });
+    } else {
+      // 兼容旧的 thoughtHistory 格式
+      thoughtHistory.forEach((thought, index) => {
+        const confirmation = confirmationHistory[index];
+        let status: DisplayStep["status"] = "completed";
+
+        if (confirmation) {
+          status =
+            confirmation.status === "confirmed" ? "completed" : "failed";
+        }
+
+        steps.push({
+          id: `thought-history-${index}`,
+          thought,
+          status,
+          confirmation,
+        });
+      });
+    }
 
     // Add current step
     if (currentThought || currentAction || currentObservation) {
@@ -197,6 +226,9 @@ export function AgentPlan({
         status = "need-help";
       } else if (currentObservation) {
         status = "completed";
+      } else if (isThinking && !currentThought) {
+        // 正在等待 AI 生成思考，显示为 pending 状态（会有 loading 效果）
+        status = "pending";
       }
 
       const currentStep: DisplayStep = {
@@ -225,6 +257,15 @@ export function AgentPlan({
       }
 
       steps.push(currentStep);
+    }
+
+    // 如果正在思考但没有当前步骤内容，添加一个 loading 步骤
+    if (isThinking && !currentThought && !currentAction && !currentObservation) {
+      steps.push({
+        id: "thinking-placeholder",
+        thought: "",
+        status: "pending",
+      });
     }
 
     return steps;
@@ -308,8 +349,15 @@ export function AgentPlan({
 
   // Extract title from step content (prioritize observation result, then action, then thought)
   const extractTitle = (step: DisplayStep): string => {
+    // 特殊处理 loading 占位符
+    if (step.id === "thinking-placeholder" || (!step.thought && !step.action && !step.observation)) {
+      return t("thinking");
+    }
+
     // Helper to extract meaningful text from content
     const extractFromContent = (content: string): string => {
+      if (!content || !content.trim()) return '';
+
       const lines = content.split("\n").map(l => l.trim()).filter(l => l);
 
       // 尝试从第一行获取
@@ -378,6 +426,8 @@ export function AgentPlan({
         return <CircleAlert className="h-4.5 w-4.5 text-yellow-500" />;
       case "failed":
         return <CircleX className="h-4.5 w-4.5 text-red-500" />;
+      case "pending":
+        return <Loader2 className="h-4.5 w-4.5 text-blue-500 animate-spin" />;
       default:
         return <Circle className="h-4.5 w-4.5 text-muted-foreground" />;
     }

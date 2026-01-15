@@ -1,5 +1,5 @@
 import { ReActAgent, ReActConfig } from './react'
-import { ToolCall } from './types'
+import { ToolCall, ReActStep } from './types'
 import useChatStore from '@/stores/chat'
 
 export interface AgentHandlerConfig {
@@ -30,12 +30,37 @@ export class AgentHandler {
       onIterationStart: () => {
         // 在新迭代开始时，将完整的 ReAct 循环保存到历史，然后清空当前状态
         const currentState = useChatStore.getState()
-        if (currentState.agentState.currentThought || 
-            currentState.agentState.currentAction || 
+        if (currentState.agentState.currentThought ||
+            currentState.agentState.currentAction ||
             currentState.agentState.currentObservation) {
+          // 解析当前动作
+          let action = undefined
+          if (currentState.agentState.currentAction) {
+            const match = currentState.agentState.currentAction.match(/^(\w+)\((.*)\)$/)
+            if (match) {
+              try {
+                action = {
+                  tool: match[1],
+                  params: match[2] ? JSON.parse(match[2]) : {}
+                }
+              } catch {
+                // 解析失败，忽略
+              }
+            }
+          }
+
+          // 创建完整的步骤
+          const completedStep: ReActStep = {
+            thought: currentState.agentState.currentThought,
+            action: action,
+            observation: currentState.agentState.currentObservation
+          }
+
           const newHistory = [...currentState.agentState.thoughtHistory, currentState.agentState.currentThought]
-          store.setAgentState({ 
+          const newCompletedSteps = [...currentState.agentState.completedSteps, completedStep]
+          store.setAgentState({
             thoughtHistory: newHistory,
+            completedSteps: newCompletedSteps,
             currentThought: '',
             currentAction: undefined,
             currentObservation: undefined,
@@ -48,7 +73,7 @@ export class AgentHandler {
       },
       onThought: (thought: string) => {
         // 流式输出时只更新当前思考，不保存到历史
-        store.setAgentState({ 
+        store.setAgentState({
           currentThought: thought,
           isThinking: false  // 开始输出内容，取消思考状态
         })
