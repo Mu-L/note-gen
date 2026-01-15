@@ -392,9 +392,9 @@ export function AgentPlan({
   }
 
   return (
-    <div className="bg-background text-foreground h-full overflow-auto p-2">
-      <div className="bg-card border-border rounded-lg border shadow overflow-hidden">
-        <div className="p-4 overflow-hidden" ref={contentRef}>
+    <div className="bg-background text-foreground h-full overflow-auto mb-2">
+      <div className="bg-card border-border rounded-lg border overflow-hidden">
+        <div className="p-2 overflow-hidden" ref={contentRef}>
           <ul className="space-y-1">
             {displaySteps.map((step, index) => {
               const isExpanded = expandedTasks.includes(step.id);

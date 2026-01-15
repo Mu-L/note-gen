@@ -66,15 +66,56 @@ export class ReActAgent {
         return '' // 返回空字符串表示被用户终止
       }
 
-      if (thought.includes('Final Answer:')) {
-        finalAnswer = thought.split('Final Answer:')[1].trim()
+      // 检查是否包含 Final Answer（支持多种格式）
+      if (thought.includes('Final Answer:') || thought.includes('Final Answer：') || thought.includes('最终答案')) {
+        // 尝试多种分割方式
+        if (thought.includes('Final Answer:')) {
+          finalAnswer = thought.split('Final Answer:')[1].trim()
+        } else if (thought.includes('Final Answer：')) {
+          finalAnswer = thought.split('Final Answer：')[1].trim()
+        } else if (thought.includes('最终答案')) {
+          finalAnswer = thought.split('最终答案')[1].trim()
+        }
         break
+      }
+
+      // 检查是否是纯思考而没有 Action（说明 AI 认为任务已完成但忘记用 Final Answer 格式）
+      if (!thought.includes('Action:') && thought.includes('Thought:') && this.currentIteration > 1) {
+        // 如果只有 Thought 没有 Action，且这是第二次以后的迭代，可能是 AI 忘记格式
+        // 将整个 thought 作为最终答案
+        const thoughtContent = thought.replace(/Thought:\s*/i, '').trim()
+        if (thoughtContent.length > 0 && !thoughtContent.includes('Action:')) {
+          finalAnswer = thoughtContent
+          break
+        }
       }
 
       const action = this.parseAction(thought)
       if (!action) {
         finalAnswer = '抱歉，我无法理解如何执行这个任务。'
         break
+      }
+
+      // 检测重复操作
+      const lastStep = this.steps[this.steps.length - 1]
+      if (lastStep && lastStep.action) {
+        // 检查是否是相同的工具和参数
+        const isSameTool = lastStep.action.tool === action.tool
+        const isSameParams = JSON.stringify(lastStep.action.params) === JSON.stringify(action.params)
+
+        if (isSameTool && isSameParams) {
+          // 检测到重复操作，给出警告并结束
+          console.warn(`检测到重复操作: ${action.tool}`, action.params)
+          finalAnswer = `操作已完成。${lastStep.observation}`
+          break
+        }
+
+        // 检查是否连续执行相同类型的操作（如多次搜索）
+        if (lastStep.action.tool === action.tool && this.currentIteration > 3) {
+          console.warn(`检测到多次执行相同类型的操作: ${action.tool}`)
+          finalAnswer = `已完成多次操作，请确认是否达到预期效果。最后操作结果：${lastStep.observation}`
+          break
+        }
       }
 
       this.config.onAction?.(action.tool, action.params)
@@ -111,14 +152,14 @@ export class ReActAgent {
 
   private buildSystemPrompt(): string {
     const toolDescriptions = getToolDescriptions()
-    
+
     return `你是一个高效的智能助手 Agent，使用工具帮助用户完成任务。遵循 ReAct 框架：Thought（思考）→ Action（行动）→ Observation（观察）。
 
 ## 核心原则
 
 **效率优先**：尽量用最少的步骤完成任务，避免不必要的思考和操作。
 **直接行动**：如果任务明确，直接执行，不要过度分析。
-**快速结束**：完成核心任务后立即给出 Final Answer。
+**快速结束**：完成核心任务后立即给出 Final Answer，不要重复执行相同的操作。
 
 ## 可用工具
 
@@ -142,7 +183,7 @@ Action: search_notes
 Action Input: {"query": "React"}
 \`\`\`
 
-### 格式 2：给出最终答案
+### 格式 2：给出最终答案（重要：任务完成后必须使用此格式）
 \`\`\`
 Thought: 我已经完成了所有必要的操作，可以给出最终答案了
 Final Answer: [完整的、对用户友好的最终答案]
@@ -154,14 +195,26 @@ Thought: 我已经成功创建了 React 知识总结笔记，任务完成
 Final Answer: 已为您整理完成！我创建了一个名为"React 知识总结"的笔记，包含了 5 条相关笔记的内容整理。
 \`\`\`
 
-## 重要规则
+## ⚠️ 重要规则（必须遵守）
 
 1. **严格格式**：Thought → Action + Action Input 或 Final Answer
 2. **JSON 格式**：Action Input 必须是有效 JSON，使用双引号
 3. **一次一个工具**：每次只调用一个工具
-4. **快速完成**：完成核心任务后立即给出 Final Answer，不要做额外操作
-5. **只用可用工具**：不要编造工具或参数
-6. **简洁思考**：Thought 保持简短，直接说明要做什么
+4. **立即结束**：完成核心任务后**必须**给出 Final Answer，不要做额外操作
+5. **不要重复**：仔细观察 Observation，如果操作已经成功完成，立即给出 Final Answer，不要重复执行
+6. **只用可用工具**：不要编造工具或参数
+7. **简洁思考**：Thought 保持简短，直接说明要做什么
+
+## 🚫 常见错误（避免）
+
+❌ **错误1**：修改笔记后，又继续搜索或修改同一个笔记
+✅ **正确**：修改笔记后直接给出 Final Answer
+
+❌ **错误2**：搜索到结果后，又用相同条件搜索
+✅ **正确**：搜索到结果后，根据结果执行操作，然后给出 Final Answer
+
+❌ **错误3**：创建文件后，又继续创建相同或相似的文件
+✅ **正确**：创建文件后，确认成功，立即给出 Final Answer
 
 ## 示例
 
