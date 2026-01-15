@@ -169,6 +169,9 @@
             },
             "beigeWarm": {
               "name": "米黄暖"
+            },
+            "beigeDark": {
+              "name": "米黄暗"
             }
           }
         },

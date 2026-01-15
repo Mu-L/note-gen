@@ -377,9 +377,7 @@ export function ThemePresets({ onApplyPreset, onResetDefault, t }: ThemePresetsP
         >
           {/* 恢复默认图标 - 只对第一个显示 */}
           {preset.isReset && (
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground">
-              <RotateCcw className="w-4 h-4" />
-            </div>
+            <RotateCcw className="w-4 h-4" />
           )}
 
           {/* 颜色预览条 - 恢复默认不显示 */}

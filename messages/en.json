@@ -158,6 +158,9 @@
             },
             "beigeWarm": {
               "name": "Beige Warm"
+            },
+            "beigeDark": {
+              "name": "Beige Dark"
             }
           }
         },
