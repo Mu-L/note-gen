@@ -99,10 +99,10 @@ export function AgentHistory({ historyJson }: AgentHistoryProps) {
         const iconColor = isSuccess ? 'text-green-500' : 'text-red-500'
         
         return (
-          <div key={index} className="w-full space-y-1 mb-2 bg-accent border rounded overflow-hidden">
+          <div key={index} className="w-full space-y-1 mb-2 border border-border/50 bg-muted/30 rounded-lg overflow-hidden">
             {/* 标题显示观察结果 */}
-            <div 
-              className="flex items-center gap-2 py-1.5 px-3 rounded cursor-pointer hover:bg-muted/50 min-w-0"
+            <div
+              className="flex items-center gap-2 py-1.5 px-3 cursor-pointer hover:bg-muted/50 min-w-0 transition-colors"
               onClick={() => toggleExpand(index)}
             >
               <StatusIcon className={`size-4 ${iconColor} flex-shrink-0`} />

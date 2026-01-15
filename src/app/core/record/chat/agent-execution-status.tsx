@@ -95,8 +95,8 @@ export function AgentExecutionStatus() {
     <div className="w-full space-y-2">
       {/* 如果没有任何内容，显示加载提示 */}
       {!hasContent && (
-        <div className="w-full space-y-1 mb-2 bg-accent border rounded overflow-hidden">
-          <div className="flex items-center gap-2 py-1.5 px-3 rounded bg-muted min-w-0">
+        <div className="w-full space-y-1 mb-2 border border-border/50 bg-muted/30 rounded-lg overflow-hidden">
+          <div className="flex items-center gap-2 py-1.5 px-3 bg-muted/50 min-w-0">
             <Loader2 className="size-4 animate-spin text-blue-500 flex-shrink-0" />
             <span className="text-sm text-muted-foreground flex-1 truncate min-w-0">{t('running')}</span>
           </div>
@@ -110,10 +110,10 @@ export function AgentExecutionStatus() {
         const title = extractTitle(thought)
         
         return (
-          <div key={index} className="w-full space-y-1 mb-2 bg-accent border rounded overflow-hidden">
+          <div key={index} className="w-full space-y-1 mb-2 border border-border/50 bg-muted/30 rounded-lg overflow-hidden">
             {/* 思考卡片 - 单行 */}
-            <div 
-              className="flex items-center gap-2 py-1.5 px-3 rounded cursor-pointer hover:bg-muted/50 min-w-0"
+            <div
+              className="flex items-center gap-2 py-1.5 px-3 cursor-pointer hover:bg-muted/50 min-w-0 transition-colors"
               onClick={() => toggleExpand(index)}
             >
               <Brain className="size-4 text-blue-500 flex-shrink-0" />
@@ -149,8 +149,8 @@ export function AgentExecutionStatus() {
       
       {/* 正在思考的加载状态 */}
       {agentState.isThinking && !agentState.currentThought && (
-        <div className="w-full space-y-1 mb-2 bg-accent border rounded overflow-hidden">
-          <div className="flex items-center gap-2 py-1.5 px-3 rounded bg-muted min-w-0">
+        <div className="w-full space-y-1 mb-2 border border-border/50 bg-muted/30 rounded-lg overflow-hidden">
+          <div className="flex items-center gap-2 py-1.5 px-3 bg-muted/50 min-w-0">
             <Loader2 className="size-4 animate-spin text-blue-500 flex-shrink-0" />
             <span className="text-sm text-muted-foreground flex-1 truncate min-w-0">{t('thinking')}</span>
           </div>
@@ -159,11 +159,11 @@ export function AgentExecutionStatus() {
       
       {/* 当前 ReAct 循环 - 展示 Thought、Action、Observation */}
       {(agentState.currentThought || agentState.currentAction || agentState.currentObservation) && (
-        <div className="w-full space-y-1 mb-2 bg-accent border rounded overflow-hidden">
+        <div className="w-full space-y-1 mb-2 border border-border/50 bg-muted/30 rounded-lg overflow-hidden">
           {/* Thought - 思考 */}
           {agentState.currentThought && (
             <>
-              <div className="flex items-center gap-2 py-1.5 px-3 rounded bg-muted min-w-0">
+              <div className="flex items-center gap-2 py-1.5 px-3 bg-muted/50 min-w-0">
                 <Loader2 className="size-4 animate-spin text-blue-500 flex-shrink-0" />
                 <span className="text-sm text-muted-foreground flex-1 truncate min-w-0">{t('thinking')}</span>
               </div>
