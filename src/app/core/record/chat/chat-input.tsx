@@ -17,7 +17,7 @@ import { ChatSend } from "./chat-send"
 import { LinkedFileDisplay } from "./file-link"
 import { FileSelector } from "./file-selector"
 import { ChatModeSelect } from "./chat-mode-select"
-import { MarkdownFile } from "@/lib/files"
+import { LinkedResource, MarkdownFile, LinkedFolder } from "@/lib/files"
 import emitter from "@/lib/emitter"
 import { ChatSettingsDrawer } from "@/app/mobile/chat/components/chat-settings-drawer"
 import { ChatToolsDrawer } from "@/app/mobile/chat/components/chat-tools-drawer"
@@ -62,7 +62,7 @@ export function ChatInput() {
   const [inputHistory, setInputHistory] = useLocalStorage<string[]>('chat-input-history', [])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [tempInput, setTempInput] = useState('')
-  const [linkedFile, setLinkedFile] = useState<MarkdownFile | null>(null)
+  const [linkedResource, setLinkedResource] = useState<LinkedResource | null>(null)
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([])
   const [quoteData, setQuoteData] = useState<{
     quote: string
@@ -132,7 +132,7 @@ export function ChatInput() {
 
   // 移除关联文件
   function removeLinkedFile() {
-    setLinkedFile(null)
+    setLinkedResource(null)
   }
 
   function removeImage(id: string) {
@@ -391,7 +391,10 @@ export function ChatInput() {
       setText(event as string)
     })
     emitter.on('fileSelected', (event: unknown) => {
-      setLinkedFile(event as MarkdownFile)
+      setLinkedResource(event as MarkdownFile)
+    })
+    emitter.on('folderSelected', (event: unknown) => {
+      setLinkedResource(event as LinkedFolder)
     })
     emitter.on('insert-quote', (event: unknown) => {
       const data = event as {
@@ -412,17 +415,25 @@ export function ChatInput() {
     return () => {
       emitter.off('revertChat')
       emitter.off('fileSelected')
+      emitter.off('folderSelected')
       emitter.off('insert-quote')
     }
   }, [debouncedGenPlaceholder])
 
-  // 自动关联当前打开的 markdown 文件
+  // 自动关联当前打开的 markdown 文件或文件夹
   useEffect(() => {
-    async function linkCurrentFile() {
-      if (activeFilePath && activeFilePath.endsWith('.md')) {
-        const workspace = await getWorkspacePath()
+    async function linkCurrentResource() {
+      if (!activeFilePath) {
+        setLinkedResource(null)
+        return
+      }
+
+      const workspace = await getWorkspacePath()
+
+      if (activeFilePath.endsWith('.md')) {
+        // 文件关联逻辑
         const fileName = activeFilePath.split('/').pop() || activeFilePath
-        
+
         // 构建完整路径
         let fullPath: string
         if (workspace.isCustom) {
@@ -431,27 +442,58 @@ export function ChatInput() {
         } else {
           fullPath = activeFilePath
         }
-        
-        setLinkedFile({
+
+        setLinkedResource({
           name: fileName,
           path: fullPath,
           relativePath: activeFilePath
         })
       } else {
-        // 如果没有打开的文件，清除关联
-        setLinkedFile(null)
+        // 文件夹关联逻辑 - 只有在有索引文件时才关联
+        const folderName = activeFilePath.split('/').pop() || activeFilePath
+
+        // 构建完整路径
+        let fullPath: string
+        if (workspace.isCustom) {
+          const pathParts = activeFilePath.split('/')
+          fullPath = workspace.path + '/' + pathParts.join('/')
+        } else {
+          fullPath = activeFilePath
+        }
+
+        // 计算文件夹中的文件数量和索引状态
+        const { collectMarkdownFiles } = await import('@/lib/files')
+        const files = await collectMarkdownFiles(activeFilePath)
+        const { vectorIndexedFiles } = useArticleStore.getState()
+        const indexedCount = files.filter(f =>
+          vectorIndexedFiles.has(f.name)
+        ).length
+
+        // 只有在有索引文件时才关联文件夹
+        if (indexedCount > 0) {
+          setLinkedResource({
+            name: folderName,
+            path: fullPath,
+            relativePath: activeFilePath,
+            fileCount: files.length,
+            indexedCount: indexedCount
+          })
+        } else {
+          // 没有索引文件，清除关联
+          setLinkedResource(null)
+        }
       }
     }
-    
-    linkCurrentFile()
+
+    linkCurrentResource()
   }, [activeFilePath])
 
   // 当关联文件变化时，触发防抖的 placeholder 重新生成
   useEffect(() => {
-    if (linkedFile) {
+    if (linkedResource) {
       debouncedGenPlaceholder()
     }
-  }, [linkedFile, debouncedGenPlaceholder])
+  }, [linkedResource, debouncedGenPlaceholder])
 
   return (
     <footer className="flex flex-col w-full p-1 justify-between items-center">
@@ -467,7 +509,7 @@ export function ChatInput() {
         />
       )}
       <LinkedFileDisplay
-        linkedFile={linkedFile}
+        linkedResource={linkedResource}
         onFileRemove={removeLinkedFile}
       />
       <div className="group relative flex flex-col border rounded-xl z-10 gap-1 p-1 w-full bg-background focus-within:border-primary transition-colors overflow-hidden">
@@ -576,7 +618,7 @@ export function ChatInput() {
                 <ChatAttachmentsDrawer
                   onImageSelect={handleSelectFromGallery}
                   onCameraOpen={handleTakePhoto}
-                  onFileLink={setLinkedFile}
+                  onFileLink={setLinkedResource}
                 />
                 <ChatSettingsDrawer />
                 <ChatToolsDrawer />
@@ -595,7 +637,7 @@ export function ChatInput() {
               />
             )}
             <ChatModeSelect />
-            <ChatSend inputValue={text} onSent={handleSent} linkedFile={linkedFile} attachedImages={attachedImages} quoteData={quoteData} ref={chatSendRef} />
+            <ChatSend inputValue={text} onSent={handleSent} linkedResource={linkedResource} attachedImages={attachedImages} quoteData={quoteData} ref={chatSendRef} />
           </div>
         </div>
 
@@ -605,7 +647,7 @@ export function ChatInput() {
             isOpen={showFileSelector}
             onClose={() => setShowFileSelector(false)}
             onFileSelect={(file) => {
-              setLinkedFile(file)
+              setLinkedResource(file)
               setShowFileSelector(false)
             }}
           />

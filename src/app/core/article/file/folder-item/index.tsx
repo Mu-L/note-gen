@@ -22,6 +22,8 @@ import { MobileActionMenu, MobileMenuItem, MobileSeparator } from "../mobile-act
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useTranslations } from "next-intl"
 import { FolderVectorMenu } from './folder-vector-menu'
+import emitter from '@/lib/emitter'
+import { LinkedFolder } from '@/lib/files'
 
 export function FolderItem({ item }: { item: DirTree }) {
   const [isEditing, setIsEditing] = useState(item.isEditing)
@@ -365,7 +367,7 @@ export function FolderItem({ item }: { item: DirTree }) {
     setIsDragging(false)
   }
 
-  async function handleSelectFolder(e: React.MouseEvent) {
+  async function handleSelectFolder() {
     // 设置选中状态
     await setActiveFilePath(path)
 
@@ -376,6 +378,39 @@ export function FolderItem({ item }: { item: DirTree }) {
 
     // 加载文件夹内容
     await loadCollapsibleFiles(path)
+
+    // 触发文件夹选择事件
+    const folderName = path.split('/').pop() || path
+    let fullPath: string
+    const { getWorkspacePath } = await import('@/lib/workspace')
+    const workspace = await getWorkspacePath()
+    if (workspace.isCustom) {
+      const pathParts = path.split('/')
+      fullPath = workspace.path + '/' + pathParts.join('/')
+    } else {
+      fullPath = path
+    }
+
+    // 计算文件夹中的文件数量
+    const { collectMarkdownFiles } = await import('@/lib/files')
+    const files = await collectMarkdownFiles(path)
+
+    // 获取向量索引状态
+    const indexedCount = files.filter(f =>
+      vectorIndexedFiles.has(f.name)
+    ).length
+
+    // 只有在有索引文件时才触发关联事件
+    if (indexedCount > 0) {
+      // 触发事件
+      emitter.emit('folderSelected', {
+        name: folderName,
+        path: fullPath,
+        relativePath: path,
+        fileCount: files.length,
+        indexedCount: indexedCount
+      } as LinkedFolder)
+    }
   }
 
 
@@ -409,7 +444,7 @@ export function FolderItem({ item }: { item: DirTree }) {
         <ContextMenuTrigger asChild>
           <div
             className={`${isDragging ? 'file-on-drop' : ''} ${path === activeFilePath ? 'active' : ''} group file-manange-item flex select-none`}
-            onClick={handleSelectFolder}
+            onClick={() => handleSelectFolder()}
             onContextMenu={(e) => {
               // 右键打开菜单时阻止冒泡，防止触发折叠/展开
               e.stopPropagation();

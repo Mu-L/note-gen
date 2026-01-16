@@ -8,6 +8,23 @@ export interface MarkdownFile {
   relativePath: string;
 }
 
+// 文件夹关联接口
+export interface LinkedFolder {
+  name: string;           // 文件夹名称
+  path: string;           // 完整路径
+  relativePath: string;   // 相对路径
+  fileCount: number;      // 包含的markdown文件数量
+  indexedCount: number;   // 已索引的文件数量
+}
+
+// 统一的关联资源类型
+export type LinkedResource = MarkdownFile | LinkedFolder;
+
+// 类型守卫：判断是否为文件夹
+export function isLinkedFolder(resource: LinkedResource): resource is LinkedFolder {
+  return 'fileCount' in resource;
+}
+
 // 收集文件夹下的所有 Markdown 文件
 export async function collectMarkdownFiles(folderPath: string): Promise<Array<{path: string, name: string}>> {
   const files: Array<{path: string, name: string}> = [];

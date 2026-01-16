@@ -628,6 +628,7 @@ export async function getContextForQuery(keywords: Keyword[]): Promise<{ context
       const current = uniqueContexts[i];
       let bestScore = current.score;
       let bestContent = current.content;
+      // eslint-disable-next-line prefer-const
       let mergedKeywords = [current.keyword];
 
       // 查找同一文件中高度重叠的内容
@@ -743,4 +744,266 @@ export function showVectorProcessingToast(message: string) {
     title: '向量数据库更新',
     description: message,
   });
+}
+
+/**
+ * 从指定文件夹中收集Markdown文件内容
+ */
+async function collectMarkdownContentsInFolder(folderPath: string): Promise<SearchItem[]> {
+  try {
+    const workspace = await getWorkspacePath();
+    const items: SearchItem[] = [];
+
+    // 构建文件夹完整路径
+    let fullFolderPath: string;
+    if (workspace.isCustom) {
+      fullFolderPath = await join(workspace.path, folderPath);
+    } else {
+      fullFolderPath = folderPath;
+    }
+
+    // 递归读取文件夹内容
+    async function processTree(dirPath: string, relativePath: string): Promise<void> {
+      let currentEntries: DirEntry[];
+
+      if (workspace.isCustom) {
+        currentEntries = await readDir(dirPath);
+      } else {
+        const { path, baseDir } = await getFilePathOptions(relativePath);
+        currentEntries = await readDir(path, { baseDir });
+      }
+
+      for (const entry of currentEntries) {
+        if (entry.name.startsWith('.')) continue;
+
+        const entryRelativePath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+
+        if (entry.isDirectory) {
+          const entryFullPath = workspace.isCustom
+            ? await join(dirPath, entry.name)
+            : entryRelativePath;
+          await processTree(entryFullPath, entryRelativePath);
+        } else if (entry.name.endsWith('.md')) {
+          // 读取文件内容并添加到 items
+          try {
+            let content = '';
+            const entryFullPath = workspace.isCustom
+              ? await join(dirPath, entry.name)
+              : entryRelativePath;
+
+            if (workspace.isCustom) {
+              content = await readTextFile(entryFullPath);
+            } else {
+              const { path, baseDir } = await getFilePathOptions(entryRelativePath);
+              content = await readTextFile(path, { baseDir });
+            }
+
+            items.push({
+              id: entryRelativePath,
+              title: entry.name,
+              article: content,
+              search_type: 'markdown'
+            });
+          } catch (error) {
+            console.error(`读取文件 ${entryRelativePath} 失败:`, error);
+          }
+        }
+      }
+    }
+
+    await processTree(fullFolderPath, folderPath);
+    return items;
+  } catch (error) {
+    console.error('收集文件夹Markdown内容失败:', error);
+    return [];
+  }
+}
+
+/**
+ * 在指定文件夹范围内获取相关上下文
+ * @param keywords 关键词数组
+ * @param folderPath 文件夹相对路径
+ * @returns 包含上下文文本和引用文件名的对象
+ */
+export async function getContextForQueryInFolder(
+  keywords: Keyword[],
+  folderPath: string
+): Promise<{ context: string; sources: string[] }> {
+  try {
+    const store = await Store.load('store.json');
+    const resultCount = await store.get<number>('ragResultCount') || 5;
+    const similarityThreshold = await store.get<number>('ragSimilarityThreshold') || 0.7;
+    const allContexts: { filename: string, content: string, score: number, keyword?: string, type?: string }[] = [];
+
+    if (!keywords || keywords.length === 0) {
+      return { context: '', sources: [] };
+    }
+
+    const sortedKeywords = [...keywords].sort((a, b) => b.weight - a.weight);
+
+    // 收集文件夹范围内的文件
+    const items = await collectMarkdownContentsInFolder(folderPath);
+    const folderFilenames = new Set(items.map(item => item.title || ''));
+
+    // 1. 模糊搜索（限定到文件夹）
+    try {
+      if (items.length > 0) {
+        for (const keyword of sortedKeywords) {
+          const fuzzyResults: FuzzySearchResult[] = await invoke('fuzzy_search', {
+            items,
+            query: keyword.text,
+            keys: ['title', 'article'],
+            threshold: 0.3,
+            includeScore: true,
+            includeMatches: true
+          });
+
+          for (const result of fuzzyResults) {
+            if (result.score > 0) {
+              const item = result.item;
+              const articleMatches = result.matches.filter(m => m.key === 'article');
+              if (articleMatches.length > 0) {
+                const match = articleMatches[0];
+                const content = match.value;
+
+                let startIdx = 0;
+                let endIdx = content.length;
+                if (match.indices.length > 0) {
+                  const firstMatch = match.indices[0];
+                  startIdx = Math.max(0, firstMatch[0] - 250);
+                  endIdx = Math.min(content.length, firstMatch[1] + 250);
+                }
+
+                const finalScore = result.score * keyword.weight;
+                const contextSnippet = content.substring(startIdx, endIdx);
+
+                allContexts.push({
+                  filename: item.title || '未命名文件',
+                  content: contextSnippet,
+                  score: finalScore,
+                  keyword: keyword.text,
+                  type: 'fuzzy'
+                });
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      handleRAGError(error, '模糊搜索失败', false);
+    }
+
+    // 2. 向量搜索 - 过滤到文件夹范围
+    try {
+      for (const keyword of sortedKeywords) {
+        const queryEmbedding = await fetchEmbedding(keyword.text);
+        if (queryEmbedding) {
+          let similarDocs = await getSimilarDocuments(queryEmbedding, resultCount, similarityThreshold);
+          // 过滤：只保留文件夹内的文件
+          similarDocs = similarDocs.filter(doc => folderFilenames.has(doc.filename));
+
+          if (similarDocs.length > 0) {
+            similarDocs = await rerankDocuments(keyword.text, similarDocs);
+
+            for (const doc of similarDocs) {
+              allContexts.push({
+                filename: doc.filename,
+                content: doc.content,
+                score: (doc.similarity || 0) * keyword.weight,
+                keyword: keyword.text,
+                type: 'vector'
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      handleRAGError(error, '向量搜索失败', false);
+    }
+
+    // 去重和排序逻辑（与 getContextForQuery 相同）
+    if (allContexts.length === 0) {
+      return { context: '', sources: [] };
+    }
+
+    // 第一阶段：使用精确哈希去重完全相同的内容
+    const uniqueContexts: typeof allContexts = [];
+    const seenHashes = new Set<string>();
+
+    for (const ctx of allContexts) {
+      const contentHash = generateContentHash(ctx.content);
+      const hashWithFile = `${ctx.filename}-${contentHash}`;
+
+      if (!seenHashes.has(hashWithFile)) {
+        seenHashes.add(hashWithFile);
+        uniqueContexts.push(ctx);
+      } else {
+        const existingIndex = uniqueContexts.findIndex(
+          existing => {
+            const existingHash = generateContentHash(existing.content);
+            return existing.filename === ctx.filename && existingHash === contentHash;
+          }
+        );
+        if (existingIndex >= 0 && ctx.score > uniqueContexts[existingIndex].score) {
+          uniqueContexts[existingIndex] = ctx;
+        }
+      }
+    }
+
+    // 第二阶段：对相似内容进行合并
+    const finalUniqueContexts: typeof allContexts = [];
+    const mergedIndices = new Set<number>();
+
+    for (let i = 0; i < uniqueContexts.length; i++) {
+      if (mergedIndices.has(i)) continue;
+
+      const current = uniqueContexts[i];
+      let bestScore = current.score;
+      let bestContent = current.content;
+      // eslint-disable-next-line prefer-const
+      let mergedKeywords = [current.keyword];
+
+      for (let j = i + 1; j < uniqueContexts.length; j++) {
+        if (mergedIndices.has(j)) continue;
+
+        const other = uniqueContexts[j];
+        if (other.filename !== current.filename) continue;
+
+        const overlap = calculateContentOverlap(current.content, other.content);
+
+        if (overlap > 0.7) {
+          mergedIndices.add(j);
+          if (other.score > bestScore) {
+            bestScore = other.score;
+            bestContent = other.content;
+          }
+          if (other.keyword && !mergedKeywords.includes(other.keyword)) {
+            mergedKeywords.push(other.keyword);
+          }
+        }
+      }
+
+      finalUniqueContexts.push({
+        ...current,
+        content: bestContent,
+        score: bestScore,
+        keyword: mergedKeywords.join(', ')
+      });
+    }
+
+    finalUniqueContexts.sort((a, b) => b.score - a.score);
+    const finalContexts = finalUniqueContexts.slice(0, resultCount);
+    const sources = Array.from(new Set(finalContexts.map(ctx => ctx.filename)));
+
+    const context = finalContexts.map(ctx => {
+      return `文件：${ctx.filename}
+${ctx.content}
+`;
+    }).join('\n---\n\n');
+
+    return { context, sources };
+  } catch (error) {
+    handleRAGError(error, '获取文件夹查询上下文失败', false);
+    return { context: '', sources: [] };
+  }
 }
