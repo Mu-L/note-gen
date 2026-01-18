@@ -3,6 +3,7 @@ import { ToolCall, ReActStep } from './types'
 import useChatStore from '@/stores/chat'
 import { skillManager } from '@/lib/skills'
 import { useSkillsStore } from '@/stores/skills'
+import { reloadMcpTools } from './tools'
 
 export interface AgentHandlerConfig {
   onThought?: (thought: string) => void
@@ -26,6 +27,24 @@ export class AgentHandler {
 
     store.resetAgentState()
     store.setAgentState({ isRunning: true })
+
+    // 确保 MCP Store 已初始化
+    try {
+      const { useMcpStore } = await import('@/stores/mcp')
+      const mcpStore = useMcpStore.getState()
+      if (!mcpStore.initialized) {
+        await mcpStore.initMcpData()
+      }
+    } catch (error) {
+      console.error('[Agent Handler] Failed to initialize MCP Store:', error)
+    }
+
+    // 预加载 MCP 工具
+    try {
+      await reloadMcpTools()
+    } catch (error) {
+      console.error('[Agent Handler] Failed to reload MCP tools:', error)
+    }
 
     // 获取所有可用的 Skills（让 AI 自己选择）
     const activeSkills = await this.getAvailableSkills()

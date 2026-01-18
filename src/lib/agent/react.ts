@@ -149,7 +149,7 @@ export class ReActAgent {
 
       this.config.onAction?.(action.tool, action.params)
 
-      const observation = await this.act(action.tool, action.params)
+      const observation = await this.act(action.tool, action.params, thought)
 
       // 检查是否已停止
       if (this.stopped) {
@@ -298,7 +298,7 @@ Final Answer: 已创建笔记"NoteGen介绍.md"
   }
 
   private async think(userInput: string, context: string | undefined, systemPrompt: string, imageUrls?: string[]): Promise<string> {
-    const historyContext = this.steps.map((step, i) => 
+    const historyContext = this.steps.map((step, i) =>
       `Iteration ${i + 1}:
 Thought: ${step.thought}
 Action: ${step.action?.tool}
@@ -397,7 +397,8 @@ Final Answer: 无法完成任务，请稍后重试或检查 AI 配置`
 
   private parseAction(thought: string): { tool: string; params: Record<string, any> } | null {
     try {
-      const actionMatch = thought.match(/Action:\s*(\w+)/i)
+      // 修改正则表达式，支持工具名称中的连字符、下划线等字符
+      const actionMatch = thought.match(/Action:\s*([a-zA-Z0-9_-]+)/i)
       
       if (!actionMatch) return null
 
@@ -497,7 +498,7 @@ Final Answer: 无法完成任务，请稍后重试或检查 AI 配置`
     }
   }
 
-  private async act(toolName: string, params: Record<string, any>): Promise<string> {
+  private async act(toolName: string, params: Record<string, any>, thought?: string): Promise<string> {
     const tool = getToolByName(toolName)
 
     if (!tool) {
@@ -571,10 +572,14 @@ Final Answer: 无法完成任务，请稍后重试或检查 AI 配置`
 
         let observation = result.message || `工具 ${toolName} 执行成功。`
 
-        // 如果有数据，将其完整添加到观察结果中
-        // AI 需要看到完整数据才能生成准确的笔记
+        // 如果有数据，根据数据类型进行格式化
         if (result.data) {
-          if (Array.isArray(result.data)) {
+          // 特殊处理 MCP 搜索结果（category 为 'mcp' 的工具）
+          if (tool.category === 'mcp') {
+            // 从思考内容中提取简短标题
+            const shortTitle = thought ? this.extractTitleFromThought(thought) : tool.description
+            observation = this.formatMcpResult(shortTitle, result.data)
+          } else if (Array.isArray(result.data)) {
             if (result.data.length > 0) {
               observation += `\n\n数据详情：\n${JSON.stringify(result.data, null, 2)}`
             }
@@ -597,6 +602,58 @@ Final Answer: 无法完成任务，请稍后重试或检查 AI 配置`
       this.config.onToolCall?.(toolCall)
       return `工具 ${toolName} 执行出错：${error}`
     }
+  }
+
+  /**
+   * 从思考内容中提取简短标题
+   */
+  private extractTitleFromThought(thought: string): string {
+    // 移除 "Thought:" 前缀
+    const content = thought.replace(/^Thought:\s*/i, '').trim()
+
+    // 提取第一句话或前50个字符
+    const firstSentence = content.split(/[。！？.!?]/)[0]
+    if (firstSentence && firstSentence.length > 0 && firstSentence.length < 100) {
+      return firstSentence.trim()
+    }
+
+    // 如果第一句话太长或没有句子结束符，截取前50个字符
+    if (content.length > 50) {
+      return content.substring(0, 50) + '...'
+    }
+
+    return content
+  }
+
+  /**
+   * 格式化 MCP 工具的返回结果
+   */
+  private formatMcpResult(toolDescription: string, data: any): string {
+    // 处理搜索结果
+    if (data.results && Array.isArray(data.results)) {
+      const results = data.results
+      let formatted = `MCP: ${toolDescription}，找到 ${results.length} 条结果：\n\n`
+
+      results.forEach((item: any, index: number) => {
+        formatted += `${index + 1}. ${item.title || '无标题'}\n`
+        formatted += `   ${item.snippet || item.description || '无描述'}\n`
+        formatted += `   UUID: ${item.uuid}\n`
+        if (item.url) {
+          formatted += `   URL: ${item.url}\n`
+        }
+        formatted += '\n'
+      })
+
+      return formatted
+    }
+
+    // 处理网页抓取结果
+    if (data.content && typeof data.content === 'string') {
+      return `MCP: ${toolDescription}：\n\n${data.content}`
+    }
+
+    // 其他情况使用 JSON 格式化
+    return `MCP: ${toolDescription}\n\n返回结果：\n${JSON.stringify(data, null, 2)}`
   }
 
   getSteps(): ReActStep[] {
