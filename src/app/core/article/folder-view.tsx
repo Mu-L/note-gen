@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Folder, Database, Clock, RefreshCw, Loader2, FileText } from 'lucide-react'
+import { Folder, Database, Clock, RefreshCw, Loader2, FileText, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import useArticleStore from '@/stores/article'
 import useVectorStore from '@/stores/vector'
+import { useSkillsStore } from '@/stores/skills'
+import { isSkillsFolder, extractSkillIdFromPath } from '@/lib/skills/utils'
 import { getVectorDocumentsByFilename } from '@/db/vector'
 import { readTextFile } from '@tauri-apps/plugin-fs'
 import { getFilePathOptions, getWorkspacePath } from '@/lib/workspace'
@@ -28,6 +30,164 @@ interface FolderStats {
   lastUpdated: string | null
 }
 
+interface SkillMetadata {
+  id: string
+  name: string
+  description: string
+  version: string
+  author?: string
+  scope: 'global' | 'project'
+  model?: string
+  allowedTools?: string[]
+  userInvocable: boolean
+  enabled: boolean
+  createdAt: number
+  updatedAt: number
+}
+
+interface SkillContent {
+  metadata: SkillMetadata
+  instructions: string
+  examples?: string
+  resources: any[]
+}
+
+// Skills 列表视图组件
+function SkillsListView({
+  skills,
+}: {
+  skills: SkillMetadata[]
+}) {
+  // 按 scope 分组
+  const globalSkills = skills.filter(s => s.scope === 'global')
+  const projectSkills = skills.filter(s => s.scope === 'project')
+
+  // 跟踪每个技能的展开状态
+  const [expandedSkills, setExpandedSkills] = useState<Set<string>>(new Set())
+
+  const toggleExpanded = (skillId: string) => {
+    setExpandedSkills(prev => {
+      const next = new Set(prev)
+      if (next.has(skillId)) {
+        next.delete(skillId)
+      } else {
+        next.add(skillId)
+      }
+      return next
+    })
+  }
+
+  return (
+    <div className="flex-1 h-full flex flex-col items-center justify-center bg-background gap-6 p-8">
+      {/* Skills Icon and Name */}
+      <div className="flex flex-col items-center gap-3">
+        <Sparkles className="w-20 h-20 text-primary" />
+        <h2 className="text-2xl font-semibold tracking-tight">Skills ({skills.length})</h2>
+      </div>
+
+      {/* Skills 列表 */}
+      {skills.length === 0 ? null : (
+        <div className="flex flex-col gap-4 w-full max-w-2xl">
+          {/* 全局 Skills */}
+          {globalSkills.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground px-1">全局 Skills</h3>
+              {globalSkills.map((skill) => (
+                <div
+                  key={skill.id}
+                  className="p-4 border rounded-lg hover:bg-accent/5 transition-colors bg-blue-50/50 dark:bg-blue-950/20 cursor-pointer"
+                  onClick={() => toggleExpanded(skill.id)}
+                >
+                  <div className="flex items-start gap-4">
+                    <Sparkles className="size-5 text-primary mt-1" />
+                    <div className="flex-1">
+                      <h3 className="font-semibold mb-1">{skill.name}</h3>
+                      <p className="text-sm text-muted-foreground cursor-pointer">
+                        {expandedSkills.has(skill.id) ? skill.description : (
+                          <span className="line-clamp-1">{skill.description}</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 工作区 Skills */}
+          {projectSkills.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground px-1">工作区 Skills</h3>
+              {projectSkills.map((skill) => (
+                <div
+                  key={skill.id}
+                  className="p-4 border rounded-lg hover:bg-accent/5 transition-colors bg-purple-50/50 dark:bg-purple-950/20 cursor-pointer"
+                  onClick={() => toggleExpanded(skill.id)}
+                >
+                  <div className="flex items-start gap-4">
+                    <Sparkles className="size-5 text-primary mt-1" />
+                    <div className="flex-1">
+                      <h3 className="font-semibold mb-1">{skill.name}</h3>
+                      <p className="text-sm text-muted-foreground cursor-pointer">
+                        {expandedSkills.has(skill.id) ? skill.description : (
+                          <span className="line-clamp-1">{skill.description}</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// 单个 Skill 详情视图组件
+function SkillDetailView({
+  skillContent,
+}: {
+  skillContent: SkillContent
+}) {
+  const { metadata, instructions, examples } = skillContent
+
+  return (
+    <div className="flex-1 h-full flex flex-col items-center justify-center bg-background gap-6 p-8 overflow-y-auto">
+      {/* Skill Icon and Name */}
+      <div className="flex flex-col items-center gap-3">
+        <Sparkles className="w-20 h-20 text-primary" />
+        <h2 className="text-2xl font-semibold tracking-tight">{metadata.name}</h2>
+        <p className="text-sm text-muted-foreground max-w-md text-center">
+          {metadata.description}
+        </p>
+      </div>
+
+      {/* Skill Details */}
+      <div className="flex flex-col gap-4 w-full max-w-2xl">
+        {/* 指令 */}
+        <div className="border rounded-lg p-4 space-y-3">
+          <h3 className="font-semibold text-sm">指令</h3>
+          <div className="text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded max-h-60 overflow-y-auto">
+            {instructions}
+          </div>
+        </div>
+
+        {/* 示例 */}
+        {examples && (
+          <div className="border rounded-lg p-4 space-y-3">
+            <h3 className="font-semibold text-sm">示例</h3>
+            <div className="text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded max-h-60 overflow-y-auto">
+              {examples}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function FolderView({ folderPath }: FolderViewProps) {
   const [stats, setStats] = useState<FolderStats | null>(null)
   const [loadingStats, setLoadingStats] = useState(false)
@@ -40,59 +200,73 @@ export function FolderView({ folderPath }: FolderViewProps) {
 
   const { fileTree, vectorIndexedFiles } = useArticleStore()
   const { isVectorDbEnabled } = useVectorStore()
+  const { getSkillsByScope, initSkills, initialized: skillsStoreInitialized } = useSkillsStore()
 
   const folderName = folderPath.split('/').pop() || folderPath
 
-  // Get all files in the current folder (recursively)
-  const folderFiles = useMemo(() => {
-    function collectFiles(tree: typeof fileTree, targetPath: string): string[] {
-      const files: string[] = []
+  // 检查是否是 Skills 文件夹
+  const isSkillsView = isSkillsFolder(folderName)
 
-      // Helper to collect files from a directory and its subdirectories
-      function collectFromDirectory(item: typeof tree[0], currentPath: string) {
-        if (item.isFile && item.name.endsWith('.md')) {
-          files.push(currentPath)
-          return
-        }
+  // 检查是否是 Skill 子文件夹（单个 skill）
+  const skillId = extractSkillIdFromPath(folderPath)
+  const isSkillDetailView = skillId !== null
 
-        if (item.isDirectory && item.children) {
-          for (const child of item.children) {
-            const childPath = currentPath ? `${currentPath}/${child.name}` : child.name
-            collectFromDirectory(child, childPath)
-          }
-        }
+  // 初始化 Skills（如果是 Skills 相关视图）
+  useEffect(() => {
+    if ((isSkillsView || isSkillDetailView) && !skillsStoreInitialized) {
+      initSkills()
+    }
+  }, [isSkillsView, isSkillDetailView, skillsStoreInitialized, initSkills])
+
+  // 原有的文件夹向量视图逻辑...
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function collectFiles(_tree: typeof fileTree, _targetPath: string): string[] {
+    const files: string[] = []
+
+    // Helper to collect files from a directory and its subdirectories
+    function collectFromDirectory(item: typeof fileTree[0], currentPath: string) {
+      if (item.isFile && item.name.endsWith('.md')) {
+        files.push(currentPath)
+        return
       }
 
-      // Find the target folder in the tree
-      function findAndCollect(tree: typeof fileTree, targetPath: string): boolean {
-        for (const item of tree) {
-          const itemPath = item.parent?.name ? `${item.parent?.name}/${item.name}` : item.name
-
-          if (item.isDirectory && itemPath === targetPath) {
-            // Found the target folder, collect all files recursively
-            if (item.children) {
-              for (const child of item.children) {
-                const childPath = `${itemPath}/${child.name}`
-                collectFromDirectory(child, childPath)
-              }
-            }
-            return true
-          }
-
-          // Search in subdirectories
-          if (item.children && findAndCollect(item.children, targetPath)) {
-            return true
-          }
+      if (item.isDirectory && item.children) {
+        for (const child of item.children) {
+          const childPath = currentPath ? `${currentPath}/${child.name}` : child.name
+          collectFromDirectory(child, childPath)
         }
-        return false
       }
-
-      findAndCollect(tree, targetPath)
-      return files
     }
 
-    return collectFiles(fileTree, folderPath)
-  }, [fileTree, folderPath])
+    // Find the target folder in the tree
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    function findAndCollect(_tree: typeof fileTree, _targetPath: string): boolean {
+      for (const item of _tree) {
+        if (item.isDirectory && folderPath === _targetPath) {
+          // Found the target folder, collect all files recursively
+          if (item.children) {
+            for (const child of item.children) {
+              const childPath = `${folderPath}/${child.name}`
+              collectFromDirectory(child, childPath)
+            }
+          }
+          return true
+        }
+
+        // Search in subdirectories
+        if (item.children && findAndCollect(item.children, _targetPath)) {
+          return true
+        }
+      }
+      return false
+    }
+
+    findAndCollect(fileTree, folderPath)
+    return files
+  }
+
+  // Get all files in the current folder (recursively)
+  const folderFiles = useMemo(() => collectFiles(fileTree, folderPath), [fileTree, folderPath])
 
   // Calculate folder statistics
   const calculateStats = useCallback(async () => {
@@ -211,6 +385,58 @@ export function FolderView({ folderPath }: FolderViewProps) {
     await calculateStats()
     setBatchProgress(null)
   }, [folderFiles, calculateStats])
+
+  // 如果是 Skills 文件夹，显示 Skills 视图
+  if (isSkillsView) {
+    // 如果 skills 还未初始化，显示加载状态
+    if (!skillsStoreInitialized) {
+      return (
+        <div className="flex-1 h-full flex flex-col items-center justify-center bg-background">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground mt-4">加载 Skills...</p>
+        </div>
+      )
+    }
+
+    const globalSkills = getSkillsByScope('global')
+    const projectSkills = getSkillsByScope('project')
+    const allSkills = [...globalSkills, ...projectSkills].map(s => s.metadata)
+    return <SkillsListView skills={allSkills} />
+  }
+
+  // 如果是 Skill 子文件夹，显示 Skill 详情视图
+  if (isSkillDetailView) {
+    // 如果 skills 还未初始化，显示加载状态
+    if (!skillsStoreInitialized) {
+      return (
+        <div className="flex-1 h-full flex flex-col items-center justify-center bg-background">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground mt-4">加载 Skill...</p>
+        </div>
+      )
+    }
+
+    // 获取所有 skills 并查找匹配的 skill
+    const globalSkills = getSkillsByScope('global')
+    const projectSkills = getSkillsByScope('project')
+    const allSkills = [...globalSkills, ...projectSkills]
+
+    const skillContent = allSkills.find(s => s.metadata.id === skillId)
+
+    if (!skillContent) {
+      return (
+        <div className="flex-1 h-full flex flex-col items-center justify-center bg-background">
+          <Sparkles className="w-16 h-16 text-muted-foreground" />
+          <h2 className="text-2xl font-semibold tracking-tight mt-4">Skill 未找到</h2>
+          <p className="text-muted-foreground text-sm mt-2">
+            无法找到 ID 为 {skillId} 的 Skill
+          </p>
+        </div>
+      )
+    }
+
+    return <SkillDetailView skillContent={skillContent} />
+  }
 
   if (!isVectorDbEnabled) {
     return (

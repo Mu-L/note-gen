@@ -2,13 +2,14 @@ import { ContextMenu, ContextMenuContent, ContextMenuSeparator, ContextMenuTrigg
 import { Input } from "@/components/ui/input";
 import useArticleStore, { DirTree } from "@/stores/article";
 import { BaseDirectory, exists, mkdir, rename } from "@tauri-apps/plugin-fs";
-import { ChevronRight, Cloud, Folder, FolderDot, FolderDown, FolderOpen, FolderOpenDot, Loader2, Database } from "lucide-react"
+import { ChevronRight, Cloud, Folder, FolderDot, FolderDown, FolderOpen, FolderOpenDot, Loader2, Database, Sparkles } from "lucide-react"
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
 import { cloneDeep } from "lodash-es";
 import { computedParentPath, getCurrentFolder } from "@/lib/path";
 import useSettingStore from '@/stores/setting'
+import { isSkillsFolder } from "@/lib/skills/utils"
 import SyncFolder from './sync-folder'
 import { NewFile } from './new-file'
 import { NewFolder } from './new-folder'
@@ -28,13 +29,19 @@ import { LinkedFolder } from '@/lib/files'
 export function FolderItem({ item }: { item: DirTree }) {
   const [isEditing, setIsEditing] = useState(item.isEditing)
   const [name, setName] = useState(item.name)
-  const [isComposing, setIsComposing] = useState(false) 
+  const [isComposing, setIsComposing] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const { assetsPath, fileManagerTextSize } = useSettingStore()
   const isMobile = useIsMobile()
   const t = useTranslations('article.file')
+
+  // 检查路径是否在 skills 文件夹下
+  const isInSkillsFolder = (itemPath: string): boolean => {
+    const parts = itemPath.split('/')
+    return parts.some(part => isSkillsFolder(part))
+  }
 
   // 根据文字大小映射图标大小
   const getIconSize = (textSize: string) => {
@@ -486,16 +493,19 @@ export function FolderItem({ item }: { item: DirTree }) {
                     <div className="relative flex items-center">
                       {item.loading ? (
                         <Loader2 className={`${iconSize} animate-spin text-primary`} />
-                      ) : collapsibleList.includes(path) ?
-                        (assetsPath === item.name ? <FolderOpenDot className={iconSize} /> : <FolderOpen className={iconSize} />) :
-                        (assetsPath === item.name ? <FolderDot className={iconSize} /> : <Folder className={iconSize} />)
-                      }
+                      ) : isSkillsFolder(item.name) ? (
+                        <Sparkles className={`${iconSize} text-primary`} />
+                      ) : collapsibleList.includes(path) ? (
+                        assetsPath === item.name ? <FolderOpenDot className={iconSize} /> : <FolderOpen className={iconSize} />
+                      ) : (
+                        assetsPath === item.name ? <FolderDot className={iconSize} /> : <Folder className={iconSize} />
+                      )}
                       {!item.loading && item.sha && item.isLocale && <Cloud className="size-2.5 absolute left-0 bottom-0 z-10 bg-primary-foreground" />}
                     </div>
                     <span className={`text-${fileManagerTextSize} line-clamp-1 ${item.loading ? 'text-muted-foreground' : ''}`}>{item.name}</span>
                   </div>
-                  {/* 向量状态指示器 - 放在最右侧 */}
-                  {folderVectorStatus().hasVector && (
+                  {/* 向量状态指示器 - 放在最右侧，skills 文件夹及其子内容不显示 */}
+                  {!isInSkillsFolder(path) && folderVectorStatus().hasVector && (
                     <div className="flex items-center mr-2">
                       <span className={`text-xs text-muted-foreground ${folderVectorStatus().isComplete ? 'opacity-100' : 'opacity-60'}`}>
                         {folderVectorStatus().indexedCount}/{folderVectorStatus().totalCount}
@@ -546,16 +556,21 @@ export function FolderItem({ item }: { item: DirTree }) {
           <NewFolder item={item} />
           <ViewDirectory item={item} />
           <ContextMenuSeparator />
-          <ContextMenuSub>
-            <ContextMenuSubTrigger>
-              <Database className="mr-2 h-4 w-4" />
-              {t('context.knowledgeBase')}
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent>
-              <FolderVectorMenu item={item} />
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-          <ContextMenuSeparator />
+          {/* skills 文件夹及其子内容不显示知识库选项 */}
+          {!isInSkillsFolder(path) && (
+            <>
+              <ContextMenuSub>
+                <ContextMenuSubTrigger>
+                  <Database className="mr-2 h-4 w-4" />
+                  {t('context.knowledgeBase')}
+                </ContextMenuSubTrigger>
+                <ContextMenuSubContent>
+                  <FolderVectorMenu item={item} />
+                </ContextMenuSubContent>
+              </ContextMenuSub>
+              <ContextMenuSeparator />
+            </>
+          )}
           <CutFolder item={item} />
           <CopyFolder item={item} />
           <PasteInFolder item={item} />

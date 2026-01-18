@@ -1,8 +1,7 @@
 import { Tool, ToolResult } from '../types'
 import { readTextFile, writeTextFile, remove } from '@tauri-apps/plugin-fs'
 import { getAllMarkdownFiles } from '@/lib/files'
-import { getFilePathOptions, getWorkspacePath } from '@/lib/workspace'
-import { join } from '@tauri-apps/api/path'
+import { getFilePathOptions } from '@/lib/workspace'
 import useArticleStore from '@/stores/article'
 
 export const listMarkdownFilesTool: Tool = {
@@ -14,12 +13,18 @@ export const listMarkdownFilesTool: Tool = {
   execute: async (): Promise<ToolResult> => {
     try {
       const files = await getAllMarkdownFiles()
+
       return {
         success: true,
         data: files,
         message: `找到 ${files.length} 个 Markdown 文件`,
       }
     } catch (error) {
+      console.error('[list_markdown_files] 获取文件列表失败', {
+        error: String(error),
+        errorName: error instanceof Error ? error.name : 'unknown',
+        errorMessage: error instanceof Error ? error.message : String(error),
+      })
       return {
         success: false,
         error: `获取 Markdown 文件列表失败: ${error}`,
@@ -43,22 +48,29 @@ export const readMarkdownFileTool: Tool = {
   ],
   execute: async (params): Promise<ToolResult> => {
     try {
-      const workspace = await getWorkspacePath()
       let content = ''
-      
-      if (workspace.isCustom) {
-        content = await readTextFile(params.filePath)
-      } else {
-        const { path, baseDir } = await getFilePathOptions(params.filePath)
+
+      // 统一使用 getFilePathOptions 来处理路径，无论是自定义工作区还是默认工作区
+      const { path, baseDir } = await getFilePathOptions(params.filePath)
+
+      if (baseDir) {
         content = await readTextFile(path, { baseDir })
+      } else {
+        content = await readTextFile(path)
       }
-      
+
       return {
         success: true,
         data: { filePath: params.filePath, content },
         message: `成功读取文件: ${params.filePath}`,
       }
     } catch (error) {
+      console.error('[read_markdown_file] 读取失败', {
+        filePath: params.filePath,
+        error: String(error),
+        errorName: error instanceof Error ? error.name : 'unknown',
+        errorMessage: error instanceof Error ? error.message : String(error),
+      })
       return {
         success: false,
         error: `读取文件失败: ${error}`,
@@ -108,26 +120,40 @@ export const createMarkdownFileTool: Tool = {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
         fileName = `note-${timestamp}.md`
       }
-      
-      const workspace = await getWorkspacePath()
+
       let filePath = fileName
-      
+
       // 如果指定了文件夹路径，拼接路径
       if (params.folderPath) {
         filePath = `${params.folderPath}/${fileName}`
       }
-      
+
       // 确保文件名以 .md 结尾
       if (!filePath.endsWith('.md')) {
         filePath += '.md'
       }
-      
-      if (workspace.isCustom) {
-        const fullPath = await join(workspace.path, filePath)
-        await writeTextFile(fullPath, params.content)
-      } else {
-        const { path, baseDir } = await getFilePathOptions(filePath)
+
+      // 统一使用 getFilePathOptions 来处理路径
+      const { path, baseDir } = await getFilePathOptions(filePath)
+
+      // 在创建文件前，确保父目录存在
+      const parentFolderPath = filePath.substring(0, filePath.lastIndexOf('/'))
+      const needsParentFolder = parentFolderPath && parentFolderPath !== filePath
+
+      if (needsParentFolder) {
+        const { path: parentPath, baseDir: parentBaseDir } = await getFilePathOptions(parentFolderPath)
+        const { mkdir } = await import('@tauri-apps/plugin-fs')
+        if (parentBaseDir) {
+          await mkdir(parentPath, { baseDir: parentBaseDir, recursive: true })
+        } else {
+          await mkdir(parentPath, { recursive: true })
+        }
+      }
+
+      if (baseDir) {
         await writeTextFile(path, params.content, { baseDir })
+      } else {
+        await writeTextFile(path, params.content)
       }
       
       // 刷新文件列表
@@ -175,15 +201,15 @@ export const updateMarkdownFileTool: Tool = {
   ],
   execute: async (params): Promise<ToolResult> => {
     try {
-      const workspace = await getWorkspacePath()
-      
-      if (workspace.isCustom) {
-        await writeTextFile(params.filePath, params.content)
-      } else {
-        const { path, baseDir } = await getFilePathOptions(params.filePath)
+      // 统一使用 getFilePathOptions 来处理路径
+      const { path, baseDir } = await getFilePathOptions(params.filePath)
+
+      if (baseDir) {
         await writeTextFile(path, params.content, { baseDir })
+      } else {
+        await writeTextFile(path, params.content)
       }
-      
+
       // 如果更新的是当前打开的文件，通过 saveCurrentArticle 刷新编辑器内容
       // 注意：不要使用 setCurrentArticle，因为它会触发 clearStack 清空撤销历史
       const articleStore = useArticleStore.getState()
@@ -192,7 +218,7 @@ export const updateMarkdownFileTool: Tool = {
         const emitter = (await import('@/lib/emitter')).default
         emitter.emit('external-content-update', params.content)
       }
-      
+
       return {
         success: true,
         message: `成功更新文件: ${params.filePath}`,
@@ -221,28 +247,29 @@ export const deleteMarkdownFileTool: Tool = {
   ],
   execute: async (params): Promise<ToolResult> => {
     try {
-      const workspace = await getWorkspacePath()
       const articleStore = useArticleStore.getState()
-      
+
       // 检查是否是当前打开的文件
       const isCurrentFile = articleStore.activeFilePath === params.filePath
-      
-      if (workspace.isCustom) {
-        await remove(params.filePath)
-      } else {
-        const { path, baseDir } = await getFilePathOptions(params.filePath)
+
+      // 统一使用 getFilePathOptions 来处理路径
+      const { path, baseDir } = await getFilePathOptions(params.filePath)
+
+      if (baseDir) {
         await remove(path, { baseDir })
+      } else {
+        await remove(path)
       }
-      
+
       // 刷新文件列表
       await articleStore.loadFileTree()
-      
+
       // 如果删除的是当前打开的文件，取消选择并清空内容
       if (isCurrentFile) {
         await articleStore.setActiveFilePath('')
         articleStore.setCurrentArticle('')
       }
-      
+
       return {
         success: true,
         message: `成功删除文件: ${params.filePath}`,
@@ -273,26 +300,27 @@ export const searchMarkdownFilesTool: Tool = {
     try {
       const files = await getAllMarkdownFiles()
       const results: Array<{ filePath: string; fileName: string; matchedContent: string }> = []
-      const workspace = await getWorkspacePath()
-      
+
       for (const file of files) {
         try {
           let content = ''
-          
-          if (workspace.isCustom) {
-            content = await readTextFile(file.path)
-          } else {
-            const { path, baseDir } = await getFilePathOptions(file.relativePath)
+
+          // 统一使用 getFilePathOptions 来处理路径
+          const { path, baseDir } = await getFilePathOptions(file.relativePath)
+
+          if (baseDir) {
             content = await readTextFile(path, { baseDir })
+          } else {
+            content = await readTextFile(path)
           }
-          
+
           if (content.toLowerCase().includes(params.query.toLowerCase())) {
             // 提取匹配的上下文（前后各50个字符）
             const index = content.toLowerCase().indexOf(params.query.toLowerCase())
             const start = Math.max(0, index - 50)
             const end = Math.min(content.length, index + params.query.length + 50)
             const matchedContent = content.substring(start, end)
-            
+
             results.push({
               filePath: file.relativePath,
               fileName: file.name,
@@ -303,7 +331,7 @@ export const searchMarkdownFilesTool: Tool = {
           console.error(`读取文件 ${file.path} 失败:`, error)
         }
       }
-      
+
       return {
         success: true,
         data: results,
@@ -335,35 +363,35 @@ export const modifyCurrentNoteTool: Tool = {
     try {
       const articleStore = useArticleStore.getState()
       const currentFilePath = articleStore.activeFilePath
-      
+
       if (!currentFilePath) {
         return {
           success: false,
           error: '当前没有打开任何笔记，请先打开一个笔记文件',
         }
       }
-      
+
       if (!params.content || typeof params.content !== 'string') {
         return {
           success: false,
           error: '缺少必需参数 content 或参数类型错误',
         }
       }
-      
-      const workspace = await getWorkspacePath()
-      
-      if (workspace.isCustom) {
-        await writeTextFile(currentFilePath, params.content)
-      } else {
-        const { path, baseDir } = await getFilePathOptions(currentFilePath)
+
+      // 统一使用 getFilePathOptions 来处理路径
+      const { path, baseDir } = await getFilePathOptions(currentFilePath)
+
+      if (baseDir) {
         await writeTextFile(path, params.content, { baseDir })
+      } else {
+        await writeTextFile(path, params.content)
       }
-      
+
       // 使用 emitter 通知编辑器内容已从外部更新，而不是直接调用 setCurrentArticle
       // 这样可以保留编辑器的撤销历史
       const emitter = (await import('@/lib/emitter')).default
       emitter.emit('external-content-update', params.content)
-      
+
       return {
         success: true,
         data: { filePath: currentFilePath },
@@ -400,21 +428,22 @@ export const readMarkdownFilesBatchTool: Tool = {
         }
       }
 
-      const workspace = await getWorkspacePath()
       const results = []
       const errors = []
 
       for (const filePath of params.filePaths) {
         try {
           let content = ''
-          
-          if (workspace.isCustom) {
-            content = await readTextFile(filePath)
-          } else {
-            const { path, baseDir } = await getFilePathOptions(filePath)
+
+          // 统一使用 getFilePathOptions 来处理路径
+          const { path, baseDir } = await getFilePathOptions(filePath)
+
+          if (baseDir) {
             content = await readTextFile(path, { baseDir })
+          } else {
+            content = await readTextFile(path)
           }
-          
+
           results.push({ filePath, content })
         } catch (error) {
           errors.push({ filePath, error: String(error) })
@@ -423,8 +452,8 @@ export const readMarkdownFilesBatchTool: Tool = {
 
       return {
         success: results.length > 0,
-        data: { 
-          files: results, 
+        data: {
+          files: results,
           failed: errors,
           successCount: results.length,
           failCount: errors.length,
@@ -462,7 +491,6 @@ export const deleteMarkdownFilesBatchTool: Tool = {
         }
       }
 
-      const workspace = await getWorkspacePath()
       const articleStore = useArticleStore.getState()
       const results = []
       const errors = []
@@ -474,13 +502,15 @@ export const deleteMarkdownFilesBatchTool: Tool = {
             currentFileDeleted = true
           }
 
-          if (workspace.isCustom) {
-            await remove(filePath)
-          } else {
-            const { path, baseDir } = await getFilePathOptions(filePath)
+          // 统一使用 getFilePathOptions 来处理路径
+          const { path, baseDir } = await getFilePathOptions(filePath)
+
+          if (baseDir) {
             await remove(path, { baseDir })
+          } else {
+            await remove(path)
           }
-          
+
           results.push(filePath)
         } catch (error) {
           errors.push({ filePath, error: String(error) })
@@ -496,8 +526,8 @@ export const deleteMarkdownFilesBatchTool: Tool = {
 
       return {
         success: results.length > 0,
-        data: { 
-          deleted: results, 
+        data: {
+          deleted: results,
           failed: errors,
           successCount: results.length,
           failCount: errors.length,

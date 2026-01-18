@@ -22,6 +22,7 @@ import { MobileActionMenu, MobileMenuItem, MobileSeparator } from "./mobile-acti
 import { useIsMobile } from "@/hooks/use-mobile";
 import useSettingStore from "@/stores/setting";
 import { VectorKnowledgeMenu } from "./vector-knowledge-menu";
+import { isSkillsFolder } from "@/lib/skills/utils";
 
 export function FileItem({ item }: { item: DirTree }) {
   const [isEditing, setIsEditing] = useState(item.isEditing)
@@ -34,6 +35,12 @@ export function FileItem({ item }: { item: DirTree }) {
   const t = useTranslations('article.file')
   const isMobile = useIsMobile()
 
+  // 检查路径是否在 skills 文件夹下
+  const isInSkillsFolder = (itemPath: string): boolean => {
+    const parts = itemPath.split('/')
+    return parts.some(part => isSkillsFolder(part))
+  }
+
   // 向量状态更新回调
   const handleVectorUpdated = useCallback(() => {
     checkFileVectorIndexed(item.name)
@@ -43,7 +50,7 @@ export function FileItem({ item }: { item: DirTree }) {
   const getIconSize = (textSize: string) => {
     const sizeMap = {
       'xs': 'size-3',
-      'sm': 'size-3.5', 
+      'sm': 'size-3.5',
       'md': 'size-4',
       'lg': 'size-5',
       'xl': 'size-6'
@@ -53,10 +60,11 @@ export function FileItem({ item }: { item: DirTree }) {
 
   const iconSize = getIconSize(fileManagerTextSize)
 
-  // 检查文件是否已计算向量
-  const hasVector = item.isFile && vectorIndexedFiles.has(item.name)
-
   const path = computedParentPath(item)
+
+  // 检查文件是否已计算向量（skills 文件夹下的文件不显示）
+  const hasVector = item.isFile && !isInSkillsFolder(path) && vectorIndexedFiles.has(item.name)
+
   const isRoot = path.split('/').length === 1
   const folderPath = path.includes('/') ? path.split('/').slice(0, -1).join('/') : ''
   const cacheTree = cloneDeep(fileTree)
@@ -120,7 +128,7 @@ export function FileItem({ item }: { item: DirTree }) {
 
   async function handleSelectFile() {
     const currentPath = computedParentPath(item)
-    
+
     if (item.name.match(/\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i)) {
       // 图片文件：设置 activeFilePath，让 EditorWrapper 显示图片编辑器
       if (activeFilePath === currentPath) {
@@ -137,7 +145,29 @@ export function FileItem({ item }: { item: DirTree }) {
         setCurrentArticle('')
       } else {
         setActiveFilePath(currentPath)
-        readArticle(currentPath, item.sha, item.isLocale)
+        // 如果是 skills 文件夹下的文件，不使用 readArticle（避免自动关联到 AI 对话）
+        if (isInSkillsFolder(currentPath)) {
+          // 读取内容但不调用 readArticle，避免触发向量计算等关联逻辑
+          const { readTextFile } = await import('@tauri-apps/plugin-fs')
+          const { getFilePathOptions } = await import('@/lib/workspace')
+          const pathOptions = await getFilePathOptions(currentPath)
+
+          try {
+            let content = ''
+            const workspace = await (await import('@/lib/workspace')).getWorkspacePath()
+            if (workspace.isCustom) {
+              content = await readTextFile(pathOptions.path)
+            } else {
+              content = await readTextFile(pathOptions.path, { baseDir: pathOptions.baseDir })
+            }
+            setCurrentArticle(content)
+          } catch (error) {
+            console.error('Failed to read file:', error)
+          }
+        } else {
+          // 普通文件，正常读取并关联到 AI 对话
+          readArticle(currentPath, item.sha, item.isLocale)
+        }
       }
     } else {
       // 其他文件类型：清空编辑器
@@ -181,12 +211,6 @@ export function FileItem({ item }: { item: DirTree }) {
             if (current.sha) {
               // 远程文件：调用远程删除 API
               try {
-                console.log('Attempting to delete remote file:', {
-                  name: item.name,
-                  currentPath: currentPath,
-                  sha: current.sha
-                })
-                
                 const useSettingStore = (await import('@/stores/setting')).default
                 const settingStore = useSettingStore.getState()
                 const method = settingStore.primaryBackupMethod
@@ -207,7 +231,6 @@ export function FileItem({ item }: { item: DirTree }) {
                     const remoteFile = files.find((f: any) => f.sha === current.sha)
                     if (remoteFile && remoteFile.name) {
                       actualFileName = remoteFile.name
-                      console.log('Found actual file name from remote:', actualFileName)
                     }
                   }
                 }
@@ -215,9 +238,7 @@ export function FileItem({ item }: { item: DirTree }) {
                 // 构建正确的删除路径
                 const dirPath = currentPath.includes('/') ? currentPath.substring(0, currentPath.lastIndexOf('/')) : ''
                 const deletePath = dirPath ? `${dirPath}/${actualFileName}` : actualFileName
-                
-                console.log('Using delete path:', deletePath)
-                
+
                 if (method === 'github') {
                   const { deleteFile: deleteGithubFile } = await import('@/lib/sync/github')
                   await deleteGithubFile({
@@ -247,8 +268,7 @@ export function FileItem({ item }: { item: DirTree }) {
                     repo: repo
                   })
                 }
-                
-                console.log('Remote delete successful for:', deletePath)
+
                 // 远程删除成功，从文件树中移除
                 currentFolder.children.splice(index, 1)
               } catch (remoteError) {
@@ -273,12 +293,6 @@ export function FileItem({ item }: { item: DirTree }) {
             if (current.sha) {
               // 远程文件：调用远程删除 API
               try {
-                console.log('Attempting to delete remote file (root level):', {
-                  name: item.name,
-                  currentPath: currentPath,
-                  sha: current.sha
-                })
-                
                 const useSettingStore = (await import('@/stores/setting')).default
                 const settingStore = useSettingStore.getState()
                 const method = settingStore.primaryBackupMethod
@@ -299,7 +313,6 @@ export function FileItem({ item }: { item: DirTree }) {
                     const remoteFile = files.find((f: any) => f.sha === current.sha)
                     if (remoteFile && remoteFile.name) {
                       actualFileName = remoteFile.name
-                      console.log('Found actual file name from remote (root level):', actualFileName)
                     }
                   }
                 }
@@ -307,9 +320,7 @@ export function FileItem({ item }: { item: DirTree }) {
                 // 构建正确的删除路径
                 const dirPath = currentPath.includes('/') ? currentPath.substring(0, currentPath.lastIndexOf('/')) : ''
                 const deletePath = dirPath ? `${dirPath}/${actualFileName}` : actualFileName
-                
-                console.log('Using delete path (root level):', deletePath)
-                
+
                 if (method === 'github') {
                   const { deleteFile: deleteGithubFile } = await import('@/lib/sync/github')
                   await deleteGithubFile({
@@ -339,8 +350,7 @@ export function FileItem({ item }: { item: DirTree }) {
                     repo: repo
                   })
                 }
-                
-                console.log('Remote delete successful for (root level):', deletePath)
+
                 // 远程删除成功，从文件树中移除
                 cacheTree.splice(index, 1)
               } catch (remoteError) {

@@ -4,6 +4,60 @@ import { getWorkspacePath, getFilePathOptions } from '@/lib/workspace'
 import { join } from '@tauri-apps/api/path'
 import useArticleStore from '@/stores/article'
 
+export const checkFolderExistsTool: Tool = {
+  name: 'check_folder_exists',
+  description: '检查指定的文件夹是否存在',
+  category: 'note',
+  requiresConfirmation: false,
+  parameters: [
+    {
+      name: 'folderPath',
+      type: 'string',
+      description: '要检查的文件夹路径（相对于笔记根目录，例如："前端/React" 或 "学习笔记"）',
+      required: true,
+    },
+  ],
+  execute: async (params): Promise<ToolResult> => {
+    try {
+      const workspace = await getWorkspacePath()
+
+      let fullPath = ''
+      let folderExists = false
+
+      if (workspace.isCustom) {
+        fullPath = await join(workspace.path, params.folderPath)
+        folderExists = await exists(fullPath)
+      } else {
+        const { path, baseDir } = await getFilePathOptions(params.folderPath)
+        fullPath = path
+        folderExists = await exists(fullPath, { baseDir })
+      }
+
+      return {
+        success: true,
+        data: {
+          folderPath: params.folderPath,
+          exists: folderExists,
+          fullPath,
+        },
+        message: folderExists
+          ? `文件夹 "${params.folderPath}" 存在`
+          : `文件夹 "${params.folderPath}" 不存在`,
+      }
+    } catch (error) {
+      console.error('[check_folder_exists] 检查失败', {
+        folderPath: params.folderPath,
+        error: String(error),
+        errorMessage: error instanceof Error ? error.message : String(error),
+      })
+      return {
+        success: false,
+        error: `检查文件夹失败: ${error}`,
+      }
+    }
+  },
+}
+
 export const createFolderTool: Tool = {
   name: 'create_folder',
   description: '创建一个新的文件夹用于组织笔记',
@@ -172,12 +226,13 @@ export const listFoldersTool: Tool = {
 
       if (workspace.isCustom) {
         // 自定义工作区：使用绝对路径
-        const fullPath = params.folderPath 
+        const fullPath = params.folderPath
           ? await join(workspace.path, params.folderPath)
           : workspace.path
-        
+
         // 检查路径是否存在
         const pathExists = await exists(fullPath)
+
         if (!pathExists) {
           return {
             success: false,
@@ -187,7 +242,7 @@ export const listFoldersTool: Tool = {
 
         // 读取目录内容
         const entries = await readDir(fullPath)
-        
+
         // 过滤出文件夹
         const folders = entries
           .filter(entry => entry.isDirectory)
@@ -204,9 +259,10 @@ export const listFoldersTool: Tool = {
       } else {
         // 默认工作区：使用 baseDir
         const { path, baseDir } = await getFilePathOptions(params.folderPath || '')
-        
+
         // 检查路径是否存在
         const pathExists = await exists(path, { baseDir })
+
         if (!pathExists) {
           return {
             success: false,
@@ -216,7 +272,7 @@ export const listFoldersTool: Tool = {
 
         // 读取目录内容
         const entries = await readDir(path, { baseDir })
-        
+
         // 过滤出文件夹
         const folders = entries
           .filter(entry => entry.isDirectory)
@@ -232,6 +288,10 @@ export const listFoldersTool: Tool = {
         }
       }
     } catch (error) {
+      console.error('[list_folders] 执行失败', {
+        error: String(error),
+        errorMessage: error instanceof Error ? error.message : String(error),
+      })
       return {
         success: false,
         error: `列出文件夹失败: ${error}`,
@@ -387,6 +447,7 @@ export const deleteFoldersBatchTool: Tool = {
 }
 
 export const folderTools: Tool[] = [
+  checkFolderExistsTool,
   createFolderTool,
   deleteFolderTool,
   listFoldersTool,

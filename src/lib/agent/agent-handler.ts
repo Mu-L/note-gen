@@ -1,6 +1,8 @@
 import { ReActAgent, ReActConfig } from './react'
 import { ToolCall, ReActStep } from './types'
 import useChatStore from '@/stores/chat'
+import { skillManager } from '@/lib/skills'
+import { useSkillsStore } from '@/stores/skills'
 
 export interface AgentHandlerConfig {
   onThought?: (thought: string) => void
@@ -21,12 +23,20 @@ export class AgentHandler {
 
   async execute(userInput: string, context?: string, imageUrls?: string[]): Promise<string> {
     const store = useChatStore.getState()
-    
+
     store.resetAgentState()
     store.setAgentState({ isRunning: true })
 
+    // 获取所有可用的 Skills（让 AI 自己选择）
+    const activeSkills = await this.getAvailableSkills()
+    // 获取 Skills 的详细信息用于 UI 显示
+    const skillsInfo = await this.getSkillsInfo()
+    // 将加载的 Skills 信息存储到状态中，用于 UI 显示
+    store.setAgentState({ loadedSkills: skillsInfo })
+
     const reactConfig: ReActConfig = {
       maxIterations: 15,
+      activeSkills,
       onIterationStart: () => {
         // 在新迭代开始时，将完整的 ReAct 循环保存到历史，然后清空当前状态
         const currentState = useChatStore.getState()
@@ -97,6 +107,10 @@ export class AgentHandler {
           currentState.addAgentToolCall(toolCall)
         }
       },
+      onSkillsSelected: (skillIds: string[]) => {
+        // 当 AI 选择 Skills 后，更新状态
+        store.setAgentState({ selectedSkills: skillIds })
+      },
       requestConfirmation: this.config.requestConfirmation,
     }
 
@@ -133,6 +147,69 @@ export class AgentHandler {
       this.agent.stop()
       // 不立即清空 agent，等待 run 方法中的错误处理完成
       // 不调用 resetAgentState，让 onComplete 回调保存已产生的内容
+    }
+  }
+
+  /**
+   * 获取所有可用的 Skills（只返回元数据，让 AI 先选择）
+   */
+  private async getAvailableSkills(): Promise<string[]> {
+    const skillsStore = useSkillsStore.getState()
+
+    // 如果 Skills 功能未启用，返回空数组
+    if (!skillsStore.enabled) {
+      return []
+    }
+
+    // 如果未启用自动匹配，返回空数组
+    if (!skillsStore.autoMatch) {
+      return []
+    }
+
+    try {
+      // 确保 Skill 管理器已初始化
+      await skillManager.initialize()
+
+      // 每次对话开始前重新加载 Skills，确保使用最新的配置
+      await skillsStore.refreshSkills()
+
+      // 获取所有已启用的 Skills
+      const enabledSkills = await skillManager.getEnabledSkills()
+
+      // 返回所有已启用 Skill 的 ID 列表
+      // 注意：这里只传递 ID，具体内容在 formatSkillsInstructions 中按需加载
+      const skillIds = enabledSkills.map(skill => skill.metadata.id)
+      return skillIds
+    } catch (error) {
+      console.error('[Skills Debug] Failed to get skills:', error)
+      return []
+    }
+  }
+
+  /**
+   * 获取 Skills 的详细信息用于 UI 显示
+   */
+  private async getSkillsInfo(): Promise<Array<{ id: string; name: string; description?: string }>> {
+    const skillsStore = useSkillsStore.getState()
+
+    // 如果 Skills 功能未启用，返回空数组
+    if (!skillsStore.enabled || !skillsStore.autoMatch) {
+      return []
+    }
+
+    try {
+      await skillManager.initialize()
+      await skillsStore.refreshSkills()
+      const enabledSkills = await skillManager.getEnabledSkills()
+
+      return enabledSkills.map(skill => ({
+        id: skill.metadata.id,
+        name: skill.metadata.name,
+        description: skill.metadata.description
+      }))
+    } catch (error) {
+      console.error('[Skills Debug] Failed to get skills info:', error)
+      return []
     }
   }
 }
