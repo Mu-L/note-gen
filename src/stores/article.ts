@@ -1,8 +1,10 @@
 import { getFiles as getGithubFiles } from '@/lib/sync/github'
 import { GithubContent } from '@/lib/sync/github.types'
 import { getFiles as getGiteeFiles } from '@/lib/sync/gitee'
+import { getFiles as getGiteaFiles } from '@/lib/sync/gitea'
 import { getFiles as getGitlabFiles } from '@/lib/sync/gitlab'
 import { GiteeFile } from '@/lib/sync/gitee'
+import { GiteaDirectoryItem } from '@/lib/sync/gitea.types'
 import { getSyncRepoName } from '@/lib/sync/repo-utils'
 import { autoSyncIfNeeded, hasNetworkConnection, ensureDirectoryExists } from '@/lib/sync/auto-sync'
 import { sanitizeFilePath, hasInvalidFileNameChars } from '@/lib/sync/filename-utils'
@@ -488,6 +490,11 @@ const useArticleStore = create<NoteState>((set, get) => ({
         if (!gitlabAccessToken) {
           return
         }
+      } else if (primaryBackupMethod === 'gitea') {
+        const giteaAccessToken = await store.get<string>('giteaAccessToken')
+        if (!giteaAccessToken) {
+          return
+        }
       }
     
     // 只为根目录和本地存在的已展开文件夹加载远程文件
@@ -536,11 +543,15 @@ const useArticleStore = create<NoteState>((set, get) => ({
             const gitlabRepo = await getSyncRepoName('gitlab');
             files = await getGitlabFiles({ path, repo: gitlabRepo });
             break;
+          case 'gitea':
+            const giteaRepo = await getSyncRepoName('gitea');
+            files = await getGiteaFiles({ path, repo: giteaRepo });
+            break;
         }
 
         if (files) {
           const dirs = get().fileTree
-          files.forEach((file: GithubContent | GiteeFile) => {
+          files.forEach((file: GithubContent | GiteeFile | GiteaDirectoryItem) => {
             // 过滤以"."开头的文件和文件夹
             if (file.name.startsWith('.')) {
               return;
@@ -641,6 +652,9 @@ const useArticleStore = create<NoteState>((set, get) => ({
     } else if (primaryBackupMethod === 'gitlab') {
       const gitlabAccessToken = await store.get<string>('gitlabAccessToken')
       hasCloudSync = !!gitlabAccessToken
+    } else if (primaryBackupMethod === 'gitea') {
+      const giteaAccessToken = await store.get<string>('giteaAccessToken')
+      hasCloudSync = !!giteaAccessToken
     }
     
     // 只有在配置了云同步时才设置加载状态
@@ -731,6 +745,9 @@ const useArticleStore = create<NoteState>((set, get) => ({
     } else if (primaryBackupMethod === 'gitlab') {
       const gitlabAccessToken = await store.get<string>('gitlabAccessToken')
       if (!gitlabAccessToken) return
+    } else if (primaryBackupMethod === 'gitea') {
+      const giteaAccessToken = await store.get<string>('giteaAccessToken')
+      if (!giteaAccessToken) return
     }
     
     try {
@@ -748,6 +765,10 @@ const useArticleStore = create<NoteState>((set, get) => ({
           const gitlabRepo1 = await getSyncRepoName('gitlab');
           files = await getGitlabFiles({ path: fullpath, repo: gitlabRepo1 });
           break;
+        case 'gitea':
+          const giteaRepo1 = await getSyncRepoName('gitea');
+          files = await getGiteaFiles({ path: fullpath, repo: giteaRepo1 });
+          break;
       }
       
       if (files) {
@@ -755,7 +776,7 @@ const useArticleStore = create<NoteState>((set, get) => ({
         const currentFolder = getCurrentFolder(fullpath, cacheTree)
         
         if (currentFolder) {
-          files.forEach((file: GithubContent | GiteeFile) => {
+          files.forEach((file: GithubContent | GiteeFile | GiteaDirectoryItem) => {
             // 过滤以"."开头的文件和文件夹
             if (file.name.startsWith('.')) {
               return;
