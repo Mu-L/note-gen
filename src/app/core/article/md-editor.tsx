@@ -42,6 +42,7 @@ export function MdEditor() {
   const { theme } = useTheme()
   const { currentLocale } = useI18n()
   const t = useTranslations('article.file.sync')
+  const te = useTranslations('article.editor')
   // 移动端强制使用即时渲染模式
   const defaultMode = isMobileDevice() ? 'ir' : 'ir'
   const [localMode, setLocalMode] = useLocalStorage<'ir' | 'sv' | 'wysiwyg'>('useLocalMode', defaultMode)
@@ -383,10 +384,15 @@ export function MdEditor() {
             const filesUrls = await uploadImages(files)
             if (vditor && typeof vditor.insertValue === 'function') {
               for (let i = 0; i < filesUrls.length; i++) {
-                vditor.insertValue(`![${files[i].name}](${filesUrls[i]})`)
+                // 只插入有效的 URL
+                if (filesUrls[i] && filesUrls[i] !== 'undefined') {
+                  vditor.insertValue(`![${files[i].name}](${filesUrls[i]})`)
+                }
               }
             }
-            return filesUrls.join('\n')
+            // 过滤掉 undefined 并返回有效的 URL
+            const validUrls = filesUrls.filter(url => url && url !== 'undefined')
+            return validUrls.join('\n')
           } else {
             // 保存到当前笔记所在文件夹的静态资源目录
             const workspace = await getWorkspacePath()
@@ -572,15 +578,23 @@ export function MdEditor() {
   async function uploadImages(files: File[]) {
     const list = await Promise.all(
       files.map((file) => {
-        return new Promise<string>(async(resolve, reject) => {
-          if (!file.type.includes('image')) return
+        return new Promise<string>((resolve, reject) => {
+          // 过滤掉非图片文件和 null
+          if (!file || !file.type || !file.type.includes('image')) {
+            resolve(undefined as unknown as string)
+            return
+          }
           const toastNotification = toast({
-            title: t('upload.uploading'),
+            title: te('upload.uploading'),
             description: file.name,
             duration: 600000,
           })
-          await uploadImage(file).then(async url => {
-            resolve(url)
+          uploadImage(file).then(url => {
+            if (url) {
+              resolve(url)
+            } else {
+              resolve(undefined as unknown as string)
+            }
           }).catch(err => {
             reject(err)
           }).finally(() => {
