@@ -43,20 +43,35 @@ fn find_npx_path() -> Option<String> {
     if let Ok(path_var) = std::env::var("PATH") {
         // Windows 使用分号，Unix 使用冒号
         let separator = if cfg!(target_os = "windows") { ';' } else { ':' };
-        
-        for path in path_var.split(separator) {
-            let npx_path = PathBuf::from(path).join("npx");
-            if npx_path.exists() {
-                let found = npx_path.to_string_lossy().to_string();
-                println!("Found npx in PATH: {}", found);
-                return Some(found);
+
+        // 在 Windows 上优先查找 npx.cmd
+        if cfg!(target_os = "windows") {
+            for path in path_var.split(separator) {
+                let npx_cmd = PathBuf::from(path).join("npx.cmd");
+                if npx_cmd.exists() {
+                    let found = npx_cmd.to_string_lossy().to_string();
+                    println!("Found npx.cmd in PATH: {}", found);
+                    return Some(found);
+                }
             }
-            // Windows 版本
-            let npx_cmd = PathBuf::from(path).join("npx.cmd");
-            if npx_cmd.exists() {
-                let found = npx_cmd.to_string_lossy().to_string();
-                println!("Found npx.cmd in PATH: {}", found);
-                return Some(found);
+            // 如果没找到 .cmd，再查找无扩展名的
+            for path in path_var.split(separator) {
+                let npx_path = PathBuf::from(path).join("npx");
+                if npx_path.exists() {
+                    let found = npx_path.to_string_lossy().to_string();
+                    println!("Found npx in PATH: {}", found);
+                    return Some(found);
+                }
+            }
+        } else {
+            // Unix 系统：先查找 npx，再查找 npx.cmd（如果存在）
+            for path in path_var.split(separator) {
+                let npx_path = PathBuf::from(path).join("npx");
+                if npx_path.exists() {
+                    let found = npx_path.to_string_lossy().to_string();
+                    println!("Found npx in PATH: {}", found);
+                    return Some(found);
+                }
             }
         }
     }
@@ -108,16 +123,35 @@ pub async fn start_mcp_stdio_server(
     }
     
     // 处理 npx 命令 - 需要找到正确的 npx 路径
-    let mut cmd = if command == "npx" || command.ends_with("/npx") {
+    let mut cmd = if command == "npx" || command.ends_with("/npx") || command.ends_with("\\npx") {
         // 尝试找到 npx 的完整路径
         let npx_path = find_npx_path();
-        
+
         if let Some(npx) = npx_path {
             println!("Using npx at: {}", npx);
             println!("Executing: {} {:?}", npx, args);
-            let mut cmd = Command::new(&npx);
-            cmd.args(&args);
-            cmd
+
+            // 在 Windows 上，.cmd 和 .bat 文件需要通过 cmd.exe 执行
+            #[cfg(target_os = "windows")]
+            {
+                if npx.ends_with(".cmd") || npx.ends_with(".bat") {
+                    let mut cmd = Command::new("cmd");
+                    cmd.args(&["/C", &npx]);
+                    cmd.args(&args);
+                    cmd
+                } else {
+                    let mut cmd = Command::new(&npx);
+                    cmd.args(&args);
+                    cmd
+                }
+            }
+
+            #[cfg(not(target_os = "windows"))]
+            {
+                let mut cmd = Command::new(&npx);
+                cmd.args(&args);
+                cmd
+            }
         } else {
             // 如果找不到 npx，尝试通过 shell 执行
             let full_command = if args.is_empty() {
@@ -125,14 +159,14 @@ pub async fn start_mcp_stdio_server(
             } else {
                 format!("{} {}", command, args.join(" "))
             };
-            
+
             #[cfg(target_os = "windows")]
             {
                 let mut cmd = Command::new("cmd");
                 cmd.args(&["/C", &full_command]);
                 cmd
             }
-            
+
             #[cfg(not(target_os = "windows"))]
             {
                 let mut cmd = Command::new("sh");

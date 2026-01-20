@@ -9,6 +9,7 @@ src-tauri/gen/*
 !src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset/
 *.local
 target/*
+.claude/*
 
 /.pnp
 .pnp.*
