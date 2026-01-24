@@ -1552,6 +1552,26 @@
         "settingFailed": "設定に失敗しました",
         "confirmDeleteVectors": "{count} 個のファイルのベクトルを削除してもよろしいですか？"
       },
+      "folderView": {
+        "vectorDbNotEnabled": "ベクターデッサースが有効ではありません",
+        "indexed": "インデックス済み",
+        "vectorCount": "ベクター数",
+        "databaseSize": "データベースサイズ",
+        "lastCalculated": "最終計算",
+        "never": "なし",
+        "calculating": "計算中...",
+        "failed": "失敗",
+        "recalculateVectors": "ベクターを再計算",
+        "skills": "Skills",
+        "skillNotFound": "Skill が見つかりません",
+        "skillNotFoundDesc": "ID {id} の Skill が見つかりません",
+        "loadingSkills": "Skills を読み込み中...",
+        "loadingSkill": "Skill を読み込み中...",
+        "globalSkills": "グローバル Skills",
+        "workspaceSkills": "ワークスペース Skills",
+        "instructions": "命令",
+        "examples": "例"
+      },
       "error": {
         "fileExists": "ファイル名が既に存在します"
       },

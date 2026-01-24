@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Folder, Database, Clock, RefreshCw, Loader2, FileText, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { useTranslations } from 'next-intl'
 import useArticleStore from '@/stores/article'
 import useVectorStore from '@/stores/vector'
 import { useSkillsStore } from '@/stores/skills'
 import { isSkillsFolder, extractSkillIdFromPath } from '@/lib/skills/utils'
+import { computedParentPath } from '@/lib/path'
 import { getVectorDocumentsByFilename } from '@/db/vector'
 import { readTextFile } from '@tauri-apps/plugin-fs'
 import { getFilePathOptions, getWorkspacePath } from '@/lib/workspace'
@@ -55,8 +57,10 @@ interface SkillContent {
 // Skills 列表视图组件
 function SkillsListView({
   skills,
+  t,
 }: {
   skills: SkillMetadata[]
+  t: (key: string) => string
 }) {
   // 按 scope 分组
   const globalSkills = skills.filter(s => s.scope === 'global')
@@ -82,7 +86,7 @@ function SkillsListView({
       {/* Skills Icon and Name */}
       <div className="flex flex-col items-center gap-3">
         <Sparkles className="w-20 h-20 text-primary" />
-        <h2 className="text-2xl font-semibold tracking-tight">Skills ({skills.length})</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{t('skills')} ({skills.length})</h2>
       </div>
 
       {/* Skills 列表 */}
@@ -91,7 +95,7 @@ function SkillsListView({
           {/* 全局 Skills */}
           {globalSkills.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground px-1">全局 Skills</h3>
+              <h3 className="text-sm font-medium text-muted-foreground px-1">{t('globalSkills')}</h3>
               {globalSkills.map((skill) => (
                 <div
                   key={skill.id}
@@ -117,7 +121,7 @@ function SkillsListView({
           {/* 工作区 Skills */}
           {projectSkills.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground px-1">工作区 Skills</h3>
+              <h3 className="text-sm font-medium text-muted-foreground px-1">{t('workspaceSkills')}</h3>
               {projectSkills.map((skill) => (
                 <div
                   key={skill.id}
@@ -148,8 +152,10 @@ function SkillsListView({
 // 单个 Skill 详情视图组件
 function SkillDetailView({
   skillContent,
+  t,
 }: {
   skillContent: SkillContent
+  t: (key: string) => string
 }) {
   const { metadata, instructions, examples } = skillContent
 
@@ -168,7 +174,7 @@ function SkillDetailView({
       <div className="flex flex-col gap-4 w-full max-w-2xl">
         {/* 指令 */}
         <div className="border rounded-lg p-4 space-y-3">
-          <h3 className="font-semibold text-sm">指令</h3>
+          <h3 className="font-semibold text-sm">{t('instructions')}</h3>
           <div className="text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded max-h-60 overflow-y-auto">
             {instructions}
           </div>
@@ -177,7 +183,7 @@ function SkillDetailView({
         {/* 示例 */}
         {examples && (
           <div className="border rounded-lg p-4 space-y-3">
-            <h3 className="font-semibold text-sm">示例</h3>
+            <h3 className="font-semibold text-sm">{t('examples')}</h3>
             <div className="text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded max-h-60 overflow-y-auto">
               {examples}
             </div>
@@ -189,8 +195,10 @@ function SkillDetailView({
 }
 
 export function FolderView({ folderPath }: FolderViewProps) {
+  const t = useTranslations('article.file.folderView')
   const [stats, setStats] = useState<FolderStats | null>(null)
   const [loadingStats, setLoadingStats] = useState(false)
+  const [vectorFilesInitialized, setVectorFilesInitialized] = useState(false)
   const [batchProgress, setBatchProgress] = useState<{
     total: number
     processed: number
@@ -198,7 +206,7 @@ export function FolderView({ folderPath }: FolderViewProps) {
     currentFile: string
   } | null>(null)
 
-  const { fileTree, vectorIndexedFiles } = useArticleStore()
+  const { fileTree, vectorIndexedFiles, initVectorIndexedFiles } = useArticleStore()
   const { isVectorDbEnabled } = useVectorStore()
   const { getSkillsByScope, initSkills, initialized: skillsStoreInitialized } = useSkillsStore()
 
@@ -218,9 +226,8 @@ export function FolderView({ folderPath }: FolderViewProps) {
     }
   }, [isSkillsView, isSkillDetailView, skillsStoreInitialized, initSkills])
 
-  // 原有的文件夹向量视图逻辑...
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function collectFiles(_tree: typeof fileTree, _targetPath: string): string[] {
+  // Collect all markdown files in the target folder recursively
+  function collectFiles(tree: typeof fileTree, targetPath: string): string[] {
     const files: string[] = []
 
     // Helper to collect files from a directory and its subdirectories
@@ -239,14 +246,15 @@ export function FolderView({ folderPath }: FolderViewProps) {
     }
 
     // Find the target folder in the tree
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     function findAndCollect(_tree: typeof fileTree, _targetPath: string): boolean {
       for (const item of _tree) {
-        if (item.isDirectory && folderPath === _targetPath) {
+        const itemPath = computedParentPath(item)
+
+        if (item.isDirectory && itemPath === _targetPath) {
           // Found the target folder, collect all files recursively
           if (item.children) {
             for (const child of item.children) {
-              const childPath = `${folderPath}/${child.name}`
+              const childPath = `${targetPath}/${child.name}`
               collectFromDirectory(child, childPath)
             }
           }
@@ -261,7 +269,7 @@ export function FolderView({ folderPath }: FolderViewProps) {
       return false
     }
 
-    findAndCollect(fileTree, folderPath)
+    findAndCollect(tree, targetPath)
     return files
   }
 
@@ -313,10 +321,21 @@ export function FolderView({ folderPath }: FolderViewProps) {
     }
   }, [folderFiles, vectorIndexedFiles])
 
-  // Initial stats calculation
+  // 确保 vectorIndexedFiles 被初始化
   useEffect(() => {
-    calculateStats()
-  }, [calculateStats])
+    const init = async () => {
+      await initVectorIndexedFiles()
+      setVectorFilesInitialized(true)
+    }
+    init()
+  }, [initVectorIndexedFiles])
+
+  // Initial stats calculation - 等待 vectorIndexedFiles 初始化完成
+  useEffect(() => {
+    if (vectorFilesInitialized) {
+      calculateStats()
+    }
+  }, [calculateStats, vectorFilesInitialized])
 
   // Start batch recalculation
   const startRecalculation = useCallback(async () => {
@@ -364,8 +383,7 @@ export function FolderView({ folderPath }: FolderViewProps) {
                 processed,
                 currentFile: filename
               } : null)
-            } catch (error) {
-              console.error(`Failed to process ${filePath}:`, error)
+            } catch {
               failed++
               setBatchProgress(prev => prev ? {
                 ...prev,
@@ -375,25 +393,25 @@ export function FolderView({ folderPath }: FolderViewProps) {
             }
           })
         )
-      } catch (error) {
-        console.error('Batch processing error:', error)
+      } catch {
+        // Silently handle batch errors
       }
     }
 
-    // 刷新向量索引文件列表，以便 calculateStats 获取最新数据
+    // Refresh vector indexed files list for calculateStats to get latest data
     await useArticleStore.getState().initVectorIndexedFiles()
     await calculateStats()
     setBatchProgress(null)
   }, [folderFiles, calculateStats])
 
-  // 如果是 Skills 文件夹，显示 Skills 视图
+  // If it's a Skills folder, show Skills view
   if (isSkillsView) {
-    // 如果 skills 还未初始化，显示加载状态
+    // If skills not initialized yet, show loading state
     if (!skillsStoreInitialized) {
       return (
         <div className="flex-1 h-full flex flex-col items-center justify-center bg-background">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground mt-4">加载 Skills...</p>
+          <p className="text-sm text-muted-foreground mt-4">{t('loadingSkills')}</p>
         </div>
       )
     }
@@ -401,22 +419,22 @@ export function FolderView({ folderPath }: FolderViewProps) {
     const globalSkills = getSkillsByScope('global')
     const projectSkills = getSkillsByScope('project')
     const allSkills = [...globalSkills, ...projectSkills].map(s => s.metadata)
-    return <SkillsListView skills={allSkills} />
+    return <SkillsListView skills={allSkills} t={t} />
   }
 
-  // 如果是 Skill 子文件夹，显示 Skill 详情视图
+  // If it's a Skill subfolder, show Skill detail view
   if (isSkillDetailView) {
-    // 如果 skills 还未初始化，显示加载状态
+    // If skills not initialized yet, show loading state
     if (!skillsStoreInitialized) {
       return (
         <div className="flex-1 h-full flex flex-col items-center justify-center bg-background">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground mt-4">加载 Skill...</p>
+          <p className="text-sm text-muted-foreground mt-4">{t('loadingSkill')}</p>
         </div>
       )
     }
 
-    // 获取所有 skills 并查找匹配的 skill
+    // Get all skills and find matching skill
     const globalSkills = getSkillsByScope('global')
     const projectSkills = getSkillsByScope('project')
     const allSkills = [...globalSkills, ...projectSkills]
@@ -427,25 +445,32 @@ export function FolderView({ folderPath }: FolderViewProps) {
       return (
         <div className="flex-1 h-full flex flex-col items-center justify-center bg-background">
           <Sparkles className="w-16 h-16 text-muted-foreground" />
-          <h2 className="text-2xl font-semibold tracking-tight mt-4">Skill 未找到</h2>
+          <h2 className="text-2xl font-semibold tracking-tight mt-4">{t('skillNotFound')}</h2>
           <p className="text-muted-foreground text-sm mt-2">
-            无法找到 ID 为 {skillId} 的 Skill
+            {t('skillNotFoundDesc', { id: skillId || '' })}
           </p>
         </div>
       )
     }
 
-    return <SkillDetailView skillContent={skillContent} />
+    return <SkillDetailView skillContent={skillContent} t={t} />
   }
 
-  if (!isVectorDbEnabled) {
+  // Check if there's any computed vector data
+  const hasVectorData = folderFiles.some(file => {
+    const filename = file.split('/').pop() || file
+    return vectorIndexedFiles.has(filename)
+  })
+
+  // If no vector data and vector database is not enabled
+  if (!hasVectorData && !isVectorDbEnabled) {
     return (
       <div className="flex-1 h-full flex flex-col items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Folder className="w-16 h-16 text-muted-foreground" />
           <h2 className="text-2xl font-semibold tracking-tight">{folderName}</h2>
           <p className="text-muted-foreground text-sm">
-            向量数据库未启用
+            {t('vectorDbNotEnabled')}
           </p>
         </div>
       </div>
@@ -475,7 +500,7 @@ export function FolderView({ folderPath }: FolderViewProps) {
           <div className="flex items-center justify-between text-sm py-2 border-b">
             <span className="text-muted-foreground flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              已计算
+              {t('indexed')}
             </span>
             <span className="font-medium">
               {stats.indexedFiles} / {stats.totalFiles}
@@ -486,7 +511,7 @@ export function FolderView({ folderPath }: FolderViewProps) {
           <div className="flex items-center justify-between text-sm py-2 border-b">
             <span className="text-muted-foreground flex items-center gap-2">
               <Database className="w-4 h-4" />
-              向量数
+              {t('vectorCount')}
             </span>
             <span className="font-medium">{stats.totalVectors}</span>
           </div>
@@ -495,7 +520,7 @@ export function FolderView({ folderPath }: FolderViewProps) {
           <div className="flex items-center justify-between text-sm py-2 border-b">
             <span className="text-muted-foreground flex items-center gap-2">
               <Database className="w-4 h-4" />
-              数据库大小
+              {t('databaseSize')}
             </span>
             <span className="font-medium">{stats.databaseSize}</span>
           </div>
@@ -504,10 +529,10 @@ export function FolderView({ folderPath }: FolderViewProps) {
           <div className="flex items-center justify-between text-sm py-2">
             <span className="text-muted-foreground flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              最后计算
+              {t('lastCalculated')}
             </span>
             <span className="font-medium">
-              {stats.lastUpdated || '从未'}
+              {stats.lastUpdated || t('never')}
             </span>
           </div>
         </div>
@@ -517,13 +542,13 @@ export function FolderView({ folderPath }: FolderViewProps) {
       {batchProgress && (
         <div className="w-full max-w-md space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>计算中...</span>
+            <span>{t('calculating')}</span>
             <span>{batchProgress.processed} / {batchProgress.total}</span>
           </div>
           <Progress value={(batchProgress.processed / batchProgress.total) * 100} className="h-2" />
           {batchProgress.failed > 0 && (
             <p className="text-xs text-destructive">
-              失败: {batchProgress.failed}
+              {t('failed')}: {batchProgress.failed}
             </p>
           )}
         </div>
@@ -537,7 +562,7 @@ export function FolderView({ folderPath }: FolderViewProps) {
         className="gap-2"
       >
         <RefreshCw className={`w-4 h-4 ${batchProgress ? 'animate-spin' : ''}`} />
-        重新计算向量
+        {t('recalculateVectors')}
       </Button>
     </div>
   )

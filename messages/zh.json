@@ -1622,6 +1622,26 @@
         "settingFailed": "设置失败",
         "confirmDeleteVectors": "确定要删除 {count} 个文件的向量吗？"
       },
+      "folderView": {
+        "vectorDbNotEnabled": "向量数据库未启用",
+        "indexed": "已计算",
+        "vectorCount": "向量数",
+        "databaseSize": "数据库大小",
+        "lastCalculated": "最后计算",
+        "never": "从未",
+        "calculating": "计算中...",
+        "failed": "失败",
+        "recalculateVectors": "重新计算向量",
+        "skills": "Skills",
+        "skillNotFound": "Skill 未找到",
+        "skillNotFoundDesc": "无法找到 ID 为 {id} 的 Skill",
+        "loadingSkills": "加载 Skills...",
+        "loadingSkill": "加载 Skill...",
+        "globalSkills": "全局 Skills",
+        "workspaceSkills": "工作区 Skills",
+        "instructions": "指令",
+        "examples": "示例"
+      },
       "error": {
         "fileExists": "文件名已存在"
       },

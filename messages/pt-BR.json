@@ -1455,6 +1455,26 @@
         "settingFailed": "Falha na configuração",
         "confirmDeleteVectors": "Tem certeza de que deseja excluir vetores de {count} arquivos?"
       },
+      "folderView": {
+        "vectorDbNotEnabled": "Banco de dados vetorial não está habilitado",
+        "indexed": "Indexado",
+        "vectorCount": "Contagem de Vetores",
+        "databaseSize": "Tamanho do Banco de Dados",
+        "lastCalculated": "Último Cálculo",
+        "never": "Nunca",
+        "calculating": "Calculando...",
+        "failed": "Falhou",
+        "recalculateVectors": "Recalcular Vetores",
+        "skills": "Skills",
+        "skillNotFound": "Skill Não Encontrado",
+        "skillNotFoundDesc": "Não foi possível encontrar Skill com ID {id}",
+        "loadingSkills": "Carregando Skills...",
+        "loadingSkill": "Carregando Skill...",
+        "globalSkills": "Skills Globais",
+        "workspaceSkills": "Skills do Workspace",
+        "instructions": "Instruções",
+        "examples": "Exemplos"
+      },
       "error": {
         "fileExists": "O nome do arquivo já existe"
       },

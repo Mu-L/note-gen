@@ -1596,6 +1596,26 @@
         "settingFailed": "Setting failed",
         "confirmDeleteVectors": "Are you sure you want to delete vectors for {count} files?"
       },
+      "folderView": {
+        "vectorDbNotEnabled": "Vector database not enabled",
+        "indexed": "Indexed",
+        "vectorCount": "Vector Count",
+        "databaseSize": "Database Size",
+        "lastCalculated": "Last Calculated",
+        "never": "Never",
+        "calculating": "Calculating...",
+        "failed": "Failed",
+        "recalculateVectors": "Recalculate Vectors",
+        "skills": "Skills",
+        "skillNotFound": "Skill Not Found",
+        "skillNotFoundDesc": "Cannot find Skill with ID {id}",
+        "loadingSkills": "Loading Skills...",
+        "loadingSkill": "Loading Skill...",
+        "globalSkills": "Global Skills",
+        "workspaceSkills": "Workspace Skills",
+        "instructions": "Instructions",
+        "examples": "Examples"
+      },
       "error": {
         "fileExists": "File name already exists"
       },
