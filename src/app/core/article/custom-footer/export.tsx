@@ -133,25 +133,50 @@ export default function ExportFormatSelector({editor, disabled}: {editor?: Vdito
       document.body.removeChild(container);
 
       // 创建 PDF
-      const imgWidth = 210; // A4 宽度 mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      
-      // 如果内容超过一页，需要分页
+
+      // PDF 页边距（上下左右）
+      const margin = 15; // mm
       const pageHeight = 297; // A4 高度 mm
-      let heightLeft = imgHeight;
+      const pageWidth = 210; // A4 宽度 mm
+
+      // 可用内容区域尺寸
+      const contentWidth = pageWidth - margin * 2;
+      const contentHeight = pageHeight - margin * 2;
+
+      // 计算图片在 PDF 中的高度（按宽度缩放，保持比例）
+      const imgHeight = (canvas.height * contentWidth) / canvas.width;
+
+      // 计算每页对应的像素高度
+      const pxPageHeight = (contentHeight / imgHeight) * canvas.height;
+
       let position = 0;
 
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      while (position < canvas.height) {
+        if (position > 0) {
+          pdf.addPage();
+        }
 
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        // 计算当前页需要显示的高度
+        const remainingHeight = canvas.height - position;
+        const currentPageHeight = Math.min(pxPageHeight, remainingHeight);
+
+        // 创建一个临时 canvas 来裁剪图片
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = currentPageHeight;
+        const ctx = tempCanvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(canvas, 0, position, canvas.width, currentPageHeight, 0, 0, canvas.width, currentPageHeight);
+        }
+
+        const pageImgData = tempCanvas.toDataURL('image/jpeg', 1.0);
+        const pageImgHeight = (currentPageHeight / pxPageHeight) * contentHeight;
+
+        // 添加页边距
+        pdf.addImage(pageImgData, 'JPEG', margin, margin, contentWidth, pageImgHeight);
+
+        position += pxPageHeight;
       }
 
       // 将 PDF 转为 ArrayBuffer
