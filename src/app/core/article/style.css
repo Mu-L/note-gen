@@ -281,6 +281,11 @@
   background-color: hsl(var(--popover));
 }
 
+/* 编辑模式切换菜单的定位 - 确保出现在按钮下方 */
+.vditor-panel--arrow {
+  transform: translateY(75px) !important;
+}
+
 .vditor-hint button {
   font-size: 0.75rem;
   color: hsl(var(--primary));
@@ -299,9 +304,7 @@
 
 .vditor-panel {
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  height: 2rem;
   padding: 0.25rem;
-  transform: translateY(-1rem);
 }
 
 /* 搜索高亮样式 */

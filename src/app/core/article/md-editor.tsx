@@ -35,7 +35,7 @@ import { infographicRenderer, renderInfographicElements } from '@/lib/infographi
 
 export function MdEditor() {
   const [editor, setEditor] = useState<Vditor>();
-  const { currentArticle, saveCurrentArticle, loading, isPulling, activeFilePath, matchPosition, setMatchPosition, setActiveFilePath, loadFileTree, setCurrentArticle } = useArticleStore()
+  const { currentArticle, saveCurrentArticle, loading, isPulling, activeFilePath, matchPosition, setMatchPosition, setActiveFilePath, loadFileTree, setCurrentArticle, readArticle } = useArticleStore()
   const { assetsPath, contentTextScale } = useSettingStore()
   const { fetchMarks } = useMarkStore()
   const [floatBarPosition, setFloatBarPosition] = useState<{left: number, top: number} | null>(null)
@@ -200,6 +200,9 @@ export function MdEditor() {
 
         if (activeFilePath === '') {
           vditor.setValue('', true)
+        } else {
+          // 编辑器初始化时，重新读取文件内容，确保显示最新内容
+          readArticle(activeFilePath)
         }
         setEditorPadding(vditor)
 
@@ -332,7 +335,6 @@ export function MdEditor() {
         }
         if (activeFilePathRef.current) {
           saveCurrentArticle(value)
-          setCurrentArticle(value) // 同时更新 store 中的 currentArticle，避免切换页面时内容丢失
           emitter.emit('editor-input')
           handleLocalImage(vditor)
           
@@ -736,14 +738,14 @@ export function MdEditor() {
   useEffect(() => {
     if (!editor) {
       init()
-      if (activeFilePath) {
-        setContent(currentArticle)
-      }
     } else {
       // 如果文件被删除或取消选中，清空编辑器
       if (!activeFilePath) {
         editor.setValue('', true)
         setCurrentArticle('')
+      } else if (activeFilePath) {
+        // 切换到新文件时，重新读取文件内容
+        readArticle(activeFilePath)
       }
     }
   }, [activeFilePath])
