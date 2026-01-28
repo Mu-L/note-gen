@@ -843,15 +843,17 @@
         "collapse": "折りたたむ"
       },
       "text": {
-        "title": "記録テキスト",
+        "title": "テキスト記録",
         "description": "テキストを記録します。ノート整理時に適切な位置に挿入されます。",
         "characterCount": "{count} 文字",
-        "save": "記録"
+        "save": "記録",
+        "autoReadClipboard": "クリップボードのテキストを自動読み取り"
       },
       "link": {
         "title": "リンク記録",
         "description": "ウェブページのリンクを入力すると、システムは自動的にページの内容を取得して保存します",
-        "save": "保存"
+        "save": "保存",
+        "autoReadClipboard": "クリップボードのリンクを自動読み取り"
       },
       "clipboard": {
         "detectedImage": "クリップボードの画像を検出しました",

@@ -873,12 +873,14 @@
         "title": "Gravar Texto",
         "description": "Grave um pedaço de texto, que será inserido na posição apropriada ao organizar notas.",
         "characterCount": "{count} caracteres",
-        "save": "Salvar"
+        "save": "Salvar",
+        "autoReadClipboard": "Ler texto da área de transferência automaticamente"
       },
       "link": {
         "title": "Gravar Link",
         "description": "Insira um link de página da web, e o sistema rastreará automaticamente o conteúdo da página e o salvará",
-        "save": "Salvar"
+        "save": "Salvar",
+        "autoReadClipboard": "Ler link da área de transferência automaticamente"
       },
       "clipboard": {
         "detectedImage": "Imagem da área de transferência detectada",

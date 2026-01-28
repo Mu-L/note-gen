@@ -1019,13 +1019,15 @@
         "title": "Record Text",
         "description": "Record a piece of text, which will be inserted into the appropriate position when organizing notes.",
         "characterCount": "{count} characters",
-        "save": "Save"
+        "save": "Save",
+        "autoReadClipboard": "Auto-read clipboard text"
       },
 
       "link": {
         "title": "Record Link",
         "description": "Enter a webpage link, and the system will automatically crawl the page content and save it",
-        "save": "Save"
+        "save": "Save",
+        "autoReadClipboard": "Auto-read clipboard link"
       },
       "clipboard": {
         "detectedImage": "Clipboard image detected",

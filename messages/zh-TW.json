@@ -846,12 +846,14 @@
         "title": "記錄文本",
         "description": "記錄一段文本，筆記整理時將插入到合適的位置。",
         "characterCount": "{count} 字元",
-        "save": "記錄"
+        "save": "記錄",
+        "autoReadClipboard": "自動讀取剪貼簿文本"
       },
       "link": {
         "title": "連結記錄",
         "description": "輸入網頁連結，系統將自動爬取頁面內容並保存",
-        "save": "保存"
+        "save": "保存",
+        "autoReadClipboard": "自動讀取剪貼簿連結"
       },
       "clipboard": {
         "detectedImage": "檢測到剪貼簿圖片",
