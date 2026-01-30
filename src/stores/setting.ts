@@ -489,7 +489,7 @@ const useSettingStore = create<SettingState>((set, get) => ({
             await store.set(key, mergedConfig)
             set({ [key]: mergedConfig })
           } else {
-            set({ [key]: res })
+            set({ [key]: res as RecordToolbarItem[] })
           }
         } else if (key !== 'aiModelList') {
           set({ [key]: res })
