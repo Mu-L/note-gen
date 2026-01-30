@@ -484,21 +484,34 @@ export interface Keyword {
 }
 
 /**
+ * RAG 来源详情类型定义
+ */
+export interface RagSource {
+  filepath: string;  // 文件的相对路径
+  filename: string;  // 文件名
+  content: string;   // 引用的文本片段
+}
+
+/**
  * 根据关键词数组获取相关上下文
  * @param keywords 关键词数组，每个元素包含关键词文本和权重
  * @returns 包含上下文文本和引用文件名的对象
  */
-export async function getContextForQuery(keywords: Keyword[]): Promise<{ context: string; sources: string[] }> {
+export async function getContextForQuery(keywords: Keyword[]): Promise<{
+  context: string;
+  sources: string[];
+  sourceDetails: RagSource[]
+}> {
   try {
     const store = await Store.load('store.json');
     const resultCount = await store.get<number>('ragResultCount') || 5;
     const similarityThreshold = await store.get<number>('ragSimilarityThreshold') || 0.7;
     // 存储所有相关上下文的结果集
-    const allContexts: { filename: string, content: string, score: number, keyword?: string, type?: string }[] = [];
-    
+    const allContexts: { filename: string, filepath: string, content: string, score: number, keyword?: string, type?: string }[] = [];
+
     // 如果没有关键词，返回空结果
     if (!keywords || keywords.length === 0) {
-      return { context: '', sources: [] };
+      return { context: '', sources: [], sourceDetails: [] };
     }
     
     // 将关键词按权重排序，优先考虑权重高的关键词
@@ -548,6 +561,7 @@ export async function getContextForQuery(keywords: Keyword[]): Promise<{ context
                 
                 allContexts.push({
                   filename: item.title || '未命名文件',
+                  filepath: item.id || '',  // 添加文件路径
                   content: contextSnippet,
                   score: finalScore,
                   keyword: keyword.text,  // 记录匹配的关键词
@@ -580,6 +594,7 @@ export async function getContextForQuery(keywords: Keyword[]): Promise<{ context
             for (const doc of similarDocs) {
               allContexts.push({
                 filename: doc.filename,
+                filepath: doc.filename,  // 向量数据库暂时只有文件名，后续可通过文件树查找完整路径
                 content: doc.content,
                 score: (doc.similarity || 0) * keyword.weight, // 用相似度乘以权重作为分数
                 keyword: keyword.text,  // 记录匹配的关键词
@@ -679,6 +694,19 @@ export async function getContextForQuery(keywords: Keyword[]): Promise<{ context
     // 提取唯一的文件名
     const sources = Array.from(new Set(finalContexts.map(ctx => ctx.filename)));
 
+    // 构建 sourceDetails（去重，每个文件只保留最相关的一个片段）
+    const sourceDetailsMap = new Map<string, RagSource>()
+    for (const ctx of finalContexts) {
+      if (!sourceDetailsMap.has(ctx.filename)) {
+        sourceDetailsMap.set(ctx.filename, {
+          filepath: ctx.filepath,
+          filename: ctx.filename,
+          content: ctx.content
+        })
+      }
+    }
+    const sourceDetails = Array.from(sourceDetailsMap.values())
+
     // 构建最终的上下文字符串
     const context = finalContexts.map(ctx => {
       return `文件：${ctx.filename}
@@ -686,10 +714,10 @@ ${ctx.content}
 `;
     }).join('\n---\n\n');
 
-    return { context, sources };
+    return { context, sources, sourceDetails };
   } catch (error) {
     handleRAGError(error, '获取查询上下文失败', false);
-    return { context: '', sources: [] };
+    return { context: '', sources: [], sourceDetails: [] };
   }
 }
 
@@ -835,15 +863,15 @@ async function collectMarkdownContentsInFolder(folderPath: string): Promise<Sear
 export async function getContextForQueryInFolder(
   keywords: Keyword[],
   folderPath: string
-): Promise<{ context: string; sources: string[] }> {
+): Promise<{ context: string; sources: string[]; sourceDetails: RagSource[] }> {
   try {
     const store = await Store.load('store.json');
     const resultCount = await store.get<number>('ragResultCount') || 5;
     const similarityThreshold = await store.get<number>('ragSimilarityThreshold') || 0.7;
-    const allContexts: { filename: string, content: string, score: number, keyword?: string, type?: string }[] = [];
+    const allContexts: { filename: string, filepath: string, content: string, score: number, keyword?: string, type?: string }[] = [];
 
     if (!keywords || keywords.length === 0) {
-      return { context: '', sources: [] };
+      return { context: '', sources: [], sourceDetails: [] };
     }
 
     const sortedKeywords = [...keywords].sort((a, b) => b.weight - a.weight);
@@ -886,6 +914,7 @@ export async function getContextForQueryInFolder(
 
                 allContexts.push({
                   filename: item.title || '未命名文件',
+                  filepath: item.id || '',
                   content: contextSnippet,
                   score: finalScore,
                   keyword: keyword.text,
@@ -915,6 +944,7 @@ export async function getContextForQueryInFolder(
             for (const doc of similarDocs) {
               allContexts.push({
                 filename: doc.filename,
+                filepath: doc.filename,  // 向量数据库暂时只有文件名
                 content: doc.content,
                 score: (doc.similarity || 0) * keyword.weight,
                 keyword: keyword.text,
@@ -1002,15 +1032,28 @@ export async function getContextForQueryInFolder(
     const finalContexts = finalUniqueContexts.slice(0, resultCount);
     const sources = Array.from(new Set(finalContexts.map(ctx => ctx.filename)));
 
+    // 构建 sourceDetails（去重，每个文件只保留最相关的一个片段）
+    const sourceDetailsMap = new Map<string, RagSource>()
+    for (const ctx of finalContexts) {
+      if (!sourceDetailsMap.has(ctx.filename)) {
+        sourceDetailsMap.set(ctx.filename, {
+          filepath: ctx.filepath,
+          filename: ctx.filename,
+          content: ctx.content
+        })
+      }
+    }
+    const sourceDetails = Array.from(sourceDetailsMap.values())
+
     const context = finalContexts.map(ctx => {
       return `文件：${ctx.filename}
 ${ctx.content}
 `;
     }).join('\n---\n\n');
 
-    return { context, sources };
+    return { context, sources, sourceDetails };
   } catch (error) {
     handleRAGError(error, '获取文件夹查询上下文失败', false);
-    return { context: '', sources: [] };
+    return { context: '', sources: [], sourceDetails: [] };
   }
 }

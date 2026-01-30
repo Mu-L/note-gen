@@ -18,6 +18,7 @@ import { useMcpStore } from "@/stores/mcp"
 import { getOpenAIFunctions } from "@/lib/mcp/tools"
 import { AgentHandler } from "@/lib/agent/agent-handler"
 import { ImageAttachment } from "./image-attachments"
+import type { RagSource } from "@/lib/rag"
 
 interface QuoteData {
   quote: string
@@ -144,6 +145,7 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
       // 构建上下文信息
       let context = ''
       let ragSources: string[] = []
+      let ragSourceDetails: RagSource[] = []
 
       // 1. 如果有当前打开的笔记，自动传入其内容
       const useArticleStore = (await import('@/stores/article')).default
@@ -160,7 +162,7 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
           const keywords = await invoke<{text: string, weight: number}[]>('rank_keywords', { text: inputValue, topK: 5 })
 
           // 根据关联资源类型选择检索方式
-          let ragResult: { context: string; sources: string[] }
+          let ragResult: { context: string; sources: string[]; sourceDetails: RagSource[] }
 
           if (linkedResource && isLinkedFolder(linkedResource)) {
             // 文件夹关联：限定检索范围到文件夹
@@ -171,6 +173,7 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
           }
 
           ragSources = ragResult.sources
+          ragSourceDetails = ragResult.sourceDetails
 
           if (ragResult.context) {
             // 将知识库内容添加到上下文
@@ -223,6 +226,7 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
         await saveChat({
           ...placeholderMessage,
           ragSources: JSON.stringify(ragSources),
+          ragSourceDetails: ragSourceDetails.length > 0 ? JSON.stringify(ragSourceDetails) : undefined,
         }, true)
       }
     } catch (error) {
@@ -293,9 +297,10 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
     // 准备请求内容
     let ragContext = ''
     let ragSources: string[] = []
+    let ragSourceDetails: RagSource[] = []
     let linkedFileContent = ''
     let quoteContent = ''
-    
+
     // 如果有引用内容，构建引用上下文
     if (quoteData) {
       const { fileName, startLine, endLine, fullContent } = quoteData
@@ -307,7 +312,7 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
           lineInfo = `第 ${startLine}-${endLine} 行`
         }
       }
-      
+
       quoteContent = `
 用户引用了笔记 "${fileName}" ${lineInfo}的以下内容：
 ${fullContent}
@@ -315,7 +320,7 @@ ${fullContent}
 请基于这段引用内容回答用户的问题。
 `
     }
-    
+
     // 如果有关联文件，读取文件内容
     if (linkedResource && !isLinkedFolder(linkedResource)) {
       try {
@@ -345,7 +350,7 @@ ${linkedFileContent}
         const keywords = await invoke<{text: string, weight: number}[]>('rank_keywords', { text: inputValue, topK: 5 })
 
         // 根据关联资源类型选择检索方式
-        let ragResult: { context: string; sources: string[] }
+        let ragResult: { context: string; sources: string[]; sourceDetails: RagSource[] }
 
         if (linkedResource && isLinkedFolder(linkedResource)) {
           // 文件夹关联：限定检索范围到文件夹
@@ -357,6 +362,7 @@ ${linkedFileContent}
 
         ragContext = ragResult.context
         ragSources = ragResult.sources
+        ragSourceDetails = ragResult.sourceDetails
 
         if (ragContext) {
           // 如果获取到了相关内容，将其作为独立部分添加到请求中
@@ -400,6 +406,7 @@ ${ragContext}
       ...message,
       content: '',
       ragSources: ragSources.length > 0 ? JSON.stringify(ragSources) : undefined,
+      ragSourceDetails: ragSourceDetails.length > 0 ? JSON.stringify(ragSourceDetails) : undefined,
     }, true)
     
     // 创建新的 AbortController 用于终止请求
@@ -450,6 +457,7 @@ ${ragContext}
         content: cache_content,
         thinking: cache_thinking || undefined,
         ragSources: ragSources.length > 0 ? JSON.stringify(ragSources) : undefined,
+        ragSourceDetails: ragSourceDetails.length > 0 ? JSON.stringify(ragSourceDetails) : undefined,
       }, true)
     }
   }

@@ -161,6 +161,20 @@ const Message = React.memo(function Message({ chat }: { chat: Chat }) {
     }
   }, [chat.ragSources])
 
+  // 解析 RAG 来源详情
+  const ragSourceDetails = useMemo(() => {
+    if (!chat.ragSourceDetails) return []
+    try {
+      return JSON.parse(chat.ragSourceDetails) as Array<{
+        filepath: string
+        filename: string
+        content: string
+      }>
+    } catch {
+      return []
+    }
+  }, [chat.ragSourceDetails])
+
   // 获取该消息关联的 MCP 工具调用
   const mcpToolCalls = useMemo(() => getMcpToolCallsByChatId(chat.id), [chat.id, getMcpToolCallsByChatId])
 
@@ -282,7 +296,7 @@ const Message = React.memo(function Message({ chat }: { chat: Chat }) {
             <>
               <ChatThinking chat={chat} />
               <ChatPreview text={content || ''} />
-              <RagSources sources={ragSources} />
+              <RagSources sources={ragSources} sourceDetails={ragSourceDetails} />
               <MessageControl chat={chat}>
                 <MarkText chat={chat} />
               </MessageControl>

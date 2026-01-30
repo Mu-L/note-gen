@@ -740,6 +740,127 @@ export function MdEditor() {
     }
   }, [editor])
 
+  // 监听搜索并滚动事件
+  useEffect(() => {
+    const handleSearchAndScroll = async (searchQuery: string) => {
+      if (!editor || !searchQuery) return
+
+      // 清除旧高亮
+      const vditorElement = editor.vditor.element
+      if (!vditorElement) return
+
+      // 清除所有可能的旧高亮
+      const oldHighlights = vditorElement.querySelectorAll('.rag-search-highlight')
+      oldHighlights.forEach(h => {
+        const parent = h.parentNode
+        if (parent) {
+          parent.replaceChild(document.createTextNode(h.textContent || ''), h)
+          parent.normalize()
+        }
+      })
+
+      // 获取编辑器内容区域
+      const irElement = vditorElement.querySelector('.vditor-ir') as HTMLElement
+      const wysiwygElement = vditorElement.querySelector('.vditor-wysiwyg') as HTMLElement
+      const svElement = vditorElement.querySelector('.vditor-sv') as HTMLElement
+
+      const searchElement: HTMLElement | null = irElement || wysiwygElement || svElement
+      if (!searchElement) return
+
+      // 搜索文本并高亮第一个匹配项
+      const searchRegex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
+      let scrollToElement: HTMLElement | null = null
+
+      // 使用 TreeWalker 遍历文本节点
+      const walker = document.createTreeWalker(
+        searchElement,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: (node) => {
+            if (!node.textContent || node.textContent.trim().length === 0) {
+              return NodeFilter.FILTER_REJECT
+            }
+            if (node.parentElement?.closest('.rag-search-highlight')) {
+              return NodeFilter.FILTER_REJECT
+            }
+            const parent = node.parentElement
+            if (parent?.closest('input, textarea, .vditor-toolbar, .vditor-hint')) {
+              return NodeFilter.FILTER_REJECT
+            }
+            return NodeFilter.FILTER_ACCEPT
+          }
+        }
+      )
+
+      const textNodes: Text[] = []
+      while (walker.nextNode()) {
+        textNodes.push(walker.currentNode as Text)
+      }
+
+      // 查找第一个匹配并高亮
+      for (const textNode of textNodes) {
+        if (scrollToElement) break // 已经找到第一个匹配
+
+        const text = textNode.textContent || ''
+        searchRegex.lastIndex = 0
+        const match = searchRegex.exec(text)
+
+        if (match) {
+          const fragment = document.createDocumentFragment()
+
+          // 添加匹配前的文本
+          if (match.index > 0) {
+            fragment.appendChild(document.createTextNode(text.substring(0, match.index)))
+          }
+
+          // 添加高亮
+          const highlight = document.createElement('span')
+          highlight.textContent = match[0]
+          highlight.className = 'rag-search-highlight'
+          highlight.style.cssText = `
+            background-color: hsl(var(--primary) / 0.5);
+            border-radius: 2px;
+            padding: 0 2px;
+            display: inline;
+          `
+          scrollToElement = highlight
+          fragment.appendChild(highlight)
+
+          // 添加剩余文本
+          if (match.index + match[0].length < text.length) {
+            fragment.appendChild(document.createTextNode(text.substring(match.index + match[0].length)))
+          }
+
+          textNode.parentNode?.replaceChild(fragment, textNode)
+        }
+      }
+
+      // 滚动到匹配位置
+      if (scrollToElement) {
+        setTimeout(() => {
+          scrollToElement!.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 150)
+      }
+
+      // 3秒后清除高亮
+      setTimeout(() => {
+        const highlights = vditorElement.querySelectorAll('.rag-search-highlight')
+        highlights.forEach(h => {
+          const parent = h.parentNode
+          if (parent) {
+            parent.replaceChild(document.createTextNode(h.textContent || ''), h)
+            parent.normalize()
+          }
+        })
+      }, 3000)
+    }
+
+    emitter.on('searchAndScroll', handleSearchAndScroll)
+    return () => {
+      emitter.off('searchAndScroll', handleSearchAndScroll)
+    }
+  }, [editor])
+
   useEffect(() => {
     if (!editor) {
       init()

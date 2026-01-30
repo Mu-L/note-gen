@@ -14,6 +14,7 @@ export interface Chat {
   inserted: boolean // 是否插入到 mark 中
   createdAt: number
   ragSources?: string // RAG引用的文件名，JSON字符串数组
+  ragSourceDetails?: string // RAG引用的详细信息，JSON字符串数组（包含文件路径和文本片段）
   agentHistory?: string // Agent执行历史，JSON字符串
   thinking?: string // AI 思考过程
   quoteData?: string // 引用信息，JSON字符串
@@ -85,6 +86,15 @@ export async function initChatsDb() {
   } catch {
     // 如果列已存在，忽略错误
   }
+
+  // 迁移：为现有表添加 ragSourceDetails 列（如果不存在）
+  try {
+    await db.execute(`
+      alter table chats add column ragSourceDetails text default null
+    `)
+  } catch {
+    // 如果列已存在，忽略错误
+  }
 }
 
 // 插入一条 chat
@@ -92,8 +102,8 @@ export async function insertChat(chat: Omit<Chat, 'id' | 'createdAt'>) {
   const db = await getDb()
   const createdAt = Date.now();
   return await db.execute(
-    "insert into chats (tagId, content, role, type, image, images, inserted, createdAt, ragSources, agentHistory, thinking, quoteData) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
-    [chat.tagId, chat.content, chat.role, chat.type, chat.image, chat.images, chat.inserted ? 1 : 0, createdAt, chat.ragSources, chat.agentHistory, chat.thinking, chat.quoteData])
+    "insert into chats (tagId, content, role, type, image, images, inserted, createdAt, ragSources, ragSourceDetails, agentHistory, thinking, quoteData) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+    [chat.tagId, chat.content, chat.role, chat.type, chat.image, chat.images, chat.inserted ? 1 : 0, createdAt, chat.ragSources, chat.ragSourceDetails, chat.agentHistory, chat.thinking, chat.quoteData])
 }
 
 // 获取所有 chats
@@ -140,8 +150,8 @@ export async function deleteAllChats() {
 export async function updateChat(chat: Chat) {
   const db = await getDb()
   return await db.execute(
-    "update chats set content = $1, role = $2, type = $3, image = $4, images = $5, inserted = $6, ragSources = $7, agentHistory = $8, thinking = $9, quoteData = $10 where id = $11",
-    [chat.content, chat.role, chat.type, chat.image, chat.images, chat.inserted ? 1 : 0, chat.ragSources, chat.agentHistory, chat.thinking, chat.quoteData, chat.id])
+    "update chats set content = $1, role = $2, type = $3, image = $4, images = $5, inserted = $6, ragSources = $7, ragSourceDetails = $8, agentHistory = $9, thinking = $10, quoteData = $11 where id = $12",
+    [chat.content, chat.role, chat.type, chat.image, chat.images, chat.inserted ? 1 : 0, chat.ragSources, chat.ragSourceDetails, chat.agentHistory, chat.thinking, chat.quoteData, chat.id])
 }
 
 // 清空 tagId 下的所有 chats
