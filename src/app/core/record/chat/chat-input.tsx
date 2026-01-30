@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import useSettingStore from "@/stores/setting"
 import { Textarea } from "@/components/ui/textarea"
 import useChatStore from "@/stores/chat"
@@ -49,7 +49,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 
 
-export function ChatInput() {
+export const ChatInput = React.memo(function ChatInput() {
   const [text, setText] = useState("")
   const { primaryModel, chatToolbarConfigPc, setChatToolbarConfigPc } = useSettingStore()
   const { chats, loading, isLinkMark } = useChatStore()
@@ -351,7 +351,7 @@ export function ChatInput() {
   }
 
   // 处理拖拽结束（仅 PC 端底部工具栏）
-  function handleDragEnd(event: DragEndEvent) {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event
 
     if (over && active.id !== over.id) {
@@ -359,20 +359,27 @@ export function ChatInput() {
       const bottomItems = chatToolbarConfigPc.filter(item => bottomTools.includes(item.id))
       const oldIndex = bottomItems.findIndex((item) => item.id === active.id)
       const newIndex = bottomItems.findIndex((item) => item.id === over.id)
-      
+
       const reorderedItems = arrayMove(bottomItems, oldIndex, newIndex)
       const allItems = [...chatToolbarConfigPc]
-      
+
       reorderedItems.forEach((item, index) => {
         const globalIndex = allItems.findIndex(i => i.id === item.id)
         if (globalIndex !== -1) {
           allItems[globalIndex] = { ...item, order: bottomItems[0].order + index }
         }
       })
-      
+
       setChatToolbarConfigPc(allItems)
     }
-  }
+  }, [chatToolbarConfigPc, setChatToolbarConfigPc])
+
+  // 使用 useMemo 优化工具栏项过滤
+  const bottomToolbarItems = useMemo(() => {
+    return chatToolbarConfigPc
+      .filter(item => ['modelSelect', 'promptSelect', 'chatLanguage'].includes(item.id) && item.enabled)
+      .sort((a, b) => a.order - b.order)
+  }, [chatToolbarConfigPc])
 
   useEffect(() => {
     if (!primaryModel) {
@@ -597,19 +604,16 @@ export function ChatInput() {
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={chatToolbarConfigPc.filter(item => ['modelSelect', 'promptSelect', 'chatLanguage'].includes(item.id) && item.enabled).map(item => item.id)}
+                  items={bottomToolbarItems.map(item => item.id)}
                   strategy={horizontalListSortingStrategy}
                 >
                   <div className="flex overflow-x-auto scrollbar-hide md:overflow-visible">
-                    {chatToolbarConfigPc
-                      .filter(item => ['modelSelect', 'promptSelect', 'chatLanguage'].includes(item.id) && item.enabled)
-                      .sort((a, b) => a.order - b.order)
-                      .map(item => (
-                        <SortableToolbarItem
-                          key={item.id}
-                          id={item.id}
-                        />
-                      ))}
+                    {bottomToolbarItems.map(item => (
+                      <SortableToolbarItem
+                        key={item.id}
+                        id={item.id}
+                      />
+                    ))}
                   </div>
                 </SortableContext>
               </DndContext>
@@ -652,18 +656,19 @@ export function ChatInput() {
             }}
           />
         )}
-        
+
       </div>
     </footer>
   )
-}
+})
+ChatInput.displayName = 'ChatInput'
 
 // 可排序的工具栏项组件
 interface SortableToolbarItemProps {
   id: string
 }
 
-function SortableToolbarItem({ id }: SortableToolbarItemProps) {
+const SortableToolbarItem = React.memo(function SortableToolbarItem({ id }: SortableToolbarItemProps) {
   const {
     attributes,
     listeners,
@@ -680,7 +685,7 @@ function SortableToolbarItem({ id }: SortableToolbarItemProps) {
   }
 
   // 渲染对应的工具栏组件
-  const renderToolbarItem = () => {
+  const renderToolbarItem = useMemo(() => {
     switch (id) {
       case 'modelSelect':
         return <ModelSelect />
@@ -691,7 +696,7 @@ function SortableToolbarItem({ id }: SortableToolbarItemProps) {
       default:
         return null
     }
-  }
+  }, [id])
 
   return (
     <div
@@ -701,7 +706,8 @@ function SortableToolbarItem({ id }: SortableToolbarItemProps) {
       {...listeners}
       className="cursor-grab active:cursor-grabbing"
     >
-      {renderToolbarItem()}
+      {renderToolbarItem}
     </div>
   )
-}
+})
+SortableToolbarItem.displayName = 'SortableToolbarItem'

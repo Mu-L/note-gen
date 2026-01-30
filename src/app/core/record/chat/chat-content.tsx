@@ -1,7 +1,8 @@
+import React from 'react'
 import useChatStore from '@/stores/chat'
 import useTagStore from '@/stores/tag'
 import { ArrowDownToLine, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Chat } from '@/db/chats'
 import ChatPreview from './chat-preview'
 import './chat.css'
@@ -21,16 +22,16 @@ import { AgentExecutionStatus } from './agent-execution-status'
 import { AgentHistory } from './agent-history'
 import { ChatImages } from "./chat-images"
 
-export default function ChatContent() {
+const ChatContent = React.memo(function ChatContent() {
   const { chats, init, agentState } = useChatStore()
   const { currentTagId } = useTagStore()
   const [isOnBottom, setIsOnBottom] = useState(true)
 
-  function handleScroll() {
+  const handleScroll = useCallback(() => {
     const md = document.querySelector('#chats-wrapper')
     if (!md) return
     setIsOnBottom(md.scrollHeight - md.scrollTop - md.clientHeight < 1)
-  }
+  }, [])
 
   useEffect(() => {
     const md = document.querySelector('#chats-wrapper')
@@ -39,11 +40,11 @@ export default function ChatContent() {
     return () => {
       md.removeEventListener('scroll', handleScroll)
     }
-  }, [])
+  }, [handleScroll])
 
   useEffect(() => {
     init(currentTagId)
-  }, [currentTagId])
+  }, [currentTagId, init])
 
   // 监听消息变化，在底部时自动滚动
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function ChatContent() {
     if (agentState.isRunning) {
       scrollToBottom()
     }
-  }, [agentState.currentThought, agentState.thoughtHistory, agentState.pendingConfirmation])
+  }, [agentState.currentThought, agentState.thoughtHistory, agentState.pendingConfirmation, agentState.isRunning])
 
   return <div id="chats-wrapper" className="flex-1 relative overflow-y-auto overflow-x-hidden w-full flex flex-col items-end p-4 gap-6">
     {
@@ -65,7 +66,7 @@ export default function ChatContent() {
         return <Message key={chat.id} chat={chat} />
       }) : <ChatEmpty />
     }
-    
+
     {/* Agent 执行状态 - 在底部实时显示，包裹在 MessageWrapper 中保持布局一致 */}
     <AgentExecutionStatusWrapper />
     {
@@ -74,21 +75,22 @@ export default function ChatContent() {
       </Button>
     }
   </div>
-}
+})
+ChatContent.displayName = 'ChatContent'
 
-function MessageWrapper({ chat, children }: { chat: Chat, children: React.ReactNode }) {
+const MessageWrapper = React.memo(function MessageWrapper({ chat, children }: { chat: Chat, children: React.ReactNode }) {
   const { deleteChat } = useChatStore()
   const [showDelete, setShowDelete] = useState(false)
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     deleteChat(chat.id)
-  }
-  
+  }, [chat.id, deleteChat])
+
   // 用户消息：右对齐，带边框和背景
   if (chat.role === 'user') {
     return (
       <div className="flex w-full justify-end">
-        <div 
+        <div
           className="group relative max-w-[85%] rounded-lg border bg-primary px-3 py-2"
           onMouseEnter={() => setShowDelete(true)}
           onMouseLeave={() => setShowDelete(false)}
@@ -97,9 +99,9 @@ function MessageWrapper({ chat, children }: { chat: Chat, children: React.ReactN
             {children}
           </div>
           {showDelete && (
-            <Button 
-              onClick={handleDelete} 
-              size="icon" 
+            <Button
+              onClick={handleDelete}
+              size="icon"
               variant="ghost"
               className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border shadow-sm"
             >
@@ -110,7 +112,7 @@ function MessageWrapper({ chat, children }: { chat: Chat, children: React.ReactN
       </div>
     )
   }
-  
+
   // AI 消息：左对齐，无边框，无图标
   return (
     <div className="flex w-full min-w-0">
@@ -119,11 +121,12 @@ function MessageWrapper({ chat, children }: { chat: Chat, children: React.ReactN
       </div>
     </div>
   )
-}
+})
+MessageWrapper.displayName = 'MessageWrapper'
 
-function AgentExecutionStatusWrapper() {
+const AgentExecutionStatusWrapper = React.memo(function AgentExecutionStatusWrapper() {
   const { agentState } = useChatStore()
-  
+
   // 只在 Agent 运行时显示
   if (!agentState.isRunning) {
     return null
@@ -136,40 +139,44 @@ function AgentExecutionStatusWrapper() {
       </div>
     </div>
   )
-}
+})
+AgentExecutionStatusWrapper.displayName = 'AgentExecutionStatusWrapper'
 
-function Message({ chat }: { chat: Chat }) {
+const Message = React.memo(function Message({ chat }: { chat: Chat }) {
   const t = useTranslations()
   const { deleteChat, getMcpToolCallsByChatId, agentState } = useChatStore()
   const content = chat.content
 
-  const handleRemoveClearContext = () => {
+  const handleRemoveClearContext = useCallback(() => {
     deleteChat(chat.id)
-  }
+  }, [chat.id, deleteChat])
 
-  // 解析 RAG 引用的文件名
-  const ragSources = chat.ragSources ? (() => {
+  // 使用 useMemo 优化解析操作
+  const ragSources = useMemo(() => {
+    if (!chat.ragSources) return []
     try {
       return JSON.parse(chat.ragSources) as string[]
     } catch {
       return []
     }
-  })() : []
-  
+  }, [chat.ragSources])
+
   // 获取该消息关联的 MCP 工具调用
-  const mcpToolCalls = getMcpToolCallsByChatId(chat.id)
-  
+  const mcpToolCalls = useMemo(() => getMcpToolCallsByChatId(chat.id), [chat.id, getMcpToolCallsByChatId])
+
   // 解析图片数组
-  const images = chat.images ? (() => {
+  const images = useMemo(() => {
+    if (!chat.images) return []
     try {
       return JSON.parse(chat.images) as string[]
     } catch {
       return []
     }
-  })() : []
-  
+  }, [chat.images])
+
   // 解析引用数据
-  const quoteData = chat.quoteData ? (() => {
+  const quoteData = useMemo(() => {
+    if (!chat.quoteData) return null
     try {
       return JSON.parse(chat.quoteData) as {
         quote: string
@@ -182,8 +189,8 @@ function Message({ chat }: { chat: Chat }) {
     } catch {
       return null
     }
-  })() : null
-  
+  }, [chat.quoteData])
+
   // 如果是空内容的 AI 消息且 Agent 正在运行，不显示（避免双头像）
   if (chat.role === 'system' && !chat.content && agentState.isRunning) {
     return null
@@ -236,7 +243,7 @@ function Message({ chat }: { chat: Chat }) {
               </div>
             </div>
           )}
-          
+
           {/* MCP 工具调用展示 */}
           {mcpToolCalls.length > 0 && (
             <div className="space-y-4 mb-4">
@@ -284,4 +291,7 @@ function Message({ chat }: { chat: Chat }) {
         </div>
       </MessageWrapper>
   }
-}
+})
+Message.displayName = 'Message'
+
+export default ChatContent
