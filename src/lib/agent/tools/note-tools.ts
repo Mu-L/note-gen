@@ -3,6 +3,8 @@ import { readTextFile, writeTextFile, remove } from '@tauri-apps/plugin-fs'
 import { getAllMarkdownFiles } from '@/lib/files'
 import { getFilePathOptions } from '@/lib/workspace'
 import useArticleStore from '@/stores/article'
+import useChatStore from '@/stores/chat'
+import { isLinkedFolder } from '@/lib/files'
 
 export const listMarkdownFilesTool: Tool = {
   name: 'list_markdown_files',
@@ -35,7 +37,7 @@ export const listMarkdownFilesTool: Tool = {
 
 export const readMarkdownFileTool: Tool = {
   name: 'read_markdown_file',
-  description: '读取指定 Markdown 笔记文件的内容',
+  description: '读取指定 Markdown 笔记文件的内容。注意：如果当前已关联了某篇笔记到对话中，该文件的内容已在上下文中，无需再次读取。',
   category: 'note',
   requiresConfirmation: false,
   parameters: [
@@ -48,6 +50,29 @@ export const readMarkdownFileTool: Tool = {
   ],
   execute: async (params): Promise<ToolResult> => {
     try {
+      // 检查是否已关联该文件到对话中（避免重复读取）
+      const chatStore = useChatStore.getState()
+      const { linkedResource } = chatStore
+
+      // 如果有关联的文件（非文件夹），且路径匹配，则提示内容已在上下文中
+      if (linkedResource && !isLinkedFolder(linkedResource)) {
+        // 提取文件名进行比较，支持相对路径和绝对路径的匹配
+        const requestedFileName = params.filePath.split('/').pop() || params.filePath
+        const linkedFileName = linkedResource.relativePath.split('/').pop() || linkedResource.relativePath
+
+        if (requestedFileName === linkedFileName) {
+          return {
+            success: true,
+            data: {
+              filePath: params.filePath,
+              content: `[该文件内容已在对话上下文中] 文件 "${linkedResource.name}" (${linkedResource.relativePath}) 已关联到当前对话，其完整内容已在上下文中，无需再次读取。请直接使用上下文中已有的文件内容。`,
+              alreadyInContext: true,
+            },
+            message: `文件 "${linkedResource.name}" 已在对话上下文中，无需再次读取`,
+          }
+        }
+      }
+
       let content = ''
 
       // 统一使用 getFilePathOptions 来处理路径，无论是自定义工作区还是默认工作区

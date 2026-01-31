@@ -8,6 +8,7 @@ import { getSyncRepoName } from '@/lib/sync/repo-utils';
 import { Store } from '@tauri-apps/plugin-store';
 import { locales } from '@/lib/locales';
 import { AgentState, ToolCall } from '@/lib/agent/types'
+import { LinkedResource } from '@/lib/files'
 
 // MCP 工具调用记录（临时，不保存到数据库）
 export interface McpToolCall {
@@ -69,6 +70,10 @@ interface ChatState {
   // Placeholder 状态
   isPlaceholderEnabled: boolean
   setPlaceholderEnabled: (enabled: boolean) => void
+
+  // 关联的文件或文件夹（用于 Agent 工具调用时判断内容是否已在上下文中）
+  linkedResource: LinkedResource | null
+  setLinkedResource: (resource: LinkedResource | null) => void
 }
 
 const useChatStore = create<ChatState>((set, get) => ({
@@ -172,6 +177,11 @@ const useChatStore = create<ChatState>((set, get) => ({
   isPlaceholderEnabled: true,
   setPlaceholderEnabled: (enabled: boolean) => {
     set({ isPlaceholderEnabled: enabled })
+  },
+
+  linkedResource: null,
+  setLinkedResource: (resource: LinkedResource | null) => {
+    set({ linkedResource: resource })
   },
 
   chats: [],

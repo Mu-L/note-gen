@@ -51,7 +51,7 @@ import { CSS } from '@dnd-kit/utilities'
 export const ChatInput = React.memo(function ChatInput() {
   const [text, setText] = useState("")
   const { primaryModel, chatToolbarConfigPc, setChatToolbarConfigPc } = useSettingStore()
-  const { chats, loading, isLinkMark } = useChatStore()
+  const { chats, loading, isLinkMark, setLinkedResource: setChatLinkedResource } = useChatStore()
   const [showFileSelector, setShowFileSelector] = useState(false)
   const { marks, trashState } = useMarkStore()
   const { activeFilePath } = useArticleStore()
@@ -132,6 +132,7 @@ export const ChatInput = React.memo(function ChatInput() {
   // 移除关联文件
   function removeLinkedFile() {
     setLinkedResource(null)
+    setChatLinkedResource(null)
   }
 
   function removeImage(id: string) {
@@ -398,9 +399,11 @@ export const ChatInput = React.memo(function ChatInput() {
     })
     emitter.on('fileSelected', (event: unknown) => {
       setLinkedResource(event as MarkdownFile)
+      setChatLinkedResource(event as MarkdownFile)
     })
     emitter.on('folderSelected', (event: unknown) => {
       setLinkedResource(event as LinkedFolder)
+      setChatLinkedResource(event as LinkedFolder)
     })
     emitter.on('insert-quote', (event: unknown) => {
       const data = event as {
@@ -431,6 +434,7 @@ export const ChatInput = React.memo(function ChatInput() {
     async function linkCurrentResource() {
       if (!activeFilePath) {
         setLinkedResource(null)
+        setChatLinkedResource(null)
         return
       }
 
@@ -449,11 +453,13 @@ export const ChatInput = React.memo(function ChatInput() {
           fullPath = activeFilePath
         }
 
-        setLinkedResource({
+        const resource = {
           name: fileName,
           path: fullPath,
           relativePath: activeFilePath
-        })
+        }
+        setLinkedResource(resource)
+        setChatLinkedResource(resource)
       } else {
         // 文件夹关联逻辑 - 只有在有索引文件时才关联
         const folderName = activeFilePath.split('/').pop() || activeFilePath
@@ -477,16 +483,19 @@ export const ChatInput = React.memo(function ChatInput() {
 
         // 只有在有索引文件时才关联文件夹
         if (indexedCount > 0) {
-          setLinkedResource({
+          const resource = {
             name: folderName,
             path: fullPath,
             relativePath: activeFilePath,
             fileCount: files.length,
             indexedCount: indexedCount
-          })
+          }
+          setLinkedResource(resource)
+          setChatLinkedResource(resource)
         } else {
           // 没有索引文件，清除关联
           setLinkedResource(null)
+          setChatLinkedResource(null)
         }
       }
     }
@@ -650,6 +659,7 @@ export const ChatInput = React.memo(function ChatInput() {
             onClose={() => setShowFileSelector(false)}
             onFileSelect={(file) => {
               setLinkedResource(file)
+              setChatLinkedResource(file)
               setShowFileSelector(false)
             }}
           />
