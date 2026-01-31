@@ -616,24 +616,6 @@ export function AgentPlan({
                   </div>
                 )}
 
-                {/* Tools */}
-                {step.tools && step.tools.length > 0 && (
-                  <div className="mt-0.5 mb-1 flex flex-wrap items-center gap-1.5 pl-3">
-                    <span className="text-muted-foreground font-medium text-xs">
-                      Tools:
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {step.tools.map((tool, idx) => (
-                        <span
-                          key={idx}
-                          className="bg-secondary/40 text-secondary-foreground rounded px-1.5 py-0.5 text-[10px] font-medium shadow-sm"
-                        >
-                          {tool}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </li>
