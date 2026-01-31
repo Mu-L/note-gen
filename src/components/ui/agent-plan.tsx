@@ -202,11 +202,56 @@ export function AgentPlan({
 
     // 优先使用 completedSteps（包含完整的步骤信息）
     if (completedSteps && completedSteps.length > 0) {
+      // 跟踪已使用的 toolCalls 索引，避免重复匹配
+      const usedToolCallIndices = new Set<number>();
+
       completedSteps.forEach((step, index) => {
         const confirmation = confirmationHistory[index];
         let status: DisplayStep["status"] = "completed";
 
-        if (step.observation) {
+        // 通过工具名称匹配 toolCall（而不是索引匹配）
+        // 因为 completedSteps 和 toolCalls 的数量可能不一致
+        let toolCall: ToolCall | undefined = undefined;
+        if (step.action) {
+          // 从后往前查找，优先使用最新的未使用的 toolCall
+          for (let i = toolCalls.length - 1; i >= 0; i--) {
+            if (!usedToolCallIndices.has(i) && toolCalls[i].toolName === step.action.tool) {
+              toolCall = toolCalls[i];
+              usedToolCallIndices.add(i);
+              break;
+            }
+          }
+        }
+
+        // 优先使用 toolCall 的实际执行状态，而不是通过文本匹配判断
+        if (toolCall) {
+          switch (toolCall.status) {
+            case "success":
+              status = "completed";
+              break;
+            case "error":
+              status = "failed";
+              break;
+            case "running":
+              status = "in-progress";
+              break;
+            case "pending":
+              status = "pending";
+              break;
+            default:
+              // 如果 toolCall.status 无效，回退到文本匹配判断
+              if (step.observation) {
+                status =
+                  step.observation.includes("失败") ||
+                  step.observation.includes("错误")
+                    ? "failed"
+                    : "completed";
+              } else if (!step.action) {
+                status = "pending";
+              }
+          }
+        } else if (step.observation) {
+          // 如果没有对应的 toolCall，回退到文本匹配判断
           status =
             step.observation.includes("失败") ||
             step.observation.includes("错误")

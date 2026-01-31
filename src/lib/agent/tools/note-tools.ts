@@ -361,12 +361,22 @@ function replaceLinesInRange(
   newLines: string[]
 ): string {
   const lines = content.split('\n')
+
+  // 容错处理：如果 startLine > endLine，自动交换
+  // 这种情况可能发生在 AI 生成错误时（如删除单行时参数顺序错误）
+  let actualStartLine = startLine
+  let actualEndLine = endLine
+  if (startLine > endLine) {
+    actualStartLine = endLine
+    actualEndLine = startLine
+  }
+
   // 将行号转换为数组索引（从 0 开始）
-  const startIndex = startLine - 1
-  const endIndex = endLine - 1
+  const startIndex = actualStartLine - 1
+  const endIndex = actualEndLine - 1
 
   // 验证行号范围
-  if (startIndex < 0 || endIndex >= lines.length || startIndex > endIndex) {
+  if (startIndex < 0 || endIndex >= lines.length) {
     throw new Error(`无效的行号范围: ${startLine}-${endLine}，文件共 ${lines.length} 行`)
   }
 
