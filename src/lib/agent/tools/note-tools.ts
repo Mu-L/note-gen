@@ -574,15 +574,18 @@ export const readMarkdownFilesBatchTool: Tool = {
         }
       }
 
+      // 只要有任何文件读取失败，就标记为失败状态
       return {
-        success: results.length > 0,
+        success: errors.length === 0,
         data: {
           files: results,
           failed: errors,
           successCount: results.length,
           failCount: errors.length,
         },
-        message: `成功读取 ${results.length} 个文件${errors.length > 0 ? `，${errors.length} 个失败` : ''}`,
+        message: errors.length === 0
+          ? `成功读取 ${results.length} 个文件`
+          : `部分失败：成功读取 ${results.length} 个文件，${errors.length} 个失败`,
       }
     } catch (error) {
       return {
@@ -648,15 +651,18 @@ export const deleteMarkdownFilesBatchTool: Tool = {
         articleStore.setCurrentArticle('')
       }
 
+      // 只要有任何文件删除失败，就标记为失败状态
       return {
-        success: results.length > 0,
+        success: errors.length === 0,
         data: {
           deleted: results,
           failed: errors,
           successCount: results.length,
           failCount: errors.length,
         },
-        message: `成功删除 ${results.length} 个文件${errors.length > 0 ? `，${errors.length} 个失败` : ''}`,
+        message: errors.length === 0
+          ? `成功删除 ${results.length} 个文件`
+          : `部分失败：成功删除 ${results.length} 个文件，${errors.length} 个失败`,
       }
     } catch (error) {
       return {

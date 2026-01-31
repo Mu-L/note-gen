@@ -157,7 +157,28 @@ export function AgentPlan({
           const toolCall = history.toolCalls?.[index];
           let status: DisplayStep["status"] = "completed";
 
-          if (step.observation) {
+          // 优先使用 toolCall 的实际执行状态，而不是通过文本匹配判断
+          if (toolCall?.result?.success !== undefined) {
+            status = toolCall.result.success ? "completed" : "failed";
+          } else if (toolCall?.status) {
+            switch (toolCall.status) {
+              case "success":
+                status = "completed";
+                break;
+              case "error":
+                status = "failed";
+                break;
+              default:
+                // 回退到文本匹配判断
+                if (step.observation) {
+                  status =
+                    step.observation.includes("失败") ||
+                    step.observation.includes("错误")
+                      ? "failed"
+                      : "completed";
+                }
+            }
+          } else if (step.observation) {
             status =
               step.observation.includes("失败") ||
               step.observation.includes("错误")

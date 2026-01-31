@@ -359,11 +359,9 @@ export const createFoldersBatchTool: Tool = {
       const articleStore = useArticleStore.getState()
       await articleStore.loadFileTree()
 
-      // 只要有创建或跳过的，就算成功
-      const success = created.length > 0 || skipped.length > 0
-
+      // 只要有任何真正错误，就标记为失败状态（已存在的 skipped 不算错误）
       return {
-        success,
+        success: errors.length === 0,
         data: {
           created,
           skipped,
@@ -372,7 +370,9 @@ export const createFoldersBatchTool: Tool = {
           skippedCount: skipped.length,
           errorCount: errors.length,
         },
-        message: `创建 ${created.length} 个，跳过 ${skipped.length} 个${errors.length > 0 ? `，${errors.length} 个失败` : ''}`,
+        message: errors.length === 0
+          ? `创建 ${created.length} 个，跳过 ${skipped.length} 个`
+          : `部分失败：创建 ${created.length} 个，跳过 ${skipped.length} 个，${errors.length} 个失败`,
       }
     } catch (error) {
       return {
@@ -437,15 +437,18 @@ export const deleteFoldersBatchTool: Tool = {
       const articleStore = useArticleStore.getState()
       await articleStore.loadFileTree()
 
+      // 只要有任何文件夹删除失败，就标记为失败状态
       return {
-        success: results.length > 0,
-        data: { 
-          deleted: results, 
+        success: errors.length === 0,
+        data: {
+          deleted: results,
           failed: errors,
           successCount: results.length,
           failCount: errors.length,
         },
-        message: `成功删除 ${results.length} 个文件夹${errors.length > 0 ? `，${errors.length} 个失败` : ''}`,
+        message: errors.length === 0
+          ? `成功删除 ${results.length} 个文件夹`
+          : `部分失败：成功删除 ${results.length} 个文件夹，${errors.length} 个失败`,
       }
     } catch (error) {
       return {
