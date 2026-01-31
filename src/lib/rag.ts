@@ -783,7 +783,7 @@ export interface RagSource {
 export async function getContextForQuery(keywords: Keyword[]): Promise<{
   context: string;
   sources: string[];
-  sourceDetails: RagSource[]
+  sourceDetails: RagSource[];
 }> {
   try {
     const store = await Store.load('store.json');

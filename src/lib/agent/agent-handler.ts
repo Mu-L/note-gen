@@ -118,12 +118,6 @@ export class AgentHandler {
             currentStepStartTime: Date.now(),  // 记录新步骤的开始时间
             isThinking: true  // 标记正在等待 AI 生成新的思考
           })
-        } else {
-          // 第一次迭代
-          store.setAgentState({
-            isThinking: true,
-            currentStepStartTime: Date.now()  // 记录第一个步骤的开始时间
-          })
         }
       },
       onThought: (thought: string) => {
@@ -158,6 +152,12 @@ export class AgentHandler {
       },
       requestConfirmation: this.config.requestConfirmation,
     }
+
+    // 在开始执行前设置当前步骤的开始时间（确保第一次思考也有耗时）
+    store.setAgentState({
+      isThinking: true,
+      currentStepStartTime: Date.now()
+    })
 
     this.agent = new ReActAgent(reactConfig)
 

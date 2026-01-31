@@ -311,15 +311,15 @@ export function AgentPlan({
     }
   }, [currentThought, currentObservation, currentStepDuration, mode]);
 
-  // Auto-expand current step in live mode
+  // Auto-expand current step in live mode - keep current step always expanded while running
   React.useEffect(() => {
-    if (mode === "live" && displaySteps.length > 0) {
+    if (mode === "live" && displaySteps.length > 0 && isRunning) {
       const currentStepId = displaySteps[displaySteps.length - 1]?.id;
       if (currentStepId && !expandedTasks.includes(currentStepId)) {
         setExpandedTasks((prev) => [...prev, currentStepId]);
       }
     }
-  }, [displaySteps.length, mode]);
+  }, [displaySteps.length, currentThought, currentObservation, isRunning, mode]);
 
   // Don't render if no content in history mode
   if (mode === "history" && displaySteps.length === 0) {
@@ -333,6 +333,14 @@ export function AgentPlan({
 
   // Toggle step expansion
   const toggleStepExpansion = (stepId: string) => {
+    // In live mode, prevent collapsing the current (in-progress) step
+    if (mode === "live" && isRunning) {
+      const currentStepId = displaySteps[displaySteps.length - 1]?.id;
+      if (stepId === currentStepId) {
+        // Don't allow collapsing the current step - keep it expanded
+        return;
+      }
+    }
     setExpandedTasks((prev) =>
       prev.includes(stepId)
         ? prev.filter((id) => id !== stepId)
@@ -477,8 +485,14 @@ export function AgentPlan({
   const renderSteps = () => (
     <>
       {displaySteps.map((step, index) => {
-        const isExpanded = expandedTasks.includes(step.id);
+        const isLastStep = index === displaySteps.length - 1;
+        // In live mode, current (last) step is always expanded
+        const isExpanded = mode === "live" && isRunning && isLastStep
+          ? true
+          : expandedTasks.includes(step.id);
         const isCompleted = step.status === "completed";
+        const isCurrentStep = mode === "live" && isRunning && isLastStep;
+        const canToggle = !isCurrentStep; // Current step cannot be toggled in live mode
 
         return (
           <li
@@ -488,17 +502,17 @@ export function AgentPlan({
             {/* Step row */}
             <div className="group flex items-center gap-2 py-1">
               <div
-                className="shrink-0 cursor-pointer"
-                onClick={() => toggleStepExpansion(step.id)}
+                className={`shrink-0 ${canToggle ? "cursor-pointer" : ""}`}
+                onClick={() => canToggle && toggleStepExpansion(step.id)}
               >
-                <div className="cursor-pointer">
+                <div className={canToggle ? "cursor-pointer" : ""}>
                   {getStatusIcon(step.status)}
                 </div>
               </div>
 
               <div
-                className="flex min-w-0 grow cursor-pointer items-center justify-between"
-                onClick={() => toggleStepExpansion(step.id)}
+                className={`flex min-w-0 grow ${canToggle ? "cursor-pointer" : ""} items-center justify-between`}
+                onClick={() => canToggle && toggleStepExpansion(step.id)}
               >
                 <div className="flex-1 truncate">
                   <span
@@ -517,11 +531,13 @@ export function AgentPlan({
                       {formatDuration(step.duration)}
                     </span>
                   )}
-                  <ChevronRight
-                    className={`size-4 text-muted-foreground shrink-0 transition-transform ${
-                      isExpanded ? "rotate-90" : ""
-                    }`}
-                  />
+                  {canToggle && (
+                    <ChevronRight
+                      className={`size-4 text-muted-foreground shrink-0 transition-transform ${
+                        isExpanded ? "rotate-90" : ""
+                      }`}
+                    />
+                  )}
                 </div>
               </div>
             </div>
