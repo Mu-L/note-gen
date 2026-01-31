@@ -2,6 +2,7 @@
  * Skill 管理器
  *
  * 负责 Skills 的发现、加载、注册和匹配。
+ * 遵循 Agent Skills 官方规范: https://agentskills.io/specification
  */
 
 import {
@@ -9,13 +10,21 @@ import {
   SkillScope,
   SkillFileInfo,
   SkillMatchScore,
+  SkillScript,
+  SkillReference,
+  SkillAsset,
   SKILL_FILE_NAME,
-  SKILLS_DIR_NAME,
+  SCRIPTS_DIR_NAME,
+  REFERENCES_DIR_NAME,
+  ASSETS_DIR_NAME,
+  REFERENCE_FILE_NAME,
+  EXAMPLES_FILE_NAME,
+  KEYWORDS_FILE_NAME,
   DEFAULT_SKILL_VERSION,
   DEFAULT_SKILL_ENABLED,
   DEFAULT_USER_INVOCABLE,
 } from './types'
-import { parseSkillFile, generateSkillId } from './parser'
+import { parseSkillFile, generateSkillId, detectScriptType } from './parser'
 import { validateSkillYamlMetadata } from './validator'
 import { readTextFile, readDir, BaseDirectory, DirEntry } from '@tauri-apps/plugin-fs'
 import { getFilePathOptions } from '@/lib/workspace'
@@ -33,6 +42,7 @@ import { exists } from '@tauri-apps/plugin-fs'
  * - 注册和注销 Skills
  * - 匹配相关 Skills
  * - 验证 Skill 格式
+ * - 管理脚本、参考文档和资源文件
  */
 class SkillManager {
   private skills: Map<string, SkillContent> = new Map()
@@ -86,16 +96,16 @@ class SkillManager {
    */
   private async discoverProjectSkills(): Promise<void> {
     try {
-      const skillsDirExists = await this.directoryExists(SKILLS_DIR_NAME, 'project')
+      const skillsDirExists = await this.directoryExists('skills', 'project')
       if (!skillsDirExists) {
         return
       }
 
-      const skillDirs = await this.listSkillDirectories(SKILLS_DIR_NAME, 'project')
+      const skillDirs = await this.listSkillDirectories('skills', 'project')
 
       for (const dirName of skillDirs) {
         try {
-          await this.loadSkillFromDirectory(SKILLS_DIR_NAME, dirName, 'project')
+          await this.loadSkillFromDirectory('skills', dirName, 'project')
         } catch (error) {
           console.error(`加载工作区 Skill 失败: ${dirName}`, error)
         }
@@ -110,16 +120,16 @@ class SkillManager {
    */
   private async discoverGlobalSkills(): Promise<void> {
     try {
-      const skillsDirExists = await this.directoryExists(SKILLS_DIR_NAME, 'global')
+      const skillsDirExists = await this.directoryExists('skills', 'global')
       if (!skillsDirExists) {
         return
       }
 
-      const skillDirs = await this.listSkillDirectories(SKILLS_DIR_NAME, 'global')
+      const skillDirs = await this.listSkillDirectories('skills', 'global')
 
       for (const dirName of skillDirs) {
         try {
-          await this.loadSkillFromDirectory(SKILLS_DIR_NAME, dirName, 'global')
+          await this.loadSkillFromDirectory('skills', dirName, 'global')
         } catch (error) {
           console.error(`加载全局 Skill 失败: ${dirName}`, error)
         }
@@ -148,8 +158,9 @@ class SkillManager {
         id: skillId,
         directory: skillDirPath,
         mainFile: skillFilePath,
-        hasReference: false,
-        hasExamples: false,
+        hasScriptsDir: false,
+        hasReferencesDir: false,
+        hasAssetsDir: false,
         isValid: false,
         error: 'SKILL.md 文件不存在',
       })
@@ -169,41 +180,95 @@ class SkillManager {
         id: skillId,
         directory: skillDirPath,
         mainFile: skillFilePath,
-        hasReference: false,
-        hasExamples: false,
+        hasScriptsDir: false,
+        hasReferencesDir: false,
+        hasAssetsDir: false,
         isValid: false,
         error: validation.errors.map((e) => e.message).join('; '),
       })
       return
     }
 
-    // 检查支持文件
-    const hasReference = await this.fileExists(
-      `${skillDirPath}/REFERENCE.md`,
+    // 检查官方规范目录结构
+    const hasScriptsDir = await this.directoryExists(
+      `${skillDirPath}/${SCRIPTS_DIR_NAME}`,
       scope
     )
-    const hasExamples = await this.fileExists(
-      `${skillDirPath}/EXAMPLES.md`,
+    const hasReferencesDir = await this.directoryExists(
+      `${skillDirPath}/${REFERENCES_DIR_NAME}`,
       scope
     )
-    const hasKeywords = await this.fileExists(
-      `${skillDirPath}/KEYWORDS.md`,
+    const hasAssetsDir = await this.directoryExists(
+      `${skillDirPath}/${ASSETS_DIR_NAME}`,
       scope
     )
 
-    // 读取支持文件内容
-    let referenceContent: string | undefined
-    let examplesContent: string | undefined
-    let keywordsContent: string | undefined
+    // 向后兼容：检查旧的根目录文件
+    const hasReferenceFile = await this.fileExists(
+      `${skillDirPath}/${REFERENCE_FILE_NAME}`,
+      scope
+    )
+    const hasExamplesFile = await this.fileExists(
+      `${skillDirPath}/${EXAMPLES_FILE_NAME}`,
+      scope
+    )
+    const hasKeywordsFile = await this.fileExists(
+      `${skillDirPath}/${KEYWORDS_FILE_NAME}`,
+      scope
+    )
 
-    if (hasReference) {
-      referenceContent = await this.readFileContent(`${skillDirPath}/REFERENCE.md`, scope)
+    // 加载脚本 (scripts/)
+    const scripts: SkillScript[] = []
+    if (hasScriptsDir) {
+      const scriptFiles = await this.loadScriptsFromDirectory(
+        `${skillDirPath}/${SCRIPTS_DIR_NAME}`,
+        scope
+      )
+      scripts.push(...scriptFiles)
     }
-    if (hasExamples) {
-      examplesContent = await this.readFileContent(`${skillDirPath}/EXAMPLES.md`, scope)
+
+    // 加载参考文档 (references/)
+    const references: SkillReference[] = []
+    if (hasReferencesDir) {
+      const referenceFiles = await this.loadReferencesFromDirectory(
+        `${skillDirPath}/${REFERENCES_DIR_NAME}`,
+        scope
+      )
+      references.push(...referenceFiles)
     }
-    if (hasKeywords) {
-      keywordsContent = await this.readFileContent(`${skillDirPath}/KEYWORDS.md`, scope)
+
+    // 向后兼容：加载根目录的 REFERENCE.md
+    if (hasReferenceFile && !hasReferencesDir) {
+      const refContent = await this.readFileContent(
+        `${skillDirPath}/${REFERENCE_FILE_NAME}`,
+        scope
+      )
+      references.push({
+        name: REFERENCE_FILE_NAME,
+        path: REFERENCE_FILE_NAME,
+        description: 'Legacy reference file (consider moving to references/)',
+      })
+      // 将旧格式内容附加到指令中
+      parsed.content += '\n\n---\n\n## 参考文档 (Legacy)\n\n' + refContent
+    }
+
+    // 加载资源文件 (assets/)
+    const assets: SkillAsset[] = []
+    if (hasAssetsDir) {
+      const assetFiles = await this.loadAssetsFromDirectory(
+        `${skillDirPath}/${ASSETS_DIR_NAME}`,
+        scope
+      )
+      assets.push(...assetFiles)
+    }
+
+    // 向后兼容：加载 KEYWORDS.md
+    if (hasKeywordsFile) {
+      const keywordsContent = await this.readFileContent(
+        `${skillDirPath}/${KEYWORDS_FILE_NAME}`,
+        scope
+      )
+      parsed.content += '\n\n---\n\n## 关键词 (Legacy)\n\n' + keywordsContent
     }
 
     // 构建 Skill 内容
@@ -213,32 +278,27 @@ class SkillManager {
         id: skillId,
         name: parsed.metadata.name,
         description: parsed.metadata.description,
-        version: parsed.metadata.version || DEFAULT_SKILL_VERSION,
-        author: parsed.metadata.author,
+        license: parsed.metadata.license,
+        compatibility: parsed.metadata.compatibility,
+        metadata: parsed.metadata.metadata,
+        version: parsed.metadata.version || parsed.metadata.metadata?.version || DEFAULT_SKILL_VERSION,
+        author: parsed.metadata.author || parsed.metadata.metadata?.author,
         scope,
         model: parsed.metadata.model,
         allowedTools: Array.isArray(parsed.metadata.allowedTools)
           ? parsed.metadata.allowedTools
-          : undefined,
+          : typeof parsed.metadata.allowedTools === 'string'
+            ? parsed.metadata.allowedTools.split(/\s+/).filter(v => v.length > 0)
+            : undefined,
         userInvocable: parsed.metadata.userInvocable ?? DEFAULT_USER_INVOCABLE,
         enabled: DEFAULT_SKILL_ENABLED,
         createdAt: now,
         updatedAt: now,
       },
       instructions: parsed.content,
-      examples: examplesContent,
-      resources: [],
-    }
-
-    // 将额外的支持文件内容附加到 instructions 中，以便 AI 可以访问
-    if (keywordsContent || referenceContent) {
-      skill.instructions += '\n\n---\n\n## 补充资料\n\n'
-      if (keywordsContent) {
-        skill.instructions += '### 关键词和详细说明\n\n' + keywordsContent + '\n\n'
-      }
-      if (referenceContent) {
-        skill.instructions += '### 参考文档\n\n' + referenceContent + '\n\n'
-      }
+      scripts,
+      references,
+      assets,
     }
 
     // 注册 Skill
@@ -249,11 +309,177 @@ class SkillManager {
       id: skillId,
       directory: skillDirPath,
       mainFile: skillFilePath,
-      hasReference,
-      hasExamples,
+      hasScriptsDir,
+      hasReferencesDir,
+      hasAssetsDir,
+      hasReferenceFile,
+      hasExamplesFile,
+      hasKeywordsFile,
       isValid: true,
-      hasKeywords,
+      scriptCount: scripts.length,
+      referenceCount: references.length,
+      assetCount: assets.length,
     })
+  }
+
+  /**
+   * 从 scripts/ 目录加载脚本
+   */
+  private async loadScriptsFromDirectory(
+    scriptsDir: string,
+    scope: SkillScope
+  ): Promise<SkillScript[]> {
+    const scripts: SkillScript[] = []
+
+    try {
+      let entries: DirEntry[]
+
+      if (scope === 'global') {
+        entries = await readDir(scriptsDir, { baseDir: BaseDirectory.AppData })
+      } else {
+        const options = await getFilePathOptions(scriptsDir)
+        if (options.baseDir) {
+          entries = await readDir(options.path, { baseDir: options.baseDir })
+        } else {
+          entries = await readDir(options.path)
+        }
+      }
+
+      for (const entry of entries) {
+        // 跳过隐藏文件和目录
+        if (entry.name.startsWith('.')) {
+          continue
+        }
+
+        // 只处理文件
+        if (entry.isFile) {
+          const scriptPath = `${scriptsDir}/${entry.name}`
+
+          // 检测脚本类型
+          const scriptType = detectScriptType(entry.name)
+          if (!scriptType) {
+            console.warn(`无法识别脚本类型: ${entry.name}`)
+            continue
+          }
+
+          scripts.push({
+            name: entry.name,
+            path: scriptPath,
+            type: scriptType,
+          })
+        }
+      }
+    } catch (error) {
+      console.error(`读取脚本目录失败: ${scriptsDir}`, error)
+    }
+
+    return scripts
+  }
+
+  /**
+   * 从 references/ 目录加载参考文档
+   */
+  private async loadReferencesFromDirectory(
+    referencesDir: string,
+    scope: SkillScope
+  ): Promise<SkillReference[]> {
+    const references: SkillReference[] = []
+
+    try {
+      let entries: DirEntry[]
+
+      if (scope === 'global') {
+        entries = await readDir(referencesDir, { baseDir: BaseDirectory.AppData })
+      } else {
+        const options = await getFilePathOptions(referencesDir)
+        if (options.baseDir) {
+          entries = await readDir(options.path, { baseDir: options.baseDir })
+        } else {
+          entries = await readDir(options.path)
+        }
+      }
+
+      for (const entry of entries) {
+        // 跳过隐藏文件和目录
+        if (entry.name.startsWith('.')) {
+          continue
+        }
+
+        // 只处理 markdown 文件
+        if (entry.isFile && entry.name.endsWith('.md')) {
+          references.push({
+            name: entry.name,
+            path: `${referencesDir}/${entry.name}`,
+          })
+        }
+      }
+    } catch (error) {
+      console.error(`读取参考文档目录失败: ${referencesDir}`, error)
+    }
+
+    return references
+  }
+
+  /**
+   * 从 assets/ 目录加载资源文件
+   */
+  private async loadAssetsFromDirectory(
+    assetsDir: string,
+    scope: SkillScope
+  ): Promise<SkillAsset[]> {
+    const assets: SkillAsset[] = []
+
+    try {
+      let entries: DirEntry[]
+
+      if (scope === 'global') {
+        entries = await readDir(assetsDir, { baseDir: BaseDirectory.AppData })
+      } else {
+        const options = await getFilePathOptions(assetsDir)
+        if (options.baseDir) {
+          entries = await readDir(options.path, { baseDir: options.baseDir })
+        } else {
+          entries = await readDir(options.path)
+        }
+      }
+
+      for (const entry of entries) {
+        // 跳过隐藏文件和目录
+        if (entry.name.startsWith('.')) {
+          continue
+        }
+
+        if (entry.isFile) {
+          const ext = entry.name.substring(entry.name.lastIndexOf('.')).toLowerCase()
+          const assetPath = `${assetsDir}/${entry.name}`
+
+          // 根据扩展名确定资源类型
+          let type: SkillAsset['type'] = 'other'
+          if (['.json', '.yaml', '.yml', '.toml'].includes(ext)) {
+            type = 'data'
+          } else if (
+            ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'].includes(ext)
+          ) {
+            type = 'image'
+          } else if (
+            ['.md', '.txt', '.template'].includes(ext) ||
+            entry.name.includes('template')
+          ) {
+            type = 'template'
+          }
+
+          assets.push({
+            name: entry.name,
+            path: assetPath,
+            type,
+          })
+        }
+      }
+    } catch (error) {
+      console.error(`读取资源目录失败: ${assetsDir}`, error)
+    }
+
+    return assets
   }
 
   // ========================================================================
@@ -309,7 +535,7 @@ class SkillManager {
    */
   getUserInvocableSkills(): SkillContent[] {
     return this.getAllSkills().filter(
-      (skill) => skill.metadata.userInvocable
+      (skill) => skill.metadata.userInvocable !== false
     )
   }
 
@@ -325,6 +551,30 @@ class SkillManager {
    */
   hasSkill(id: string): boolean {
     return this.skills.has(id)
+  }
+
+  /**
+   * 获取 Skill 的脚本
+   */
+  getSkillScripts(skillId: string): SkillScript[] {
+    const skill = this.getSkill(skillId)
+    return skill?.scripts || []
+  }
+
+  /**
+   * 获取 Skill 的参考文档
+   */
+  getSkillReferences(skillId: string): SkillReference[] {
+    const skill = this.getSkill(skillId)
+    return skill?.references || []
+  }
+
+  /**
+   * 获取 Skill 的资源文件
+   */
+  getSkillAssets(skillId: string): SkillAsset[] {
+    const skill = this.getSkill(skillId)
+    return skill?.assets || []
   }
 
   // ========================================================================
