@@ -396,37 +396,48 @@ export function AgentPlan({
     const extractFromContent = (content: string): string => {
       if (!content || !content.trim()) return '';
 
-      const lines = content.split("\n").map(l => l.trim()).filter(l => l);
+      // 预处理：移除首尾的代码块标记 ``` 及其周围的空白行
+      let processedContent = content.trim();
+
+      // 移除所有 ``` 标记及其所在行
+      const lines = processedContent.split('\n');
+      const filteredLines = lines.filter(line => {
+        const trimmed = line.trim();
+        // 跳过 ``` 行（不管是否有语言标识符）
+        if (trimmed === '```' || trimmed.startsWith('```')) {
+          return false;
+        }
+        return true;
+      });
+      processedContent = filteredLines.join('\n').trim();
+
+      // 按行分割并过滤空行
+      const contentLines = processedContent.split("\n").map(l => l.trim()).filter(l => l);
 
       // 尝试从第一行获取
-      for (let i = 0; i < Math.min(lines.length, 5); i++) {
-        const line = lines[i];
-        const cleaned = cleanMarkdown(line);
+      for (let i = 0; i < Math.min(contentLines.length, 5); i++) {
+        const line = contentLines[i];
 
-        // 跳过纯代码块标记行（只有 ``` 的情况）
-        if (cleaned === '' || cleaned === '```') {
-          continue;
-        }
+        if (!line) continue;
 
-        // 如果是代码块开始，尝试获取下一行作为标题
-        if (line === '```' || line.startsWith('```')) {
-          if (i + 1 < lines.length) {
-            const nextLine = cleanMarkdown(lines[i + 1]);
-            if (nextLine && nextLine !== '```') {
-              return nextLine.length > 50 ? nextLine.substring(0, 50) + "..." : nextLine;
-            }
+        // 如果是标题（## 开头），保留标题格式，移除 # 标记
+        const headerMatch = line.match(/^(#{1,6})\s+(.+)$/);
+        if (headerMatch) {
+          const titleText = headerMatch[2].trim();
+          if (titleText) {
+            return titleText.length > 50 ? titleText.substring(0, 50) + "..." : titleText;
           }
-          continue;
         }
 
-        // 如果有有效内容，返回
+        const cleaned = cleanMarkdown(line);
         if (cleaned.length > 0) {
           return cleaned.length > 50 ? cleaned.substring(0, 50) + "..." : cleaned;
         }
       }
 
-      // 如果都没找到，返回第一行（即使是空的）
-      return lines[0] || '';
+      // 如果都没找到，返回第一行有效内容
+      const firstValidLine = contentLines.find(l => l && l.length > 0);
+      return firstValidLine || '';
     };
 
     // Use observation first - this contains the actual result of tool execution
