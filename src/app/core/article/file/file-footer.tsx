@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from "@/components/ui/button"
-import { FolderOpen, FolderSync, SortAsc, SortDesc, ChevronsDownUp, ChevronsUpDown, ArrowDownAZ, Calendar, Clock, ChevronDown, FolderPlus } from "lucide-react"
+import { FolderOpen, FolderSync, SortAsc, SortDesc, ChevronsDownUp, ChevronsUpDown, ArrowDownAZ, Calendar, Clock, ChevronDown, FolderPlus, Cloud } from "lucide-react"
 import useSettingStore from "@/stores/setting"
 import useArticleStore from "@/stores/article"
 import { useSkillsStore } from "@/stores/skills"
@@ -23,17 +23,19 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog'
 export function FileFooter() {
   const { workspacePath, workspaceHistory, setWorkspacePath } = useSettingStore()
   const { refreshSkills } = useSkillsStore()
-  const { 
-    clearCollapsibleList, 
-    loadFileTree, 
-    setActiveFilePath, 
+  const {
+    clearCollapsibleList,
+    loadFileTree,
+    setActiveFilePath,
     setCurrentArticle,
     sortType,
     setSortType,
     sortDirection,
     setSortDirection,
     toggleAllFolders,
-    collapsibleList
+    collapsibleList,
+    showCloudFiles,
+    setShowCloudFiles
   } = useArticleStore()
   const tFile = useTranslations('settings.file')
   const tToolbar = useTranslations('article.file.toolbar')
@@ -153,8 +155,16 @@ export function FileFooter() {
 
       <Separator orientation="vertical" />
 
-      {/* 右侧：排序、展开、刷新 */}
+      {/* 右侧：排序、云端开关、展开、刷新 */}
       <div className="flex items-center gap-0.5">
+        {/* 云端文件开关 */}
+        <TooltipButton
+          icon={<Cloud className={`!size-3.5 ${showCloudFiles ? 'text-primary' : 'opacity-40'}`} />}
+          tooltipText={showCloudFiles ? tToolbar('hideCloudFiles') : tToolbar('showCloudFiles')}
+          onClick={() => setShowCloudFiles(!showCloudFiles)}
+          size="sm"
+        />
+
         {/* 排序 */}
         <TooltipProvider>
           <DropdownMenu>

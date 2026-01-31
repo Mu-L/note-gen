@@ -1568,6 +1568,8 @@
         "sortAsc": "Sort Ascending",
         "sortDesc": "Sort Descending",
         "sort": "Sort",
+        "hideCloudFiles": "Hide Cloud Files",
+        "showCloudFiles": "Show Cloud Files",
         "processingVectors": "Processing Vector Data",
         "calculateVectors": "Knowledge Base Calculation (Full)",
         "enableVectorDb": "Enable Vector Database",

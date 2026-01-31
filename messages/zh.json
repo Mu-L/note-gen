@@ -1588,6 +1588,8 @@
         "sortAsc": "升序排列",
         "sortDesc": "降序排列",
         "sort": "排序",
+        "hideCloudFiles": "隐藏云端文件",
+        "showCloudFiles": "显示云端文件",
         "processingVectors": "正在处理向量数据",
         "calculateVectors": "知识库计算（全量）",
         "enableVectorDb": "启用向量数据库",

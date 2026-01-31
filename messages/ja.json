@@ -1518,6 +1518,8 @@
         "sortAsc": "昇順",
         "sortDesc": "降順",
         "sort": "並べ替え",
+        "hideCloudFiles": "クラウドファイルを非表示",
+        "showCloudFiles": "クラウドファイルを表示",
         "processingVectors": "ベクトルデータ処理中",
         "calculateVectors": "知識庫計算（全量）",
         "enableVectorDb": "ベクトルデータベースを有効化",

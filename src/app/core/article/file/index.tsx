@@ -6,11 +6,12 @@ import { FileFooter } from "./file-footer"
 import useArticleStore from "@/stores/article"
 
 export function FileSidebar() {
-  const { initCollapsibleList, initSortSettings } = useArticleStore()
+  const { initCollapsibleList, initSortSettings, initShowCloudFiles } = useArticleStore()
 
   useEffect(() => {
     initCollapsibleList()
     initSortSettings()
+    initShowCloudFiles()
   }, [])
 
   return (

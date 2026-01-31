@@ -68,6 +68,10 @@ interface NoteState {
   initHtml2md: () => Promise<void>
   setHtml2md: (html2md: boolean) => Promise<void>
 
+  showCloudFiles: boolean
+  initShowCloudFiles: () => Promise<void>
+  setShowCloudFiles: (show: boolean) => Promise<void>
+
   sortType: SortType
   sortDirection: SortDirection
   initSortSettings: () => Promise<void>
@@ -258,6 +262,18 @@ const useArticleStore = create<NoteState>((set, get) => ({
     set({ html2md })
     const store = await Store.load('store.json');
     store.set('html2md', html2md)
+  },
+
+  showCloudFiles: true,
+  initShowCloudFiles: async () => {
+    const store = await Store.load('store.json');
+    const res = await store.get<boolean>('showCloudFiles')
+    set({ showCloudFiles: res ?? true })
+  },
+  setShowCloudFiles: async (show: boolean) => {
+    set({ showCloudFiles: show })
+    const store = await Store.load('store.json');
+    await store.set('showCloudFiles', show)
   },
 
   fileTree: [],

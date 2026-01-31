@@ -1421,6 +1421,8 @@
         "sortAsc": "Ordem Crescente",
         "sortDesc": "Ordem Decrescente",
         "sort": "Ordenar",
+        "hideCloudFiles": "Ocultar Arquivos da Nuvem",
+        "showCloudFiles": "Mostrar Arquivos da Nuvem",
         "processingVectors": "Processando Dados Vetoriais",
         "calculateVectors": "Cálculo da Base de Conhecimento (Completo)",
         "enableVectorDb": "Habilitar Banco de Dados Vetorial",
