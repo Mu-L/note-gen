@@ -155,9 +155,9 @@ function ResizableWrapper() {
     const panels = []
     let index = 0
 
-    // 左侧面板始终渲染，但通过折叠状态控制显示
+    // 左侧面板
     panels.push(
-      <ResizablePanel 
+      <ResizablePanel
         key="left"
         ref={leftPanelRef}
         defaultSize={actualLayout[index++]}
@@ -170,16 +170,18 @@ function ResizableWrapper() {
     )
 
     // 左侧和中间之间的分隔条
+    // 当中间面板可见时显示；当中间面板不可见但左右都可见时也显示（作为左右分隔条）
+    const shouldShowLeftHandle = leftSidebarVisible && (centerPanelVisible || rightSidebarVisible)
     panels.push(
-      <ResizableHandle 
-        key="handle-left-center" 
-        className={`${!leftSidebarVisible || !centerPanelVisible ? 'hidden' : ''}`}
+      <ResizableHandle
+        key="handle-left-center"
+        className={`${!shouldShowLeftHandle ? 'hidden' : ''}`}
       />
     )
 
     // 中间面板
     panels.push(
-      <ResizablePanel 
+      <ResizablePanel
         key="center"
         ref={centerPanelRef}
         defaultSize={actualLayout[index++]}
@@ -192,16 +194,17 @@ function ResizableWrapper() {
     )
 
     // 中间和右侧之间的分隔条
+    // 只有当中间面板可见时才显示此分隔条
     panels.push(
-      <ResizableHandle 
-        key="handle-center-right" 
+      <ResizableHandle
+        key="handle-center-right"
         className={`${!centerPanelVisible || !rightSidebarVisible ? 'hidden' : ''}`}
       />
     )
 
     // 右侧面板
     panels.push(
-      <ResizablePanel 
+      <ResizablePanel
         key="right"
         ref={rightPanelRef}
         defaultSize={actualLayout[index++]}
