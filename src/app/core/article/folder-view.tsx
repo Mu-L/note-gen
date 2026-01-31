@@ -11,6 +11,7 @@ import { useSkillsStore } from '@/stores/skills'
 import { isSkillsFolder, extractSkillIdFromPath } from '@/lib/skills/utils'
 import { computedParentPath } from '@/lib/path'
 import { getVectorDocumentsByFilename } from '@/db/vector'
+import { SkillMetadata, SkillContent } from '@/lib/skills/types'
 import { readTextFile } from '@tauri-apps/plugin-fs'
 import { getFilePathOptions, getWorkspacePath } from '@/lib/workspace'
 import dayjs from 'dayjs'
@@ -30,28 +31,6 @@ interface FolderStats {
   totalVectors: number
   databaseSize: string
   lastUpdated: string | null
-}
-
-interface SkillMetadata {
-  id: string
-  name: string
-  description: string
-  version: string
-  author?: string
-  scope: 'global' | 'project'
-  model?: string
-  allowedTools?: string[]
-  userInvocable: boolean
-  enabled: boolean
-  createdAt: number
-  updatedAt: number
-}
-
-interface SkillContent {
-  metadata: SkillMetadata
-  instructions: string
-  examples?: string
-  resources: any[]
 }
 
 // Skills 列表视图组件
@@ -157,7 +136,7 @@ function SkillDetailView({
   skillContent: SkillContent
   t: (key: string) => string
 }) {
-  const { metadata, instructions, examples } = skillContent
+  const { metadata, instructions, scripts, references, assets } = skillContent
 
   return (
     <div className="flex-1 h-full flex flex-col items-center justify-center bg-background gap-6 p-8 overflow-y-auto">
@@ -180,12 +159,47 @@ function SkillDetailView({
           </div>
         </div>
 
-        {/* 示例 */}
-        {examples && (
+        {/* Scripts */}
+        {scripts.length > 0 && (
           <div className="border rounded-lg p-4 space-y-3">
-            <h3 className="font-semibold text-sm">{t('examples')}</h3>
-            <div className="text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded max-h-60 overflow-y-auto">
-              {examples}
+            <h3 className="font-semibold text-sm">{t('scripts')}</h3>
+            <div className="text-sm space-y-2">
+              {scripts.map((script) => (
+                <div key={script.name} className="bg-muted/50 p-2 rounded">
+                  <span className="font-medium">{script.name}</span>
+                  {script.description && <span className="text-muted-foreground ml-2">: {script.description}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* References */}
+        {references.length > 0 && (
+          <div className="border rounded-lg p-4 space-y-3">
+            <h3 className="font-semibold text-sm">{t('references')}</h3>
+            <div className="text-sm space-y-2">
+              {references.map((ref) => (
+                <div key={ref.name} className="bg-muted/50 p-2 rounded">
+                  <span className="font-medium">{ref.name}</span>
+                  {ref.description && <span className="text-muted-foreground ml-2">: {ref.description}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Assets */}
+        {assets.length > 0 && (
+          <div className="border rounded-lg p-4 space-y-3">
+            <h3 className="font-semibold text-sm">{t('assets')}</h3>
+            <div className="text-sm space-y-2">
+              {assets.map((asset) => (
+                <div key={asset.name} className="bg-muted/50 p-2 rounded">
+                  <span className="font-medium">{asset.name}</span>
+                  {asset.description && <span className="text-muted-foreground ml-2">: {asset.description}</span>}
+                </div>
+              ))}
             </div>
           </div>
         )}

@@ -103,13 +103,11 @@ function parseYamlMetadata(yamlContent: string): SkillYamlMetadata {
             metadata.metadata = {}
           }
           metadata.metadata[key] = parseValue(value)
-          currentMetadataKey = key
           continue
         }
       } else {
         // 退出 metadata 部分
         inMetadataSection = false
-        currentMetadataKey = null
       }
     }
 
@@ -276,7 +274,10 @@ export function serializeSkillFile(
 
   // allowedTools (官方规范使用空格分隔)
   if (metadata.allowedTools && metadata.allowedTools.length > 0) {
-    yamlLines.push(`allowed-tools: ${metadata.allowedTools.join(' ')}`)
+    const toolsValue = Array.isArray(metadata.allowedTools)
+      ? metadata.allowedTools.join(' ')
+      : metadata.allowedTools
+    yamlLines.push(`allowed-tools: ${toolsValue}`)
   }
 
   // 扩展字段 (向后兼容)

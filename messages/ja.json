@@ -1600,7 +1600,10 @@
         "globalSkills": "グローバル Skills",
         "workspaceSkills": "ワークスペース Skills",
         "instructions": "命令",
-        "examples": "例"
+        "examples": "例",
+        "scripts": "スクリプト",
+        "references": "参考資料",
+        "assets": "アセット"
       },
       "error": {
         "fileExists": "ファイル名が既に存在します"

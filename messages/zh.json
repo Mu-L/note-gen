@@ -1670,7 +1670,10 @@
         "globalSkills": "全局 Skills",
         "workspaceSkills": "工作区 Skills",
         "instructions": "指令",
-        "examples": "示例"
+        "examples": "示例",
+        "scripts": "脚本",
+        "references": "参考文档",
+        "assets": "静态资源"
       },
       "error": {
         "fileExists": "文件名已存在"

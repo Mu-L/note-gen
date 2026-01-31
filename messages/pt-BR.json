@@ -1503,7 +1503,10 @@
         "globalSkills": "Skills Globais",
         "workspaceSkills": "Skills do Workspace",
         "instructions": "Instruções",
-        "examples": "Exemplos"
+        "examples": "Exemplos",
+        "scripts": "Scripts",
+        "references": "Referências",
+        "assets": "Ativos"
       },
       "error": {
         "fileExists": "O nome do arquivo já existe"

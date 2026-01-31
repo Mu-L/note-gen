@@ -276,7 +276,7 @@ export class SkillExecutor {
 
     return {
       output: result.stdout || result.stderr,
-      exitCode: result.code,
+      exitCode: result.code ?? 0,
     }
   }
 

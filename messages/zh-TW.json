@@ -1473,7 +1473,10 @@
         "globalSkills": "全域 Skills",
         "workspaceSkills": "工作區 Skills",
         "instructions": "指令",
-        "examples": "示例"
+        "examples": "示例",
+        "scripts": "腳本",
+        "references": "參考文檔",
+        "assets": "靜態資源"
       },
       "error": {
         "fileExists": "檔案名已存在"
