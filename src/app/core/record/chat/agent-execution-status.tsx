@@ -59,8 +59,6 @@ export function AgentExecutionStatus() {
       toolCalls={agentState.toolCalls}
       pendingConfirmation={agentState.pendingConfirmation}
       confirmationHistory={agentState.confirmationHistory}
-      loadedSkills={agentState.loadedSkills}
-      selectedSkills={agentState.selectedSkills}
       currentStepStartTime={agentState.currentStepStartTime}
       onConfirm={handleConfirm}
       onCancel={handleCancel}

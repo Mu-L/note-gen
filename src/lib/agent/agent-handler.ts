@@ -62,6 +62,22 @@ export class AgentHandler {
         if (currentState.agentState.currentThought ||
             currentState.agentState.currentAction ||
             currentState.agentState.currentObservation) {
+          // 检查是否是 Final Answer - 如果是，不添加到 completedSteps，直接清空
+          const isFinalAnswer = currentState.agentState.currentThought.includes('Final Answer:') ||
+                               currentState.agentState.currentThought.includes('Final Answer：') ||
+                               currentState.agentState.currentThought.includes('最终答案')
+
+          if (isFinalAnswer) {
+            // Final Answer 不添加到步骤历史，直接清空状态（它会作为 result 在正文中显示）
+            store.setAgentState({
+              currentThought: '',
+              currentAction: undefined,
+              currentObservation: undefined,
+              currentStepStartTime: undefined,
+            })
+            return
+          }
+
           // 解析当前动作
           let action = undefined
           if (currentState.agentState.currentAction) {

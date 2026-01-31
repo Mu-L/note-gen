@@ -79,8 +79,15 @@ export class ReActAgent {
         throw new Error('USER_STOPPED')
       }
 
-      // 检查是否包含 Final Answer（支持多种格式）
-      if (thought.includes('Final Answer:') || thought.includes('Final Answer：') || thought.includes('最终答案')) {
+      // 检查是否包含 Final Answer（支持多种格式，包括换行的情况）
+      // 处理 "Action: Final\nAnswer:" 的特殊情况
+      const normalizedThought = thought.replace(/\s+/g, ' ')
+      const hasFinalAnswer = normalizedThought.includes('Final Answer:') ||
+                             normalizedThought.includes('Final Answer：') ||
+                             normalizedThought.includes('最终答案') ||
+                             /Action:\s*Final\s*Answer/i.test(thought)
+
+      if (hasFinalAnswer) {
         // 尝试多种分割方式
         if (thought.includes('Final Answer:')) {
           finalAnswer = thought.split('Final Answer:')[1].trim()
@@ -88,6 +95,12 @@ export class ReActAgent {
           finalAnswer = thought.split('Final Answer：')[1].trim()
         } else if (thought.includes('最终答案')) {
           finalAnswer = thought.split('最终答案')[1].trim()
+        } else if (/Action:\s*Final\s*Answer/i.test(thought)) {
+          // 处理 "Action: Final\nAnswer:" 的情况
+          const match = thought.match(/Action:\s*Final\s*Answer:\s*([\s\S]*)/i)
+          if (match) {
+            finalAnswer = match[1].trim()
+          }
         }
         break
       }
@@ -367,28 +380,29 @@ Final Answer: 任务已被用户终止`
       // 记录 AI 的思考内容，用于调试
       const mentionedSkills = this.extractMentionedSkills(response)
 
-      // 第一次迭代后，如果 AI 选择了 Skills，记录下来
-      if (this.currentIteration === 1 && mentionedSkills.length > 0) {
-        // 将提到的 Skills ID 添加到已选择集合
+      // 第一次迭代后，处理 Skills 选择
+      if (this.currentIteration === 1) {
         const activeSkillIds = this.config.activeSkills || []
         const selectedSkillIds: string[] = []
-        for (const skillName of mentionedSkills) {
-          // 通过名称查找对应的 Skill ID
-          const skill = activeSkillIds
-            .map(id => skillManager.getSkill(id))
-            .filter((s): s is Exclude<typeof s, undefined> => s !== undefined)
-            .find(s => s.metadata.name === skillName)
 
-          if (skill) {
-            this.selectedSkills.add(skill.metadata.id)
-            selectedSkillIds.push(skill.metadata.id)
+        if (mentionedSkills.length > 0) {
+          // 将提到的 Skills ID 添加到已选择集合
+          for (const skillName of mentionedSkills) {
+            // 通过名称查找对应的 Skill ID
+            const skill = activeSkillIds
+              .map(id => skillManager.getSkill(id))
+              .filter((s): s is Exclude<typeof s, undefined> => s !== undefined)
+              .find(s => s.metadata.name === skillName)
+
+            if (skill) {
+              this.selectedSkills.add(skill.metadata.id)
+              selectedSkillIds.push(skill.metadata.id)
+            }
           }
         }
 
-        // 通知外部选择的 Skills
-        if (selectedSkillIds.length > 0) {
-          this.config.onSkillsSelected?.(selectedSkillIds)
-        }
+        // 无论是否选择了 Skills，都要通知外部（空数组表示未选择）
+        this.config.onSkillsSelected?.(selectedSkillIds)
       }
 
       return response
@@ -408,9 +422,20 @@ Final Answer: 无法完成任务，请稍后重试或检查 AI 配置`
 
   private parseAction(thought: string): { tool: string; params: Record<string, any> } | null {
     try {
+      // 首先检查是否包含 Final Answer - 如果是，返回 null
+      // 需要处理换行的情况，如 "Action: Final\nAnswer: ..."
+      const normalizedThought = thought.replace(/\s+/g, ' ')
+      if (normalizedThought.includes('Final Answer:') ||
+          normalizedThought.includes('Final Answer：') ||
+          normalizedThought.includes('最终答案') ||
+          // 处理 "Action: Final\nAnswer:" 的情况
+          /Action:\s*Final\s*Answer/i.test(thought)) {
+        return null
+      }
+
       // 修改正则表达式，支持工具名称中的连字符、下划线等字符
       const actionMatch = thought.match(/Action:\s*([a-zA-Z0-9_-]+)/i)
-      
+
       if (!actionMatch) return null
 
       const tool = actionMatch[1]

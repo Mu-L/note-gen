@@ -69,12 +69,6 @@ interface AgentPlanProps {
     params: Record<string, any>;
   };
   confirmationHistory?: ConfirmationRecord[];
-  loadedSkills?: Array<{ // 加载的 Skills 信息
-    id: string;
-    name: string;
-    description?: string;
-  }>;
-  selectedSkills?: string[]; // AI 选择的 Skill ID 列表
   currentStepStartTime?: number; // 当前步骤开始时间戳
 
   // Props for history mode
@@ -115,8 +109,6 @@ export function AgentPlan({
   toolCalls = [],
   pendingConfirmation,
   confirmationHistory = [],
-  loadedSkills = [],
-  selectedSkills,
   currentStepStartTime,
   historyJson,
   onConfirm,
@@ -478,65 +470,31 @@ export function AgentPlan({
 
   // Show loading state in live mode
   if (mode === "live" && isRunning && displaySteps.length === 0) {
-    // 获取选择的 Skills 详情
-    const selectedSkillsDetails = selectedSkills
-      ? loadedSkills?.filter(s => selectedSkills.includes(s.id)) || []
-      : []
-
     return (
-      <div className="w-full">
-        <div className="bg-card border-border rounded-lg border shadow overflow-hidden">
-          {/* Skills 横幅 - 显示选择的 Skills */}
-          {selectedSkillsDetails && selectedSkillsDetails.length > 0 ? (
-            <div className="border-b border-border/50 bg-muted/30 px-4 py-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-medium">已选择 {selectedSkillsDetails.length} 个 Skills:</span>
-                <div className="flex flex-wrap gap-1">
-                  {selectedSkillsDetails.map((skill) => (
-                    <span
-                      key={skill.id}
-                      className="bg-green-500/20 text-green-600 dark:text-green-400 rounded px-1.5 py-0.5 text-[10px] font-medium"
-                      title={skill.description}
-                    >
-                      {skill.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : loadedSkills && loadedSkills.length > 0 && !selectedSkills ? (
-            // 还没有选择 Skills 时，只显示数量
-            <div className="border-b border-border/50 bg-muted/30 px-4 py-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-medium">已加载 {loadedSkills.length} 个 Skills...</span>
-              </div>
-            </div>
-          ) : null}
-          <div className="p-4">
-            <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              {/* 旋转的 loading 图标 */}
-              <div className="relative">
-                <div className="absolute inset-0 rounded-full border-2 border-border/30" />
-                <Loader2 className="size-8 animate-spin text-blue-500" />
-              </div>
+      <div className="w-full mb-4">
+        {/* Loading 状态 */}
+        <div className="flex flex-col items-center justify-center py-8 space-y-4">
+          {/* 旋转的 loading 图标 */}
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full border-2 border-border/30" />
+            <Loader2 className="size-8 animate-spin text-blue-500" />
+          </div>
 
-              {/* 状态文字 */}
-              <div className="text-center space-y-1">
-                <p className="text-sm font-medium text-foreground">
-                  {isThinking ? t("thinking") : t("running")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t("analyzingRequest")}
-                </p>
-              </div>
+          {/* 状态文字 */}
+          <div className="text-center space-y-1">
+            <p className="text-sm font-medium text-foreground">
+              {isThinking ? t("thinking") : t("running")}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {t("analyzingRequest")}
+            </p>
+          </div>
 
-              {/* 脉冲动画点 */}
-              <div className="flex items-center gap-1.5">
-                <div className="size-2 rounded-full bg-blue-500/60 animate-pulse [animation-delay:0ms]" />
-                <div className="size-2 rounded-full bg-blue-500/60 animate-pulse [animation-delay:150ms]" />
-                <div className="size-2 rounded-full bg-blue-500/60 animate-pulse [animation-delay:300ms]" />
-              </div>
-            </div>
+          {/* 脉冲动画点 */}
+          <div className="flex items-center gap-1.5">
+            <div className="size-2 rounded-full bg-blue-500/60 animate-pulse [animation-delay:0ms]" />
+            <div className="size-2 rounded-full bg-blue-500/60 animate-pulse [animation-delay:150ms]" />
+            <div className="size-2 rounded-full bg-blue-500/60 animate-pulse [animation-delay:300ms]" />
           </div>
         </div>
       </div>
@@ -544,54 +502,23 @@ export function AgentPlan({
   }
 
   return (
-    <div className="bg-background text-foreground h-full overflow-auto mb-2">
-      <div className="bg-card border-border rounded-lg border overflow-hidden">
-        {/* Skills 横幅（仅在 live 模式且有 Skills 时显示） */}
-        {mode === "live" && (
-          <>
-            {selectedSkills && selectedSkills.length > 0 ? (
-              // 显示选择的 Skills（绿色）
-              <div className="border-b border-border/50 bg-muted/30 px-4 py-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="font-medium">已选择 {selectedSkills.length} 个 Skills:</span>
-                  <div className="flex flex-wrap gap-1">
-                    {(loadedSkills?.filter(s => selectedSkills.includes(s.id)) || []).map((skill) => (
-                      <span
-                        key={skill.id}
-                        className="bg-green-500/20 text-green-600 dark:text-green-400 rounded px-1.5 py-0.5 text-[10px] font-medium"
-                        title={skill.description}
-                      >
-                        {skill.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : loadedSkills && loadedSkills.length > 0 ? (
-              // 还没有选择 Skills 时，只显示数量
-              <div className="border-b border-border/50 bg-muted/30 px-4 py-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="font-medium">已加载 {loadedSkills.length} 个 Skills...</span>
-                </div>
-              </div>
-            ) : null}
-          </>
-        )}
-        <div className="p-2 overflow-hidden" ref={contentRef}>
-          <ul className="space-y-1">
-            {displaySteps.map((step, index) => {
-              const isExpanded = expandedTasks.includes(step.id);
-              const isCompleted = step.status === "completed";
+    <div className="w-full mb-4">
+      {/* 步骤列表 */}
+      <div className="overflow-hidden" ref={contentRef}>
+        <ul className="space-y-1">
+          {displaySteps.map((step, index) => {
+            const isExpanded = expandedTasks.includes(step.id);
+            const isCompleted = step.status === "completed";
 
-              return (
-                <li
-                  key={step.id}
-                  className={`${index !== 0 ? "mt-1 pt-2" : ""}`}
-                >
+            return (
+              <li
+                key={step.id}
+                className={`${index !== 0 ? "mt-1 pt-2" : ""}`}
+              >
                   {/* Step row */}
-                  <div className="group flex items-center px-3 py-1.5 rounded-md hover:bg-muted/50">
+                  <div className="group flex items-center gap-2 py-1">
                     <div
-                      className="mr-2 flex-shrink-0 cursor-pointer"
+                      className="flex-shrink-0 cursor-pointer"
                       onClick={() => toggleStepExpansion(step.id)}
                     >
                       <div className="cursor-pointer">
@@ -603,7 +530,7 @@ export function AgentPlan({
                       className="flex min-w-0 flex-grow cursor-pointer items-center justify-between"
                       onClick={() => toggleStepExpansion(step.id)}
                     >
-                      <div className="mr-2 flex-1 truncate">
+                      <div className="flex-1 truncate">
                         <span
                           className={`${
                             isCompleted ? "text-muted-foreground" : ""
@@ -712,41 +639,40 @@ export function AgentPlan({
                       )}
                     </div>
                   )}
-                </li>
-              );
-            })}
-
-            {/* Current step confirmation (live mode only) */}
-            {mode === "live" && pendingConfirmation && (
-              <li className="mt-1 pt-2">
-                <div className="group flex items-center px-3 py-1.5 rounded-md border border-border/50 bg-muted/30">
-                  <Clock className="mr-2 size-4.5 text-orange-500 flex-shrink-0 animate-pulse" />
-                  <code className="text-sm text-muted-foreground flex-1 truncate min-w-0 font-mono">
-                    {pendingConfirmation.toolName}
-                  </code>
-                  <div className="flex gap-1 flex-shrink-0">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0"
-                      onClick={handleCancel}
-                    >
-                      <XCircle className="size-4 text-red-500" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0"
-                      onClick={handleConfirm}
-                    >
-                      <CheckCircle className="size-4 text-green-500" />
-                    </Button>
-                  </div>
-                </div>
               </li>
-            )}
-          </ul>
-        </div>
+            );
+          })}
+
+          {/* Current step confirmation (live mode only) */}
+          {mode === "live" && pendingConfirmation && (
+            <li className="mt-1 pt-2">
+              <div className="group flex items-center px-3 py-1.5 rounded-md border border-border/50 bg-muted/30">
+                <Clock className="mr-2 size-4.5 text-orange-500 flex-shrink-0 animate-pulse" />
+                <code className="text-sm text-muted-foreground flex-1 truncate min-w-0 font-mono">
+                  {pendingConfirmation.toolName}
+                </code>
+                <div className="flex gap-1 flex-shrink-0">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0"
+                    onClick={handleCancel}
+                  >
+                    <XCircle className="size-4 text-red-500" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0"
+                    onClick={handleConfirm}
+                  >
+                    <CheckCircle className="size-4 text-green-500" />
+                  </Button>
+                </div>
+              </div>
+            </li>
+          )}
+        </ul>
       </div>
     </div>
   );
