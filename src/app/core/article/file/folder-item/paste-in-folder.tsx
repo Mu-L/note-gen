@@ -27,74 +27,99 @@ export function PasteInFolder({ item, shortcut }: PasteInFolderProps) {
     }
 
     try {
-      const sourcePath = `article/${clipboardItem.path}`;
-      const targetPath = `article/${path}/${clipboardItem.name}`;
-      
-      // Check if target already exists
-      const targetExists = await exists(targetPath, { baseDir: BaseDirectory.AppData });
-      
-      if (targetExists) {
-        const confirmOverwrite = await ask(t('clipboard.confirmOverwrite'), {
-          title: 'NoteGen',
-          kind: 'warning',
-        });
-        if (!confirmOverwrite) return;
-      }
+      const { generateCopyFilename, generateCopyFoldername } = await import('@/lib/default-filename')
+      const { getFilePathOptions, getWorkspacePath } = await import('@/lib/workspace')
+      const workspace = await getWorkspacePath()
+
+      // 粘贴目标：当前项的父目录（同级粘贴）
+      // 对于文件夹：粘贴到其父目录（与该文件夹同级）
+      // 对于文件：粘贴到文件所在的目录
+      const targetDir = path.includes('/') ? path.split('/').slice(0, -1).join('/') : ''
+
+      // 生成唯一的目标名称（文件或文件夹）
+      const targetName = clipboardItem.isDirectory
+        ? await generateCopyFoldername(targetDir, clipboardItem.name)
+        : await generateCopyFilename(targetDir, clipboardItem.name)
+
+      const targetPathRelative = targetDir ? `${targetDir}/${targetName}` : targetName
+      const targetPathOptions = await getFilePathOptions(targetPathRelative)
+      const sourcePathOptions = await getFilePathOptions(clipboardItem.path)
 
       if (clipboardItem.isDirectory) {
-        // For directories, need to copy recursively
-        // Create target directory
-        await mkdir(targetPath, { baseDir: BaseDirectory.AppData });
-        
-        // Copy recursively using readDir, readTextFile, and writeTextFile
-        const copyDirRecursively = async (src: string, dest: string) => {
-          const entries = await readDir(src, { baseDir: BaseDirectory.AppData });
-          
+        // 创建目标文件夹
+        if (workspace.isCustom) {
+          await mkdir(targetPathOptions.path)
+        } else {
+          await mkdir(targetPathOptions.path, { baseDir: targetPathOptions.baseDir })
+        }
+
+        // 递归复制文件夹内容
+        const copyDirRecursively = async (srcRelative: string, destRelative: string) => {
+          const entries = await readDir(
+            srcRelative,
+            workspace.isCustom ? {} : { baseDir: sourcePathOptions.baseDir || BaseDirectory.AppData }
+          )
+
           for (const entry of entries) {
-            const srcPath = `${src}/${entry.name}`;
-            const destPath = `${dest}/${entry.name}`;
-            
+            const srcEntryPath = `${srcRelative}/${entry.name}`
+            const destEntryPath = `${destRelative}/${entry.name}`
+
             if (entry.isDirectory) {
-              // It's a directory
-              await mkdir(destPath, { baseDir: BaseDirectory.AppData });
-              await copyDirRecursively(srcPath, destPath);
+              // 创建子目录
+              if (workspace.isCustom) {
+                await mkdir(destEntryPath)
+              } else {
+                await mkdir(destEntryPath, { baseDir: targetPathOptions.baseDir })
+              }
+              await copyDirRecursively(srcEntryPath, destEntryPath)
             } else {
-              // It's a file
+              // 复制文件
               try {
-                const content = await readTextFile(srcPath, { baseDir: BaseDirectory.AppData });
-                await writeTextFile(destPath, content, { baseDir: BaseDirectory.AppData });
+                let content = ''
+                if (workspace.isCustom) {
+                  content = await readTextFile(srcEntryPath)
+                  await writeTextFile(destEntryPath, content)
+                } else {
+                  content = await readTextFile(srcEntryPath, { baseDir: sourcePathOptions.baseDir || BaseDirectory.AppData })
+                  await writeTextFile(destEntryPath, content, { baseDir: targetPathOptions.baseDir })
+                }
               } catch (err) {
-                console.error(`Error copying file ${srcPath}:`, err);
+                console.error(`Error copying file ${srcEntryPath}:`, err)
               }
             }
           }
-        };
-        
-        await copyDirRecursively(sourcePath, targetPath);
+        }
+
+        await copyDirRecursively(sourcePathOptions.path, targetPathOptions.path)
       } else {
-        // For files, just copy the file
-        try {
-          const content = await readTextFile(sourcePath, { baseDir: BaseDirectory.AppData });
-          await writeTextFile(targetPath, content, { baseDir: BaseDirectory.AppData });
-        } catch (err) {
-          console.error(`Error copying file ${sourcePath}:`, err);
-          throw err;
+        // 文件复制
+        let content = ''
+        if (workspace.isCustom) {
+          content = await readTextFile(sourcePathOptions.path)
+          await writeTextFile(targetPathOptions.path, content)
+        } else {
+          content = await readTextFile(sourcePathOptions.path, { baseDir: sourcePathOptions.baseDir })
+          await writeTextFile(targetPathOptions.path, content, { baseDir: targetPathOptions.baseDir })
         }
       }
-      
-      // If cut operation, delete the original
+
+      // 如果是剪切操作，删除原文件
       if (clipboardOperation === 'cut') {
-        await remove(sourcePath, { baseDir: BaseDirectory.AppData });
-        // Clear clipboard after cut & paste operation
-        setClipboardItem(null, 'none');
+        if (workspace.isCustom) {
+          await remove(sourcePathOptions.path, { recursive: true })
+        } else {
+          await remove(sourcePathOptions.path, { baseDir: sourcePathOptions.baseDir, recursive: true })
+        }
+        // 清空剪贴板
+        setClipboardItem(null, 'none')
       }
 
-      // Refresh file tree
-      loadFileTree();
-      toast({ title: t('clipboard.pasted') });
+      // 刷新文件树
+      loadFileTree()
+      toast({ title: t('clipboard.pasted') })
     } catch (error) {
-      console.error('Paste operation failed:', error);
-      toast({ title: t('clipboard.pasteFailed'), variant: 'destructive' });
+      console.error('Paste operation failed:', error)
+      toast({ title: t('clipboard.pasteFailed'), variant: 'destructive' })
     }
   }
 

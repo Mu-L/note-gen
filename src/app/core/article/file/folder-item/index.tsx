@@ -16,6 +16,7 @@ import { NewFolder } from './new-folder'
 import { ViewDirectory } from './view-directory'
 import { CutFolder } from './cut-folder'
 import { CopyFolder } from './copy-folder'
+import { DuplicateFolder } from './duplicate-folder'
 import { PasteInFolder } from './paste-in-folder'
 import { RenameFolder } from './rename-folder'
 import { DeleteFolder } from './delete-folder'
@@ -257,12 +258,15 @@ export function FolderItem({ item }: { item: DirTree }) {
 
       const sourcePath = `article/${clipboardItem.path}`
 
+      // 粘贴目标：当前文件夹的父目录（同级粘贴）
+      const targetDir = path.includes('/') ? path.split('/').slice(0, -1).join('/') : ''
+
       // 生成唯一的目标名称（文件或文件夹）
       const targetName = clipboardItem.isDirectory
-        ? await generateCopyFoldername(path, clipboardItem.name)
-        : await generateCopyFilename(path, clipboardItem.name)
+        ? await generateCopyFoldername(targetDir, clipboardItem.name)
+        : await generateCopyFilename(targetDir, clipboardItem.name)
 
-      const targetPath = `article/${path}/${targetName}`
+      const targetPath = targetDir ? `article/${targetDir}/${targetName}` : `article/${targetName}`
 
       if (clipboardItem.isDirectory) {
         // For directories, need to copy recursively
@@ -464,11 +468,11 @@ export function FolderItem({ item }: { item: DirTree }) {
     // 统一处理：将空格替换为下划线，确保本地和远程文件名一致
     const sanitizedName = name.replace(/\s+/g, '_')
     setName(sanitizedName)
-  
+
     // 获取工作区路径信息
     const { getFilePathOptions, getWorkspacePath } = await import('@/lib/workspace')
     const workspace = await getWorkspacePath()
-  
+
     // 修改文件夹名称
     if (sanitizedName && sanitizedName !== item.name && item.name !== '') {
       // 更新缓存树中的名称
@@ -498,6 +502,12 @@ export function FolderItem({ item }: { item: DirTree }) {
         })
       }
     } else {
+      // 已有文件夹但名称未改变，直接取消编辑
+      if (item.name !== '' && sanitizedName === item.name) {
+        setIsEditing(false)
+        return
+      }
+
       // 新建文件夹
       if (sanitizedName !== '') {
         // 检查文件夹是否已存在
@@ -811,6 +821,7 @@ export function FolderItem({ item }: { item: DirTree }) {
           )}
           <CutFolder item={item} shortcut={`${modKey}X`} />
           <CopyFolder item={item} shortcut={`${modKey}C`} />
+          <DuplicateFolder item={item} />
           <PasteInFolder item={item} shortcut={`${modKey}V`} />
           <ContextMenuSeparator />
           <SyncFolder item={item} />

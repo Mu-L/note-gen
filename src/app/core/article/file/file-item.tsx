@@ -538,32 +538,123 @@ export function FileItem({ item }: { item: DirTree }) {
       return
     }
 
-    // This function only handles file paste operations
-    if (clipboardItem.isDirectory) {
-      toast({ title: t('clipboard.notSupported'), variant: 'destructive' })
-      return
-    }
-
     try {
-      const sourcePath = `article/${clipboardItem.path}`
-      const targetDir = path.substring(0, path.lastIndexOf('/'))
+      const { getFilePathOptions, getWorkspacePath } = await import('@/lib/workspace')
+      const workspace = await getWorkspacePath()
 
-      // 生成唯一的目标文件名
-      const { generateCopyFilename } = await import('@/lib/default-filename')
-      const uniqueFilename = await generateCopyFilename(targetDir, clipboardItem.name)
-      const targetPath = `article/${targetDir}/${uniqueFilename}`
+      // 粘贴目标：文件所在的目录（同级粘贴）
+      const targetDir = path.includes('/') ? path.split('/').slice(0, -1).join('/') : ''
 
-      // Read content from source file
-      const content = await readTextFile(sourcePath, { baseDir: BaseDirectory.AppData })
+      // 检查是否会造成循环嵌套
+      if (clipboardItem.isDirectory) {
+        // 检查是否粘贴到其子文件夹内部（targetDir 以 clipboardItem.path/ 开头）
+        // 注意：允许粘贴到自身内部（targetDir === clipboardItem.path），但需要特殊处理避免循环
+        if (targetDir.startsWith(clipboardItem.path + '/')) {
+          toast({ title: '无法将父文件夹粘贴到其子文件夹内部', variant: 'destructive' })
+          return
+        }
+      }
 
-      // Write to target location
-      await writeTextFile(targetPath, content, { baseDir: BaseDirectory.AppData })
+      if (clipboardItem.isDirectory) {
+        // 粘贴文件夹
+        const { generateCopyFoldername } = await import('@/lib/default-filename')
+        const { mkdir, readDir } = await import('@tauri-apps/plugin-fs')
 
-      // If cut operation, delete the original file
-      if (clipboardOperation === 'cut') {
-        await remove(sourcePath, { baseDir: BaseDirectory.AppData })
-        // Clear clipboard after cut & paste operation
-        setClipboardItem(null, 'none')
+        const targetName = await generateCopyFoldername(targetDir, clipboardItem.name)
+        const targetPathRelative = targetDir ? `${targetDir}/${targetName}` : targetName
+        const targetPathOptions = await getFilePathOptions(targetPathRelative)
+        const sourcePathOptions = await getFilePathOptions(clipboardItem.path)
+
+        // 检查是否是粘贴到自身内部（需要避免循环引用）
+        const isPasteIntoSelf = targetDir === clipboardItem.path
+
+        // 创建目标文件夹
+        if (workspace.isCustom) {
+          await mkdir(targetPathOptions.path)
+        } else {
+          await mkdir(targetPathOptions.path, { baseDir: targetPathOptions.baseDir })
+        }
+
+        // 递归复制文件夹内容
+        const copyDirRecursively = async (srcRelative: string, destRelative: string) => {
+          const entries = await readDir(
+            srcRelative,
+            workspace.isCustom ? {} : { baseDir: sourcePathOptions.baseDir || BaseDirectory.AppData }
+          )
+
+          for (const entry of entries) {
+            const srcEntryPath = `${srcRelative}/${entry.name}`
+            const destEntryPath = `${destRelative}/${entry.name}`
+
+            if (entry.isDirectory) {
+              // 如果粘贴到自身内部，跳过与目标文件夹同名的子文件夹（避免循环引用）
+              if (isPasteIntoSelf && entry.name === targetName) {
+                console.log(`跳过循环引用: ${entry.name}`)
+                continue
+              }
+
+              if (workspace.isCustom) {
+                await mkdir(destEntryPath)
+              } else {
+                await mkdir(destEntryPath, { baseDir: targetPathOptions.baseDir })
+              }
+              await copyDirRecursively(srcEntryPath, destEntryPath)
+            } else {
+              try {
+                let content = ''
+                if (workspace.isCustom) {
+                  content = await readTextFile(srcEntryPath)
+                  await writeTextFile(destEntryPath, content)
+                } else {
+                  content = await readTextFile(srcEntryPath, { baseDir: sourcePathOptions.baseDir || BaseDirectory.AppData })
+                  await writeTextFile(destEntryPath, content, { baseDir: targetPathOptions.baseDir })
+                }
+              } catch (err) {
+                console.error(`Error copying file ${srcEntryPath}:`, err)
+              }
+            }
+          }
+        }
+
+        await copyDirRecursively(sourcePathOptions.path, targetPathOptions.path)
+
+        // 如果是剪切操作，删除原文件夹
+        if (clipboardOperation === 'cut') {
+          if (workspace.isCustom) {
+            await remove(sourcePathOptions.path, { recursive: true })
+          } else {
+            await remove(sourcePathOptions.path, { baseDir: sourcePathOptions.baseDir, recursive: true })
+          }
+          setClipboardItem(null, 'none')
+        }
+      } else {
+        // 粘贴文件
+        const sourcePathOptions = await getFilePathOptions(clipboardItem.path)
+        const { generateCopyFilename } = await import('@/lib/default-filename')
+        const uniqueFilename = await generateCopyFilename(targetDir, clipboardItem.name)
+        const targetPathRelative = targetDir ? `${targetDir}/${uniqueFilename}` : uniqueFilename
+        const targetPathOptions = await getFilePathOptions(targetPathRelative)
+
+        // Read content from source file
+        let content = ''
+        if (workspace.isCustom) {
+          content = await readTextFile(sourcePathOptions.path)
+          await writeTextFile(targetPathOptions.path, content)
+        } else {
+          content = await readTextFile(sourcePathOptions.path, { baseDir: sourcePathOptions.baseDir })
+          await writeTextFile(targetPathOptions.path, content, { baseDir: targetPathOptions.baseDir })
+        }
+
+        // If cut operation, delete the original file
+        if (clipboardOperation === 'cut') {
+          if (workspace.isCustom) {
+            await remove(sourcePathOptions.path)
+          } else {
+            await remove(sourcePathOptions.path, { baseDir: sourcePathOptions.baseDir })
+          }
+          // Clear clipboard after cut & paste operation
+          setClipboardItem(null, 'none')
+        }
       }
 
       // Refresh file tree
