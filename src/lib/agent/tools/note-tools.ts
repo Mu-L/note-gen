@@ -310,23 +310,102 @@ export const deleteMarkdownFileTool: Tool = {
 
 export const searchMarkdownFilesTool: Tool = {
   name: 'search_markdown_files',
-  description: '在所有 Markdown 笔记文件中搜索包含关键词的内容',
+  description: `在 Markdown 笔记中搜索内容。支持两种模式：
+
+1. **关键词搜索（默认）**：快速精确匹配，适合查找特定术语、函数名、代码片段
+   - 示例：搜索 "useState"、"React"、"API"
+
+2. **语义搜索（mode=rag）**：智能理解含义，适合探索性查询
+   - 示例：搜索 "如何优化 React 性能"、"笔记同步问题解决方法"
+
+选择建议：
+- 查找精确词汇 → 使用默认模式
+- 探索性问题 → 使用 mode=rag
+- 需要限定范围 → 添加 folderPath 参数`,
   category: 'search',
   requiresConfirmation: false,
   parameters: [
     {
       name: 'query',
       type: 'string',
-      description: '搜索关键词',
+      description: '搜索关键词或自然语言查询',
       required: true,
+    },
+    {
+      name: 'mode',
+      type: 'string',
+      description: '搜索模式：keyword（默认，关键词匹配）或 rag（语义搜索）',
+      required: false,
+    },
+    {
+      name: 'folderPath',
+      type: 'string',
+      description: '可选：限定在指定文件夹内搜索（相对路径）',
+      required: false,
     },
   ],
   execute: async (params): Promise<ToolResult> => {
     try {
-      const files = await getAllMarkdownFiles()
+      // RAG 模式：调用 RAG 搜索
+      if (params.mode === 'rag') {
+        const { getContextForQuery, getContextForQueryInFolder } = await import('@/lib/rag')
+
+        // 将查询转换为关键词格式
+        const keywords = [{ text: params.query, weight: 1 }]
+
+        // 根据是否指定文件夹选择不同的 RAG 方法
+        const ragResult = params.folderPath
+          ? await getContextForQueryInFolder(keywords, params.folderPath)
+          : await getContextForQuery(keywords)
+
+        // 获取所有文件列表，用于补全路径（向量数据库只存文件名，需要补全相对路径）
+        const allFiles = await getAllMarkdownFiles()
+        // 创建文件名到相对路径的映射（处理同名文件）
+        const fileNameToPath = new Map<string, string[]>()
+        for (const file of allFiles) {
+          const name = file.name
+          if (!fileNameToPath.has(name)) {
+            fileNameToPath.set(name, [])
+          }
+          fileNameToPath.get(name)!.push(file.relativePath)
+        }
+
+        // 格式化返回结果，补全路径
+        const formattedResults = ragResult.sourceDetails.map(source => {
+          // 向量搜索返回的 filepath 可能只是文件名，需要补全路径
+          let filePath = source.filepath
+          if (!filePath.includes('/')) {
+            // filepath 只是文件名，从映射中获取完整路径
+            const paths = fileNameToPath.get(source.filename)
+            if (paths && paths.length > 0) {
+              // 如果有多个同名文件，使用第一个
+              filePath = paths[0]
+            }
+          }
+          return {
+            filePath,
+            fileName: source.filename,
+            matchedContent: source.content,
+          }
+        })
+
+        return {
+          success: true,
+          data: formattedResults,
+          message: `RAG 搜索找到 ${ragResult.sources.length} 个相关笔记${params.folderPath ? `（文件夹：${params.folderPath}）` : ''}`,
+        }
+      }
+
+      // 关键词模式：原有的精确匹配搜索
+      // 如果指定了文件夹路径，先过滤文件列表
+      let allFiles = await getAllMarkdownFiles()
+      if (params.folderPath) {
+        allFiles = allFiles.filter(file => file.relativePath.startsWith(params.folderPath))
+      }
+
       const results: Array<{ filePath: string; fileName: string; matchedContent: string }> = []
 
-      for (const file of files) {
+      for (const file of allFiles) {
         try {
           let content = ''
 
@@ -360,7 +439,7 @@ export const searchMarkdownFilesTool: Tool = {
       return {
         success: true,
         data: results,
-        message: `找到 ${results.length} 个匹配的文件`,
+        message: `找到 ${results.length} 个匹配的文件${params.folderPath ? `（文件夹：${params.folderPath}）` : ''}`,
       }
     } catch (error) {
       return {
