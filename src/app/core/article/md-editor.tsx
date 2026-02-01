@@ -295,7 +295,7 @@ export function MdEditor() {
         }
         editorElement?.addEventListener('click', handleClick)
         
-        // 监听失焦事件，隐藏浮动工具栏
+        // 监听失焦事件，隐藏浮动工具栏并取消正在进行的补全
         const handleBlur = (e: FocusEvent) => {
           // 检查失焦是否不是因为点击了浮动工具栏本身
           const floatBarElement = document.querySelector('[data-float-bar="true"]')
@@ -303,6 +303,8 @@ export function MdEditor() {
             return // 如果焦点移动到浮动工具栏，不隐藏
           }
           resetSelectedText()
+          // 取消正在进行的补全
+          cancelCompletion()
         }
         editorElement?.addEventListener('blur', handleBlur, true)
         
