@@ -296,7 +296,12 @@ export function MdEditor() {
         editorElement?.addEventListener('click', handleClick)
         
         // 监听失焦事件，隐藏浮动工具栏并取消正在进行的补全
+        let isClickingFloatBar = false
         const handleBlur = (e: FocusEvent) => {
+          // 如果正在点击浮动工具栏，不隐藏
+          if (isClickingFloatBar) {
+            return
+          }
           // 检查失焦是否不是因为点击了浮动工具栏本身
           const floatBarElement = document.querySelector('[data-float-bar="true"]')
           if (floatBarElement && floatBarElement.contains(e.relatedTarget as Node)) {
@@ -306,6 +311,18 @@ export function MdEditor() {
           // 取消正在进行的补全
           cancelCompletion()
         }
+
+        // 监听浮动工具栏的点击事件
+        const handleFloatBarMouseDown = () => {
+          isClickingFloatBar = true
+        }
+        const handleFloatBarMouseUp = () => {
+          isClickingFloatBar = false
+        }
+
+        emitter.on('floatbar-mousedown', handleFloatBarMouseDown)
+        emitter.on('floatbar-mouseup', handleFloatBarMouseUp)
+
         editorElement?.addEventListener('blur', handleBlur, true)
         
         // 监听 beforeinput 事件，在输入前就清除补全预览
@@ -324,6 +341,8 @@ export function MdEditor() {
           editorElement?.removeEventListener('click', handleClick)
           editorElement?.removeEventListener('blur', handleBlur, true)
           editorElement?.removeEventListener('beforeinput', handleBeforeInput)
+          emitter.off('floatbar-mousedown', handleFloatBarMouseDown)
+          emitter.off('floatbar-mouseup', handleFloatBarMouseUp)
         }
       },
       input: async (value) => {

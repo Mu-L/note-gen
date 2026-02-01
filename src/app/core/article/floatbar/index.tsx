@@ -6,10 +6,22 @@ import Expansion from "./expansion";
 import ReadAloud from "./read-aloud";
 import Vditor from "vditor";
 import { useEffect, useRef, useState } from "react";
+import emitter from "@/lib/emitter";
 
 export default function FloatBar({left, top, value, editor}: {left?: number, top?: number, value?: string, editor?: Vditor}) {
   const floatBarRef = useRef<HTMLDivElement>(null)
   const [adjustedLeft, setAdjustedLeft] = useState(left)
+
+  // 阻止鼠标按下事件冒泡到编辑器
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    // 通知编辑器正在点击浮动工具栏
+    emitter.emit('floatbar-mousedown')
+  }
+
+  const handleMouseUp = () => {
+    emitter.emit('floatbar-mouseup')
+  }
 
   useEffect(() => {
     if (left !== undefined && floatBarRef.current) {
@@ -31,6 +43,8 @@ export default function FloatBar({left, top, value, editor}: {left?: number, top
     <div
       ref={floatBarRef}
       data-float-bar="true"
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
       className={`${(left && top ) ? 'block': 'hidden'} absolute shadow rounded-lg bg-primary text-primary-foreground p-1`}
       style={{left: adjustedLeft + 'px', top: (top || 0) < 64 ? (top || 0) + 82 + 'px' : (top || 0) + 'px'}}>
       <div className="flex items-center justify-between">
