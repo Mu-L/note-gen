@@ -11,3 +11,11 @@ export enum ShortcutDefault {
   pin = "Control+Shift+P",
   link = "Control+Shift+L",
 }
+
+/**
+ * 文件管理器快捷键
+ * rename: F2 - 重命名选中的文件或文件夹（仅桌面端）
+ */
+export const FileShortcuts = {
+  rename: 'F2'
+} as const

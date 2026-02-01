@@ -21,6 +21,7 @@ import { RenameFolder } from './rename-folder'
 import { DeleteFolder } from './delete-folder'
 import { MobileActionMenu, MobileMenuItem, MobileSeparator } from "../mobile-action-menu"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useFileShortcuts } from "@/hooks/use-file-shortcuts"
 import { useTranslations } from "next-intl"
 import { FolderVectorMenu } from './folder-vector-menu'
 import emitter from '@/lib/emitter'
@@ -198,7 +199,19 @@ export function FolderItem({ item }: { item: DirTree }) {
 
   function handleStartRename() {
     setIsEditing(true)
-    setTimeout(() => inputRef.current?.focus(), 0);
+    setTimeout(() => {
+      const input = inputRef.current
+      if (input) {
+        input.focus()
+        // 只选中文件名，不包含扩展名
+        const lastDotIndex = item.name.lastIndexOf('.')
+        if (lastDotIndex > 0) {
+          input.setSelectionRange(0, lastDotIndex)
+        } else {
+          input.select()
+        }
+      }
+    }, 0)
   }
 
   // 优化的输入处理，支持输入法
@@ -470,6 +483,13 @@ export function FolderItem({ item }: { item: DirTree }) {
       setTimeout(() => inputRef.current?.focus(), 300);
     }
   }, [item])
+
+  // 文件夹快捷键：桌面端 F2 键重命名
+  useFileShortcuts({
+    path,
+    isEditing,
+    onStartRename: handleStartRename
+  })
 
   return (
     <CollapsibleTrigger className="w-full select-none">

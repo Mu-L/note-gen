@@ -1,10 +1,12 @@
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/enhanced-context-menu";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuShortcut } from "@/components/ui/enhanced-context-menu";
 import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
 import useArticleStore, { DirTree } from "@/stores/article";
 import { BaseDirectory, exists, readTextFile, remove, rename, writeTextFile } from "@tauri-apps/plugin-fs";
 import { Cloud, CloudDownload, Copy, Database, File, FolderOpen, ImageIcon, LoaderCircle, RefreshCwOff, Trash2 } from "lucide-react"
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ask } from '@tauri-apps/plugin-dialog';
+import { platform } from '@tauri-apps/plugin-os';
 import { Store } from '@tauri-apps/plugin-store';
 import { RepoNames } from "@/lib/sync/github.types";
 import { cloneDeep } from "lodash-es";
@@ -20,6 +22,7 @@ import { deleteFile as deleteGitlabFile } from "@/lib/sync/gitlab";
 import { generateUniqueFilename } from "@/lib/default-filename";
 import { MobileActionMenu, MobileMenuItem, MobileSeparator } from "./mobile-action-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useFileShortcuts } from "@/hooks/use-file-shortcuts";
 import useSettingStore from "@/stores/setting";
 import { VectorKnowledgeMenu } from "./vector-knowledge-menu";
 import { isSkillsFolder } from "@/lib/skills/utils";
@@ -28,12 +31,23 @@ export function FileItem({ item }: { item: DirTree }) {
   const [isEditing, setIsEditing] = useState(item.isEditing)
   const [name, setName] = useState(item.name)
   const [isComposing, setIsComposing] = useState(false) // 追踪输入法合成状态
+  const [renameKey, setRenameKey] = useState('F2')
   const inputRef = useRef<HTMLInputElement>(null)
   const { activeFilePath, setActiveFilePath, readArticle, setCurrentArticle, fileTree, setFileTree, loadFileTree, vectorIndexedFiles, checkFileVectorIndexed } = useArticleStore()
   const { setClipboardItem, clipboardItem, clipboardOperation } = useClipboardStore()
   const { fileManagerTextSize } = useSettingStore()
   const t = useTranslations('article.file')
   const isMobile = useIsMobile()
+
+  // 检测平台快捷键
+  useEffect(() => {
+    try {
+      const p = platform()
+      setRenameKey(p === 'macos' ? 'Enter' : 'F2')
+    } catch {
+      setRenameKey('F2')
+    }
+  }, [])
 
   // 检查路径是否在 skills 文件夹下
   const isInSkillsFolder = (itemPath: string): boolean => {
@@ -315,7 +329,19 @@ export function FileItem({ item }: { item: DirTree }) {
 
   async function handleStartRename() {
     setIsEditing(true)
-    setTimeout(() => inputRef.current?.focus(), 300);
+    setTimeout(() => {
+      const input = inputRef.current
+      if (input) {
+        input.focus()
+        // 只选中文件名，不包含扩展名
+        const lastDotIndex = item.name.lastIndexOf('.')
+        if (lastDotIndex > 0) {
+          input.setSelectionRange(0, lastDotIndex)
+        } else {
+          input.select()
+        }
+      }
+    }, 0)
   }
 
   async function handleRename() {
@@ -571,12 +597,19 @@ export function FileItem({ item }: { item: DirTree }) {
     }
   }, [item])
 
+  // 文件快捷键：桌面端 F2 键重命名
+  useFileShortcuts({
+    path,
+    isEditing,
+    onStartRename: handleStartRename
+  })
+
   return (
     <>
       <ContextMenu>
         <ContextMenuTrigger>
           <div
-            className={`${path === activeFilePath ? 'file-manange-item active' : 'file-manange-item'} ${!isRoot && 'translate-x-5 !w-[calc(100%-20px)]'}`}
+            className={`${path === activeFilePath ? 'file-manange-item active' : 'file-manange-item'} ${!isRoot && 'translate-x-5 w-[calc(100%-20px)]!'}`}
             onClick={handleSelectFile}
           >
             {
@@ -717,6 +750,9 @@ export function FileItem({ item }: { item: DirTree }) {
           <ContextMenuItem disabled={!item.isLocale} inset onClick={handleStartRename} menuType="file">
             <File className="mr-2 h-4 w-4" />
             {t('context.rename')}
+            <ContextMenuShortcut menuType="file">
+              <Kbd>{renameKey}</Kbd>
+            </ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem disabled={!item.sha} inset className="text-red-900" onClick={handleDeleteSyncFile} menuType="file">
             <RefreshCwOff className="mr-2 h-4 w-4" />
