@@ -22,16 +22,16 @@ import { deleteFile as deleteGitlabFile } from "@/lib/sync/gitlab";
 import { generateUniqueFilename } from "@/lib/default-filename";
 import { MobileActionMenu, MobileMenuItem, MobileSeparator } from "./mobile-action-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useFileShortcuts } from "@/hooks/use-file-shortcuts";
 import useSettingStore from "@/stores/setting";
 import { VectorKnowledgeMenu } from "./vector-knowledge-menu";
 import { isSkillsFolder } from "@/lib/skills/utils";
+
+type Platform = 'macos' | 'windows' | 'linux' | 'unknown'
 
 export function FileItem({ item }: { item: DirTree }) {
   const [isEditing, setIsEditing] = useState(item.isEditing)
   const [name, setName] = useState(item.name)
   const [isComposing, setIsComposing] = useState(false) // 追踪输入法合成状态
-  const [renameKey, setRenameKey] = useState('F2')
   const inputRef = useRef<HTMLInputElement>(null)
   const { activeFilePath, setActiveFilePath, readArticle, setCurrentArticle, fileTree, setFileTree, loadFileTree, vectorIndexedFiles, checkFileVectorIndexed } = useArticleStore()
   const setArticleState = useArticleStore.setState
@@ -39,16 +39,6 @@ export function FileItem({ item }: { item: DirTree }) {
   const { fileManagerTextSize } = useSettingStore()
   const t = useTranslations('article.file')
   const isMobile = useIsMobile()
-
-  // 检测平台快捷键
-  useEffect(() => {
-    try {
-      const p = platform()
-      setRenameKey(p === 'macos' ? 'Enter' : 'F2')
-    } catch {
-      setRenameKey('F2')
-    }
-  }, [])
 
   // 检查路径是否在 skills 文件夹下
   const isInSkillsFolder = (itemPath: string): boolean => {
@@ -690,20 +680,63 @@ export function FileItem({ item }: { item: DirTree }) {
     }
   }, [item])
 
-  // 文件快捷键：桌面端重命名、复制、粘贴、剪切、删除
-  const { currentPlatform } = useFileShortcuts({
-    path,
-    isEditing,
-    onStartRename: handleStartRename,
-    onCopy: handleCopyFile,
-    onPaste: handlePasteFile,
-    onCut: handleCutFile,
-    onDelete: handleDeleteFile
-  })
+  // 监听文件管理器统一快捷键触发的自定义事件
+  useEffect(() => {
+    const handleRenameEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ path: string }>
+      if (customEvent.detail.path === path) {
+        handleStartRename()
+      }
+    }
+
+    const handleDeleteEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ item: { path: string } }>
+      if (customEvent.detail.item.path === path) {
+        handleDeleteFile()
+      }
+    }
+
+    const handlePasteEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ targetPath: string }>
+      // 粘贴到文件所在目录（同级粘贴）
+      if (customEvent.detail.targetPath === path) {
+        handlePasteFile()
+      }
+    }
+
+    window.addEventListener('filemanager-rename', handleRenameEvent)
+    window.addEventListener('filemanager-delete', handleDeleteEvent)
+    window.addEventListener('filemanager-paste', handlePasteEvent)
+
+    return () => {
+      window.removeEventListener('filemanager-rename', handleRenameEvent)
+      window.removeEventListener('filemanager-delete', handleDeleteEvent)
+      window.removeEventListener('filemanager-paste', handlePasteEvent)
+    }
+  }, [path, handleStartRename, handleDeleteFile, handlePasteFile])
+
+  // 获取当前平台（用于显示快捷键）
+  const [currentPlatform, setCurrentPlatform] = useState<Platform>('unknown')
+
+  useEffect(() => {
+    try {
+      const p = platform()
+      if (p === 'macos') {
+        setCurrentPlatform('macos')
+      } else if (p === 'windows') {
+        setCurrentPlatform('windows')
+      } else if (p === 'linux') {
+        setCurrentPlatform('linux')
+      }
+    } catch {
+      setCurrentPlatform('unknown')
+    }
+  }, [])
 
   // 快捷键显示文本
   const modKey = currentPlatform === 'macos' ? '⌘' : 'Ctrl'
   const deleteKey = currentPlatform === 'macos' ? '⌫' : 'Del'
+  const renameKey = currentPlatform === 'macos' ? '↩' : 'F2'
 
   return (
     <>

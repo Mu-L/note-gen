@@ -23,7 +23,6 @@ import { DeleteFolder } from './delete-folder'
 import useClipboardStore from "@/stores/clipboard"
 import { MobileActionMenu, MobileMenuItem, MobileSeparator } from "../mobile-action-menu"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { useFileShortcuts } from "@/hooks/use-file-shortcuts"
 import { useTranslations } from "next-intl"
 import { FolderVectorMenu } from './folder-vector-menu'
 import emitter from '@/lib/emitter'
@@ -221,28 +220,6 @@ export function FolderItem({ item }: { item: DirTree }) {
         }
       }, 100)
     }, 300)
-  }
-
-  // 复制文件夹
-  async function handleCopyFolder() {
-    setClipboardItem({
-      path,
-      name: item.name,
-      isDirectory: true,
-      isLocale: item.isLocale
-    }, 'copy')
-    toast({ title: t('clipboard.copied') })
-  }
-
-  // 剪切文件夹
-  async function handleCutFolder() {
-    setClipboardItem({
-      path,
-      name: item.name,
-      isDirectory: true,
-      isLocale: item.isLocale
-    }, 'cut')
-    toast({ title: t('clipboard.cut') })
   }
 
   // 粘贴到文件夹
@@ -684,16 +661,62 @@ export function FolderItem({ item }: { item: DirTree }) {
     }
   }, [item])
 
-  // 文件夹快捷键：桌面端重命名、复制、粘贴、剪切、删除
-  const { currentPlatform } = useFileShortcuts({
-    path,
-    isEditing,
-    onStartRename: handleStartRename,
-    onCopy: handleCopyFolder,
-    onPaste: handlePasteInFolder,
-    onCut: handleCutFolder,
-    onDelete: handleDeleteFolder
-  })
+  // 监听文件管理器统一快捷键触发的自定义事件
+  useEffect(() => {
+    const handleRenameEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ path: string }>
+      if (customEvent.detail.path === path) {
+        handleStartRename()
+      }
+    }
+
+    const handleDeleteEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ item: { path: string } }>
+      if (customEvent.detail.item.path === path) {
+        handleDeleteFolder()
+      }
+    }
+
+    const handlePasteEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ targetPath: string }>
+      // 粘贴到文件所在目录（同级粘贴）
+      if (customEvent.detail.targetPath === path) {
+        handlePasteInFolder()
+      }
+    }
+
+    window.addEventListener('filemanager-rename', handleRenameEvent)
+    window.addEventListener('filemanager-delete', handleDeleteEvent)
+    window.addEventListener('filemanager-paste', handlePasteEvent)
+
+    return () => {
+      window.removeEventListener('filemanager-rename', handleRenameEvent)
+      window.removeEventListener('filemanager-delete', handleDeleteEvent)
+      window.removeEventListener('filemanager-paste', handlePasteEvent)
+    }
+  }, [path, handleStartRename, handleDeleteFolder, handlePasteInFolder])
+
+  // 获取当前平台（用于显示快捷键）
+  const [currentPlatform, setCurrentPlatform] = useState<'macos' | 'windows' | 'linux' | 'unknown'>('unknown')
+
+  useEffect(() => {
+    const detectPlatform = async () => {
+      try {
+        const { platform } = await import('@tauri-apps/plugin-os')
+        const p = platform()
+        if (p === 'macos') {
+          setCurrentPlatform('macos')
+        } else if (p === 'windows') {
+          setCurrentPlatform('windows')
+        } else if (p === 'linux') {
+          setCurrentPlatform('linux')
+        }
+      } catch {
+        setCurrentPlatform('unknown')
+      }
+    }
+    detectPlatform()
+  }, [])
 
   // 快捷键显示文本
   const modKey = currentPlatform === 'macos' ? '⌘' : 'Ctrl'
