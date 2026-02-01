@@ -1,6 +1,5 @@
 import { ContextMenuItem, ContextMenuShortcut } from "@/components/ui/enhanced-context-menu";
 import { DirTree } from "@/stores/article";
-import { useTranslations } from "next-intl";
 import { computedParentPath } from "@/lib/path";
 import { Copy } from "lucide-react"
 import { Kbd } from "@/components/ui/kbd"
@@ -13,7 +12,6 @@ interface DuplicateFolderProps {
 }
 
 export function DuplicateFolder({ item, shortcut }: DuplicateFolderProps) {
-  const t = useTranslations('article.file');
   const path = computedParentPath(item);
 
   async function handleDuplicateFolder() {
@@ -80,8 +78,8 @@ export function DuplicateFolder({ item, shortcut }: DuplicateFolderProps) {
       await copyDirRecursively(sourcePathOptions.path, targetPathOptions.path)
 
       // 刷新文件树
-      const { loadFileTree } = await import('@/stores/article')
-      loadFileTree()
+      const useArticleStore = (await import('@/stores/article')).default
+      useArticleStore.getState().loadFileTree()
 
       toast({ title: `文件夹已复制为 ${targetName}` })
     } catch (error) {

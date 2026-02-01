@@ -4,8 +4,7 @@ import { useTranslations } from "next-intl";
 import { computedParentPath } from "@/lib/path";
 import useClipboardStore from "@/stores/clipboard";
 import { toast } from "@/hooks/use-toast";
-import { BaseDirectory, exists, mkdir, readDir, readTextFile, remove, writeTextFile } from "@tauri-apps/plugin-fs";
-import { ask } from '@tauri-apps/plugin-dialog';
+import { BaseDirectory, mkdir, readDir, readTextFile, remove, writeTextFile } from "@tauri-apps/plugin-fs";
 import { FileSymlink } from "lucide-react"
 import { Kbd } from "@/components/ui/kbd"
 

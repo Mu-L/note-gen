@@ -28,6 +28,7 @@ interface PendingUpdate {
     date: Date
     additions?: number
     deletions?: number
+    isOwnPush?: boolean  // 标记是否是自己刚刚推送的
   }
 }
 
@@ -40,6 +41,9 @@ let latestCommitInfo: {
   additions?: number
   deletions?: number
 } | null = null
+
+// 全局存储最近自己推送的 commit SHA 集合
+const ownPushedCommits = new Set<string>()
 
 export default function PullButton() {
   const { activeFilePath, setIsPulling } = useArticleStore()
@@ -58,9 +62,10 @@ export default function PullButton() {
     setPendingUpdate(null)
     setIgnoredCommits(new Set())
     setIsPulling(false)
-    
-    // 清空全局 commit 信息
+
+    // 清空全局 commit 信息和推送记录
     latestCommitInfo = null
+    ownPushedCommits.clear()
   }, [activeFilePath])
 
   // 监听历史记录组件的 commit 信息
@@ -73,13 +78,25 @@ export default function PullButton() {
         date: Date
         additions?: number
         deletions?: number
+        isOwnPush?: boolean
       }
-      
+
       // 更新全局 commit 信息
       Object.assign(latestCommitInfo || {}, commitInfo)
-      
-      // 检查是否需要显示 Pull 按钮
-      if (activeFilePath && !ignoredCommits.has(commitInfo.sha)) {
+
+      // 如果是自己刚刚推送的，记录这个 SHA
+      if (commitInfo.isOwnPush && commitInfo.sha) {
+        ownPushedCommits.add(commitInfo.sha)
+        // 5 分钟后自动清理
+        setTimeout(() => {
+          ownPushedCommits.delete(commitInfo.sha)
+        }, 5 * 60 * 1000)
+        setPendingUpdate(null)
+        return
+      }
+
+      // 检查是否需要显示 Pull 按钮（忽略自己刚刚推送的）
+      if (activeFilePath && !ignoredCommits.has(commitInfo.sha) && !ownPushedCommits.has(commitInfo.sha)) {
         // 检查是否有远程更新
         checkForUpdatesWithCommitInfo(commitInfo)
       }
@@ -124,7 +141,7 @@ export default function PullButton() {
 
     emitter.on('latest-commit-info', handleCommitInfo)
     emitter.on('immediate-pull-needed', handleImmediatePull)
-    
+
     return () => {
       emitter.off('latest-commit-info', handleCommitInfo)
       emitter.off('immediate-pull-needed', handleImmediatePull)
@@ -199,12 +216,15 @@ export default function PullButton() {
         setPendingUpdate(null)
         return
       }
-      
+
       // 比较修改时间
       const localTime = localMeta.lastModified || 0
       const remoteTime = commitInfo.date.getTime()
-      
-      if (remoteTime > localTime) {
+
+      // 如果远程时间比本地时间新，且时间差超过 5 秒，才提示有更新
+      // 5 秒内的差异认为是自己刚刚推送的（考虑到网络延迟）
+      const timeDiff = remoteTime - localTime
+      if (remoteTime > localTime && timeDiff > 5000) {
         setPendingUpdate({
           fileName: activeFilePath,
           reason: '远程文件较新，需要拉取更新',

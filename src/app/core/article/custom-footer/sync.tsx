@@ -207,19 +207,12 @@ export default function Sync({editor, disabled}: {editor?: Vditor, disabled?: bo
       if (uploadRes?.data?.commit?.message || uploadRes?.data?.file_path) {
         setSyncText(t('pushed'));
         emitter.emit('sync-success');
-        
+
         // 推送成功后，更新本地文件树状态
         const { loadFileTree } = useArticleStore.getState()
         await loadFileTree()
-        
-        // 强制更新本地文件内容，确保 SHA 正确
-        const currentContent = currentArticle
-        
-        // 重新保存文件内容，这会更新文件的 SHA
-        const { saveLocalFile } = await import('@/lib/sync/auto-sync')
-        await saveLocalFile(activeFilePath, currentContent)
-        
-        // 更新本地文件的同步时间
+
+        // 推送成功后，更新本地文件的同步时间
         const { updateFileSyncTime } = await import('@/lib/sync/conflict-resolution')
         await updateFileSyncTime(activeFilePath)
         
@@ -231,7 +224,8 @@ export default function Sync({editor, disabled}: {editor?: Vditor, disabled?: bo
             author: uploadRes.data.commit.author?.name || 'User',
             date: new Date(uploadRes.data.commit.author?.date || Date.now()),
             additions: uploadRes.data.commit.stats?.additions,
-            deletions: uploadRes.data.commit.stats?.deletions
+            deletions: uploadRes.data.commit.stats?.deletions,
+            isOwnPush: true  // 标记这是自己刚刚推送的
           }
           emitter.emit('latest-commit-info', commitInfo)
         }
@@ -369,19 +363,12 @@ export default function Sync({editor, disabled}: {editor?: Vditor, disabled?: bo
         setSyncText(t('pushed'));
         setProgressPercentage(0);
         emitter.emit('sync-success');
-        
+
         // 推送成功后，更新本地文件树状态
         const { loadFileTree } = useArticleStore.getState()
         await loadFileTree()
-        
-        // 强制更新本地文件内容，确保 SHA 正确
-        const currentContent = currentArticle
-        
-        // 重新保存文件内容，这会更新文件的 SHA
-        const { saveLocalFile } = await import('@/lib/sync/auto-sync')
-        await saveLocalFile(activeFilePath, currentContent)
-        
-        // 更新本地文件的同步时间
+
+        // 推送成功后，更新本地文件的同步时间
         const { updateFileSyncTime } = await import('@/lib/sync/conflict-resolution')
         await updateFileSyncTime(activeFilePath)
         
