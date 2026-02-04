@@ -54,6 +54,9 @@ export interface AgentState {
   pendingConfirmation?: {
     toolName: string
     params: Record<string, any>
+    originalContent?: string  // 原始内容（用于显示 diff）
+    modifiedContent?: string  // 修改后的内容（用于显示 diff）
+    filePath?: string         // 文件路径（用于显示在确认对话框中）
   }
   confirmationHistory: ConfirmationRecord[] // 确认操作的历史记录
   loadedSkills?: Array<{

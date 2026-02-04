@@ -11,7 +11,11 @@ export interface ReActConfig {
   onToolCall?: (toolCall: ToolCall) => void
   onIterationStart?: () => void
   onSkillsSelected?: (skillIds: string[]) => void  // 当 AI 选择 Skills 时调用
-  requestConfirmation?: (toolName: string, params: Record<string, any>) => Promise<boolean>
+  requestConfirmation?: (toolName: string, params: Record<string, any>, context?: {
+    originalContent?: string
+    modifiedContent?: string
+    filePath?: string
+  }) => Promise<boolean>
   activeSkills?: string[]  // 当前激活的 Skills
 }
 
@@ -232,7 +236,6 @@ export class ReActAgent {
       const memoryContext = await contextLoader.getContextForQuery('')  // Empty query gets all preferences
       if (memoryContext.preferences.length > 0 || memoryContext.memory.length > 0) {
         memoryPrompt = contextLoader.formatMemoriesForPrompt(memoryContext)
-        console.log('[Agent] Loaded memories:', memoryContext)
       }
     } catch (error) {
       console.error('[Agent] Failed to load memories:', error)
@@ -345,6 +348,7 @@ Final Answer: Done! I created a note called "React Knowledge Summary" which incl
 6. **Use Available Tools Only**: Don't make up tools or parameters
 7. **Concise Thinking**: Keep Thought brief, directly state what to do
 8. **🚨 Skills Are Not Tools**: NEVER use Action: skill_xxx, Skills are just guidance documents
+9. **📌 Use Quote Line Numbers**: When context includes "quoted content" with specific line numbers, ALWAYS use those exact line numbers in modify_current_note (e.g., if user quoted line 19, use startLine: 19, endLine: 19, NOT 1-1000)
 
 ## 🚫 Common Errors (Avoid)
 
@@ -359,6 +363,9 @@ Final Answer: Done! I created a note called "React Knowledge Summary" which incl
 
 ❌ **Error 4**: Try to call Skill as a tool (like Action: style-detector)
 ✅ **Correct**: Understand Skill guidance, use actual tools (like Action: create_markdown_file) and follow Skill requirements in content
+
+❌ **Error 5**: User quoted specific lines (e.g., line 19) but you use different line numbers (e.g., startLine: 1, endLine: 1000)
+✅ **Correct**: ALWAYS use the exact line numbers from the user's quote. If user quoted line 19, use startLine: 19, endLine: 19
 
 ## Example
 
@@ -702,25 +709,67 @@ Final Answer: 无法完成任务，请稍后重试或检查 AI 配置`
           params = JSON.parse(jsonStr)
         } catch {
           // JSON 解析失败，尝试修复
-          
-          // 移除末尾可能的不完整内容
-          jsonStr = jsonStr.replace(/,\s*$/, '') // 移除末尾的逗号
-          jsonStr = jsonStr.replace(/:\s*$/, ': ""') // 补全缺少值的键
-          jsonStr = jsonStr.replace(/,\s*}/, '}') // 移除对象末尾的逗号
-          
-          // 补全未闭合的引号
-          const quotes = (jsonStr.match(/"/g) || []).length
-          if (quotes % 2 !== 0) {
+
+          // 使用栈来跟踪未闭合的结构
+          const stack: string[] = []
+          let inString = false
+          let escapeNext = false
+
+          for (let i = 0; i < jsonStr.length; i++) {
+            const char = jsonStr[i]
+
+            if (escapeNext) {
+              escapeNext = false
+              continue
+            }
+
+            if (char === '\\') {
+              escapeNext = true
+              continue
+            }
+
+            if (char === '"' && !escapeNext) {
+              inString = !inString
+              if (!inString && stack.length > 0 && stack[stack.length - 1] === '"') {
+                stack.pop() // 闭合字符串
+              } else if (inString) {
+                stack.push('"') // 进入字符串
+              }
+              continue
+            }
+
+            if (!inString) {
+              if (char === '{' || char === '[') {
+                stack.push(char)
+              } else if (char === '}') {
+                if (stack.length > 0 && stack[stack.length - 1] === '{') {
+                  stack.pop()
+                }
+              } else if (char === ']') {
+                if (stack.length > 0 && stack[stack.length - 1] === '[') {
+                  stack.pop()
+                }
+              }
+            }
+          }
+
+          // 如果在字符串中，先闭合字符串
+          if (inString) {
             jsonStr += '"'
           }
-          
-          // 补全未闭合的括号
-          const openBraces = (jsonStr.match(/{/g) || []).length
-          const closeBraces = (jsonStr.match(/}/g) || []).length
-          if (openBraces > closeBraces) {
-            jsonStr += '}'.repeat(openBraces - closeBraces)
+
+          // 反向闭合栈中的结构
+          while (stack.length > 0) {
+            const open = stack.pop()
+            if (open === '"') {
+              jsonStr += '"'
+            } else if (open === '[') {
+              jsonStr += ']'
+            } else if (open === '{') {
+              jsonStr += '}'
+            }
           }
-          
+
           try {
             params = JSON.parse(jsonStr)
           } catch (retryError) {
@@ -775,7 +824,129 @@ Final Answer: 无法完成任务，请稍后重试或检查 AI 配置`
     const requiresConfirmation = tool.requiresConfirmation && !isAuthorized
 
     if (requiresConfirmation && this.config.requestConfirmation) {
-      const confirmed = await this.config.requestConfirmation(toolName, params)
+      // 准备确认上下文信息（原始内容、修改后内容、文件路径）
+      const confirmContext: {
+        originalContent?: string
+        modifiedContent?: string
+        filePath?: string
+      } = {}
+
+      // 对于 modify_current_note 工具，获取原始内容和修改后的内容用于 diff 显示
+      if (toolName === 'modify_current_note') {
+        try {
+          const { getFilePathOptions } = await import('@/lib/workspace')
+          const { readTextFile } = await import('@tauri-apps/plugin-fs')
+          const useArticleStore = (await import('@/stores/article')).default
+
+          const articleStore = useArticleStore.getState()
+          const currentFilePath = articleStore.activeFilePath
+
+          if (currentFilePath) {
+            confirmContext.filePath = currentFilePath
+
+            // 读取原始内容
+            const { path, baseDir } = await getFilePathOptions(currentFilePath)
+            let originalContent = ''
+            if (baseDir) {
+              originalContent = await readTextFile(path, { baseDir })
+            } else {
+              originalContent = await readTextFile(path)
+            }
+
+            // 导入工具函数来计算修改后的内容
+            const { searchReplaceContent, insertLinesAtPosition, deleteLinesInRange, replaceLinesInRange } = await import('./react-diff-helpers')
+
+            // 计算修改后的内容（用于 diff 显示）
+            let modifiedContent = originalContent
+
+            if (params.searchReplace) {
+              const sr = params.searchReplace
+              modifiedContent = searchReplaceContent(
+                modifiedContent,
+                sr.searchPattern || '',
+                sr.replacement || '',
+                sr.useRegex || false,
+                sr.caseSensitive || false,
+                sr.replaceAll !== false
+              )
+            } else if (params.insertLines) {
+              const il = params.insertLines
+              const newLines = Array.isArray(il.newLines) ? il.newLines : [il.newLines]
+              modifiedContent = insertLinesAtPosition(
+                modifiedContent,
+                il.afterLine || 0,
+                newLines
+              )
+            } else if (params.deleteLines) {
+              const dl = params.deleteLines
+              modifiedContent = deleteLinesInRange(
+                modifiedContent,
+                dl.startLine,
+                dl.endLine
+              )
+            } else if (params.lineEdits && Array.isArray(params.lineEdits)) {
+              // 处理 lineEdits
+              const sortedEdits = [...params.lineEdits].sort((a, b) => b.startLine - a.startLine)
+              for (const edit of sortedEdits) {
+                modifiedContent = replaceLinesInRange(
+                  modifiedContent,
+                  edit.startLine,
+                  edit.endLine,
+                  edit.newLines
+                )
+              }
+            } else if (params.content) {
+              modifiedContent = params.content
+            }
+
+            // 提取变化的区域（只显示有变化的行及其上下文）
+            const extractChangedRegion = (original: string, modified: string, contextLines = 3) => {
+              const originalLines = original.split('\n')
+              const modifiedLines = modified.split('\n')
+
+              // 找到第一个和最后一个不同的行
+              let firstDiff = -1
+              let lastDiff = -1
+
+              const maxLines = Math.max(originalLines.length, modifiedLines.length)
+              for (let i = 0; i < maxLines; i++) {
+                if (originalLines[i] !== modifiedLines[i]) {
+                  if (firstDiff === -1) firstDiff = i
+                  lastDiff = i
+                }
+              }
+
+              // 如果没有变化，返回前 50 行
+              if (firstDiff === -1) {
+                const previewLines = 50
+                return {
+                  original: originalLines.slice(0, previewLines).join('\n'),
+                  modified: modifiedLines.slice(0, previewLines).join('\n')
+                }
+              }
+
+              // 提取变化区域及其上下文
+              const start = Math.max(0, firstDiff - contextLines)
+              const end = Math.min(maxLines, lastDiff + contextLines + 1)
+
+              return {
+                original: originalLines.slice(start, end).join('\n'),
+                modified: modifiedLines.slice(start, end).join('\n'),
+                hasMore: end < maxLines
+              }
+            }
+
+            const changedRegion = extractChangedRegion(originalContent, modifiedContent)
+            confirmContext.originalContent = changedRegion.original
+            confirmContext.modifiedContent = changedRegion.modified
+
+          }
+        } catch (error) {
+          console.error('[Agent] Failed to prepare diff context:', error)
+        }
+      }
+
+      const confirmed = await this.config.requestConfirmation(toolName, params, confirmContext)
 
       if (!confirmed) {
         toolCall.status = 'error'

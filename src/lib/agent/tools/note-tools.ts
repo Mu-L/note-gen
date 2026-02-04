@@ -412,7 +412,12 @@ Selection suggestions:
         allFiles = allFiles.filter(file => file.relativePath.startsWith(params.folderPath))
       }
 
-      const results: Array<{ filePath: string; fileName: string; matchedContent: string }> = []
+      const results: Array<{
+        filePath: string
+        fileName: string
+        matchedContent: string
+        lineNumber?: number
+      }> = []
 
       for (const file of allFiles) {
         try {
@@ -428,17 +433,35 @@ Selection suggestions:
           }
 
           if (content.toLowerCase().includes(params.query.toLowerCase())) {
-            // 提取匹配的上下文（前后各50个字符）
-            const index = content.toLowerCase().indexOf(params.query.toLowerCase())
-            const start = Math.max(0, index - 50)
-            const end = Math.min(content.length, index + params.query.length + 50)
-            const matchedContent = content.substring(start, end)
+            // 按行分割内容
+            const lines = content.split('\n')
 
-            results.push({
-              filePath: file.relativePath,
-              fileName: file.name,
-              matchedContent: `...${matchedContent}...`,
-            })
+            // 查找匹配的行
+            for (let i = 0; i < lines.length; i++) {
+              if (lines[i].toLowerCase().includes(params.query.toLowerCase())) {
+                // 提取上下文（前后各 2 行）
+                const contextStart = Math.max(0, i - 2)
+                const contextEnd = Math.min(lines.length, i + 3)
+                const contextLines = lines.slice(contextStart, contextEnd)
+
+                // 格式化匹配内容，包含行号
+                const formattedLines = contextLines.map((line, idx) => {
+                  const actualLineNum = contextStart + idx + 1
+                  const isMatchLine = actualLineNum === i + 1
+                  const prefix = isMatchLine ? '>' : ' '
+                  return `${prefix} ${actualLineNum}: ${line}`
+                })
+
+                results.push({
+                  filePath: file.relativePath,
+                  fileName: file.name,
+                  matchedContent: formattedLines.join('\n'),
+                  lineNumber: i + 1,
+                })
+
+                break // 只添加第一个匹配位置，避免重复
+              }
+            }
           }
         } catch (error) {
           console.error(`读取文件 ${file.path} 失败:`, error)
@@ -499,22 +522,163 @@ function replaceLinesInRange(
   return [...before, ...newLines, ...after].join('\n')
 }
 
+/**
+ * 搜索并替换内容（支持正则表达式）
+ */
+function searchReplaceContent(
+  content: string,
+  searchPattern: string,
+  replacement: string,
+  useRegex: boolean,
+  caseSensitive: boolean,
+  replaceAll: boolean
+): string {
+  try {
+    let pattern = searchPattern
+    const flags = caseSensitive ? 'g' : 'gi'
+
+    if (!useRegex) {
+      // 非正则模式，转义特殊字符
+      pattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    }
+
+    const regex = new RegExp(pattern, replaceAll ? flags : flags.replace('g', ''))
+
+    return content.replace(regex, replacement)
+  } catch (error) {
+    throw new Error(`搜索替换失败: ${error}`)
+  }
+}
+
+/**
+ * 在指定行号后插入内容
+ */
+function insertLinesAtPosition(
+  content: string,
+  afterLine: number,
+  newLines: string[]
+): string {
+  const lines = content.split('\n')
+
+  // 验证行号
+  if (afterLine < 0 || afterLine > lines.length) {
+    throw new Error(`无效的行号: ${afterLine}，文件共 ${lines.length} 行`)
+  }
+
+  // 在指定行后插入内容
+  const before = lines.slice(0, afterLine)
+  const after = lines.slice(afterLine)
+
+  return [...before, ...newLines, ...after].join('\n')
+}
+
+/**
+ * 删除指定行范围
+ */
+function deleteLinesInRange(
+  content: string,
+  startLine: number,
+  endLine: number
+): string {
+  const lines = content.split('\n')
+
+  // 容错处理：如果 startLine > endLine，自动交换
+  let actualStartLine = startLine
+  let actualEndLine = endLine
+  if (startLine > endLine) {
+    actualStartLine = endLine
+    actualEndLine = startLine
+  }
+
+  // 将行号转换为数组索引（从 0 开始）
+  const startIndex = actualStartLine - 1
+  const endIndex = actualEndLine - 1
+
+  // 验证行号范围
+  if (startIndex < 0 || endIndex >= lines.length) {
+    throw new Error(`无效的行号范围: ${startLine}-${endLine}，文件共 ${lines.length} 行`)
+  }
+
+  // 删除指定行
+  const before = lines.slice(0, startIndex)
+  const after = lines.slice(endIndex + 1)
+
+  return [...before, ...after].join('\n')
+}
+
 export const modifyCurrentNoteTool: Tool = {
   name: 'modify_current_note',
-  description: 'Modify the content of the currently open note. Prerequisite: must first use read_markdown_file to read the current note content, understand the existing content before calling this tool to make changes. This tool automatically gets the path of the currently open note, no need to specify the filename. Recommended to use line edit mode (lineEdits), which is faster and more precise.',
+  description: `Modify the content of the currently open note. Prerequisite: must first use read_markdown_file to read the current note content. This tool automatically gets the path of the currently open note.
+
+**🎯 When User Has Quoted Content (HIGHEST PRIORITY):**
+If the context includes "quoted content" with specific line numbers, you should use this tool to modify those exact lines!
+- Use lineEdits with the quoted line numbers (e.g., startLine: 19, endLine: 19 for a single quoted line)
+- This is the PREFERRED way to modify when user has selected specific content
+
+**📝 Common Use Cases:**
+
+1. **Translate**: "Translate to Korean" → Use lineEdits to replace content with translated text
+2. **Simplify**: "Simplify this text" → Use lineEdits to replace with simplified version
+3. **Expand**: "Expand this content" → Use lineEdits to replace with expanded version
+4. **Rewrite**: "Rewrite with more professional expression" → Use lineEdits to rewrite professionally
+5. **Fix grammar**: "Correct grammar mistakes" → Use lineEdits to correct grammar
+6. **Change tone**: "Change to a friendlier tone" → Use lineEdits to adjust tone
+
+**🚨 CRITICAL: Choose the right operation for your change:**
+
+1. **lineEdits** (RECOMMENDED for most cases): Replace specific line ranges with new content
+   - Use this when you know which lines to modify
+   - Each edit: { "startLine": 5, "endLine": 5, "newLines": ["new content"] }
+   - Example: Change line 10 from "old" to "new"
+   - Example: Replace lines 5-7 with three new lines
+
+2. **searchReplace**: Use ONLY when you can't identify line numbers
+   - Good for replacing text that appears multiple times
+   - Contains: searchPattern, replacement, useRegex, caseSensitive, replaceAll
+
+3. **insertLines**: Insert new lines after a specific line
+   - Use when adding new content between existing lines
+
+4. **deleteLines**: Delete a range of lines
+   - Use when removing entire sections
+
+5. **content** (ONLY as LAST RESORT): Full file replacement
+   - ⚠️ Only use when you need to replace the ENTIRE file
+   - If you use this, you must provide the COMPLETE file content
+   - NEVER use this for small changes!
+
+**Best Practice**: Always use lineEdits when you know the line numbers (especially from quoted content).`,
   category: 'note',
   requiresConfirmation: true,
   parameters: [
     {
       name: 'lineEdits',
       type: 'array',
-      description: 'Array of edit operations for line-by-line modification. Each edit operation contains: startLine (starting line number, starts from 1), endLine (ending line number, inclusive), newLines (array of new line content). This method is faster and more precise than outputting complete content. Example: [{ "startLine": 5, "endLine": 5, "newLines": ["new line 5 content"] }]',
+      description: 'Array of edit operations for line-by-line modification. Each edit contains: startLine, endLine, newLines. Example: [{ "startLine": 5, "endLine": 5, "newLines": ["new content"] }]',
+      required: false,
+    },
+    {
+      name: 'searchReplace',
+      type: 'object',
+      description: 'Search and replace operations. Contains: searchPattern (text to find), replacement (replacement text), useRegex (false=literal, true=regex), caseSensitive (default false), replaceAll (default true)',
+      required: false,
+    },
+    {
+      name: 'insertLines',
+      type: 'object',
+      description: 'Insert new lines after a specified line. Contains: afterLine (line number, 0=before first line), newLines (array of lines to insert)',
+      required: false,
+    },
+    {
+      name: 'deleteLines',
+      type: 'object',
+      description: 'Delete a range of lines. Contains: startLine (first line to delete), endLine (last line to delete)',
       required: false,
     },
     {
       name: 'content',
       type: 'string',
-      description: 'Complete modified note content (Markdown format). Only used when not using lineEdits. Must be based on the originally read content, cannot be generated from scratch.',
+      description: 'Complete modified note content (Markdown format). Only used when other operations are not specified.',
       required: false,
     },
   ],
@@ -530,19 +694,82 @@ export const modifyCurrentNoteTool: Tool = {
         }
       }
 
-      // 优先使用 lineEdits（按行修改）
-      if (params.lineEdits && Array.isArray(params.lineEdits) && params.lineEdits.length > 0) {
-        // 读取当前文件内容
-        const { path, baseDir } = await getFilePathOptions(currentFilePath)
-        let currentContent = ''
-        if (baseDir) {
-          currentContent = await readTextFile(path, { baseDir })
-        } else {
-          currentContent = await readTextFile(path)
+      // 读取当前文件内容
+      const { path, baseDir } = await getFilePathOptions(currentFilePath)
+      let currentContent = ''
+      if (baseDir) {
+        currentContent = await readTextFile(path, { baseDir })
+      } else {
+        currentContent = await readTextFile(path)
+      }
+
+      let modifiedContent = currentContent
+      let operation = ''
+
+      // 1. 搜索替换操作
+      if (params.searchReplace) {
+        const sr = params.searchReplace
+        if (!sr.searchPattern) {
+          return {
+            success: false,
+            error: 'searchReplace 缺少 searchPattern 参数',
+          }
         }
 
-        let modifiedContent = currentContent
+        modifiedContent = searchReplaceContent(
+          modifiedContent,
+          sr.searchPattern as string,
+          sr.replacement as string || '',
+          sr.useRegex as boolean || false,
+          sr.caseSensitive as boolean || false,
+          sr.replaceAll !== false // 默认为 true
+        )
 
+        operation = `搜索替换 "${sr.searchPattern}" → "${sr.replacement}"`
+      }
+
+      // 2. 插入行操作
+      else if (params.insertLines) {
+        const il = params.insertLines
+        if (il.afterLine === undefined || !il.newLines) {
+          return {
+            success: false,
+            error: 'insertLines 缺少 afterLine 或 newLines 参数',
+          }
+        }
+
+        const newLines = Array.isArray(il.newLines) ? il.newLines : [il.newLines as string]
+        modifiedContent = insertLinesAtPosition(
+          modifiedContent,
+          il.afterLine as number,
+          newLines as string[]
+        )
+
+        operation = `在第 ${il.afterLine} 行后插入 ${newLines.length} 行`
+      }
+
+      // 3. 删除行操作
+      else if (params.deleteLines) {
+        const dl = params.deleteLines
+        if (!dl.startLine || !dl.endLine) {
+          return {
+            success: false,
+            error: 'deleteLines 缺少 startLine 或 endLine 参数',
+          }
+        }
+
+        modifiedContent = deleteLinesInRange(
+          modifiedContent,
+          dl.startLine as number,
+          dl.endLine as number
+        )
+
+        const lineCount = Math.abs(dl.endLine as number - dl.startLine as number) + 1
+        operation = `删除第 ${dl.startLine}-${dl.endLine} 行（共 ${lineCount} 行）`
+      }
+
+      // 4. 按行修改操作（原有功能）
+      else if (params.lineEdits && Array.isArray(params.lineEdits) && params.lineEdits.length > 0) {
         // 应用所有编辑操作（从后往前应用，避免行号偏移）
         const sortedEdits = [...params.lineEdits].sort((a, b) => b.startLine - a.startLine)
 
@@ -561,53 +788,53 @@ export const modifyCurrentNoteTool: Tool = {
           )
         }
 
-        // 写入修改后的内容
-        if (baseDir) {
-          await writeTextFile(path, modifiedContent, { baseDir })
-        } else {
-          await writeTextFile(path, modifiedContent)
+        operation = `修改 ${params.lineEdits.length} 处`
+      }
+
+      // 5. 完整内容替换（兼容原有功能）
+      else if (params.content && typeof params.content === 'string') {
+        modifiedContent = params.content
+        operation = '完整替换内容'
+      }
+
+      // 没有提供任何有效操作
+      else {
+        return {
+          success: false,
+          error: '缺少必需参数，请提供 lineEdits、searchReplace、insertLines、deleteLines 或 content 之一',
         }
+      }
 
-        // 通知编辑器内容已从外部更新
-        const emitter = (await import('@/lib/emitter')).default
-        emitter.emit('external-content-update', modifiedContent)
-
+      // 检查内容是否发生变化
+      if (modifiedContent === currentContent) {
         return {
           success: true,
           data: {
             filePath: currentFilePath,
-            editCount: params.lineEdits.length,
+            unchanged: true,
           },
-          message: `成功修改当前笔记 ${params.lineEdits.length} 处: ${currentFilePath}`,
+          message: `内容未发生变化`,
         }
       }
 
-      // 兼容原有的 content 模式（完整替换）
-      if (!params.content || typeof params.content !== 'string') {
-        return {
-          success: false,
-          error: '缺少必需参数，请提供 lineEdits 或 content',
-        }
-      }
-
-      // 统一使用 getFilePathOptions 来处理路径
-      const { path, baseDir } = await getFilePathOptions(currentFilePath)
-
+      // 写入修改后的内容
       if (baseDir) {
-        await writeTextFile(path, params.content, { baseDir })
+        await writeTextFile(path, modifiedContent, { baseDir })
       } else {
-        await writeTextFile(path, params.content)
+        await writeTextFile(path, modifiedContent)
       }
 
-      // 使用 emitter 通知编辑器内容已从外部更新，而不是直接调用 setCurrentArticle
-      // 这样可以保留编辑器的撤销历史
+      // 通知编辑器内容已从外部更新
       const emitter = (await import('@/lib/emitter')).default
-      emitter.emit('external-content-update', params.content)
+      emitter.emit('external-content-update', modifiedContent)
 
       return {
         success: true,
-        data: { filePath: currentFilePath },
-        message: `成功修改当前笔记: ${currentFilePath}`,
+        data: {
+          filePath: currentFilePath,
+          operation,
+        },
+        message: `成功修改当前笔记（${operation}）: ${currentFilePath}`,
       }
     } catch (error) {
       return {
@@ -1608,7 +1835,6 @@ export const noteTools: Tool[] = [
   listMarkdownFilesTool,
   readMarkdownFileTool,
   createMarkdownFileTool,
-  updateMarkdownFileTool,
   deleteMarkdownFileTool,
   searchMarkdownFilesTool,
   modifyCurrentNoteTool,

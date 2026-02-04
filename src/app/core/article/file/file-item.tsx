@@ -581,7 +581,6 @@ export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?:
             if (entry.isDirectory) {
               // 如果粘贴到自身内部，跳过与目标文件夹同名的子文件夹（避免循环引用）
               if (isPasteIntoSelf && entry.name === targetName) {
-                console.log(`跳过循环引用: ${entry.name}`)
                 continue
               }
 

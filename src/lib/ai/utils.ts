@@ -255,9 +255,6 @@ export async function prepareMessages(
     content: text
   })
 
-  // 打印最终的消息（调试记忆加载）
-  console.log('[prepareMessages] Final messages:', JSON.stringify(messages, null, 2))
-
   return { messages, geminiText }
 }
 

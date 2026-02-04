@@ -109,14 +109,8 @@ const useChatStore = create<ChatState>((set, get) => ({
   maybeCondense: () => {
     const state = get()
 
-    console.log('[ChatStore] maybeCondense 被调用', {
-      _condenseLock: state._condenseLock,
-      总消息数: state.chats.length
-    })
-
     // 防并发：已有压缩任务在执行，直接返回
     if (state._condenseLock) {
-      console.log('[ChatStore] 压缩锁已启用，跳过本次检查')
       return
     }
 
@@ -126,19 +120,14 @@ const useChatStore = create<ChatState>((set, get) => ({
     const lastClearIndex = chats.findLastIndex(c => c.type === 'clear')
     const chatsAfterClear = lastClearIndex === -1 ? chats : chats.slice(lastClearIndex + 1)
 
-    console.log('[ChatStore] 待检查的消息数:', chatsAfterClear.length)
-
     // 使用 IIFE 立即执行异步函数，不等待结果
     ;(async () => {
       // 动态导入 condense 模块（避免循环依赖）
       const { shouldCondense, condenseChats } = await import('@/lib/ai/condense')
 
       if (!(await shouldCondense(chatsAfterClear))) {
-        console.log('[ChatStore] 不需要压缩，退出')
         return
       }
-
-      console.log('[ChatStore] 触发压缩，设置锁')
 
       // 设置锁和压缩状态
       set({ _condenseLock: true, isCondensing: true })
@@ -162,13 +151,10 @@ const useChatStore = create<ChatState>((set, get) => ({
             })
           }
         }
-
-        console.log('[ChatStore] 压缩完成，已更新', condensedResults.length, '条消息的摘要')
       } catch (error) {
         // 静默失败，不影响用户体验
         console.error('[ChatStore] 压缩失败:', error)
       } finally {
-        console.log('[ChatStore] 释放压缩锁')
         set({ _condenseLock: false, isCondensing: false })
       }
     })()
@@ -301,16 +287,12 @@ const useChatStore = create<ChatState>((set, get) => ({
   insert: async (chat) => {
     const { currentConversationId } = get()
 
-    console.log('[ChatStore] insert called, currentConversationId:', currentConversationId, 'chat.conversationId:', chat.conversationId)
-
     // 确保有 conversationId，如果没有则创建新会话
     let conversationId = chat.conversationId || currentConversationId
     if (!conversationId) {
       // 没有当前会话，创建一个新会话
-      console.log('[ChatStore] No currentConversationId, creating new conversation')
       const { createConversation } = await import('@/db/conversations')
       conversationId = await createConversation('新对话')
-      console.log('[ChatStore] Created new conversation with id:', conversationId)
       // 设置为当前会话并刷新会话列表
       set({ currentConversationId: conversationId })
       await get().initConversations()
@@ -328,8 +310,6 @@ const useChatStore = create<ChatState>((set, get) => ({
       const chats = get().chats
       const newChats = [...chats, data]
       set({ chats: newChats })
-
-      console.log('[ChatStore] Message saved with conversationId:', conversationId)
 
       // 更新会话的消息数量和更新时间
       if (conversationId) {
@@ -378,7 +358,6 @@ const useChatStore = create<ChatState>((set, get) => ({
     set({ chats: newChats })
   },
   saveChat: async (chat, isSave = false) => {
-    console.log('[ChatStore] saveChat called with id:', chat.id, 'conversationId:', chat.conversationId, 'role:', chat.role, 'isSave:', isSave)
     get().updateChat(chat)
     if (isSave) {
       await updateChat(chat)
@@ -613,14 +592,12 @@ const useChatStore = create<ChatState>((set, get) => ({
   },
 
   switchConversation: async (id: number) => {
-    console.log('[ChatStore] switchConversation called with id:', id)
     // 先同步消息数量，确保 messageCount 与实际消息数量一致
     const { syncConversationMessageCount } = await import('@/db/conversations')
     await syncConversationMessageCount(id)
     // 然后加载消息
     const { getChatsByConversation } = await import('@/db/chats')
     const data = await getChatsByConversation(id)
-    console.log('[ChatStore] loaded chats for conversation', id, ':', data.length, 'messages')
     set({ currentConversationId: id, chats: data })
     // 刷新会话列表以确保 UI 显示最新的会话状态
     await get().initConversations()

@@ -86,11 +86,23 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
   }))
 
   // Agent 确认回调 - 使用内联确认而不是弹窗
-  const requestConfirmation = (toolName: string, params: Record<string, any>): Promise<boolean> => {
+  const requestConfirmation = (
+    toolName: string,
+    params: Record<string, any>,
+    context?: {
+      originalContent?: string
+      modifiedContent?: string
+      filePath?: string
+    }
+  ): Promise<boolean> => {
     return new Promise((resolve) => {
       // 将确认请求保存到 store，在对话中显示
-      setAgentState({ 
-        pendingConfirmation: { toolName, params }
+      setAgentState({
+        pendingConfirmation: {
+          toolName,
+          params,
+          ...context
+        }
       })
       
       // 轮询检查用户是否已确认或取消
@@ -308,7 +320,21 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
           }
         }
 
-        context += `\n## 引用内容\n\n用户引用了笔记 "${fileName}" ${lineInfo}的以下内容：\n${fullContent}\n\n请基于这段引用内容回答用户的问题。\n`
+        context += `\n## 📌 用户引用内容
+
+用户引用了笔记 "${fileName}" ${lineInfo}的以下内容：
+
+---
+${fullContent}
+---
+
+**重要**: 如果用户要求修改引用的内容，你必须使用上述确切的行号。
+- 单行修改: startLine: ${startLine}, endLine: ${endLine}
+- 多行范围: startLine: ${startLine}, endLine: ${endLine}
+
+请基于这段引用内容回答用户的问题。
+
+`
       }
 
       // 5. 构建消息数组，包含对话历史（使用压缩摘要替代已压缩的消息）

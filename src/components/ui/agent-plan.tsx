@@ -15,9 +15,12 @@ import {
   Clock,
   XCircle,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
+import { DiffViewer } from "@/components/ui/diff-viewer";
 
 // Type definitions from existing codebase
 interface ToolCall {
@@ -68,6 +71,9 @@ interface AgentPlanProps {
   pendingConfirmation?: {
     toolName: string;
     params: Record<string, any>;
+    originalContent?: string;
+    modifiedContent?: string;
+    filePath?: string;
   };
   confirmationHistory?: ConfirmationRecord[];
   currentStepStartTime?: number; // 当前步骤开始时间戳
@@ -124,6 +130,7 @@ export function AgentPlan({
   const [expandedTasks, setExpandedTasks] = React.useState<string[]>([]);
   const contentRef = React.useRef<HTMLDivElement>(null);
   const [currentStepDuration, setCurrentStepDuration] = React.useState<number>(0);
+  const [showDiff, setShowDiff] = React.useState(true);
 
   // 实时更新当前步骤的耗时
   React.useEffect(() => {
@@ -691,12 +698,82 @@ export function AgentPlan({
       {/* Current step confirmation (live mode only) */}
       {mode === "live" && pendingConfirmation && (
         <li className="mt-1 pt-2">
-          <div className="group flex items-center px-3 py-1.5 rounded-md border border-border/50 bg-muted/30">
-            <Clock className="mr-2 size-4.5 text-orange-500 shrink-0 animate-pulse" />
-            <code className="text-sm text-muted-foreground flex-1 truncate min-w-0 font-mono">
-              {pendingConfirmation.toolName}
-            </code>
-            <div className="flex gap-1 shrink-0">
+          <div className="rounded-md border border-border/50 bg-muted/30 overflow-hidden">
+            {/* Confirmation header */}
+            <div className="flex items-center justify-between px-3 py-1.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <Clock className="size-4.5 text-orange-500 shrink-0 animate-pulse" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <code className="text-sm text-foreground font-mono truncate">
+                      {pendingConfirmation.toolName}
+                    </code>
+                    {pendingConfirmation.filePath && (
+                      <span className="text-xs text-muted-foreground truncate">
+                        {pendingConfirmation.filePath}
+                      </span>
+                    )}
+                  </div>
+                  {/* 显示操作参数 */}
+                  {pendingConfirmation.toolName === 'modify_current_note' && (() => {
+                    const params = pendingConfirmation.params
+                    let operationDesc = ''
+                    if (params.lineEdits) {
+                      const count = Array.isArray(params.lineEdits) ? params.lineEdits.length : 1
+                      operationDesc = `修改 ${count} 处行 (lineEdits)`
+                    } else if (params.searchReplace) {
+                      operationDesc = `搜索替换 "${params.searchReplace.searchPattern}"`
+                    } else if (params.insertLines) {
+                      operationDesc = `在第 ${params.insertLines.afterLine} 行后插入`
+                    } else if (params.deleteLines) {
+                      operationDesc = `删除第 ${params.deleteLines.startLine}-${params.deleteLines.endLine} 行`
+                    } else if (params.content) {
+                      operationDesc = '完整替换内容'
+                    }
+                    return operationDesc ? (
+                      <div className="text-xs text-muted-foreground mt-1 truncate" title={operationDesc}>
+                        {operationDesc}
+                      </div>
+                    ) : null
+                  })()}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {/* Show diff button */}
+                {pendingConfirmation.originalContent && pendingConfirmation.modifiedContent && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => setShowDiff(!showDiff)}
+                  >
+                    {showDiff ? (
+                      <ChevronUp className="size-4" />
+                    ) : (
+                      <ChevronDown className="size-4" />
+                    )}
+                    <span className="ml-1">Diff</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Diff view */}
+            {showDiff && pendingConfirmation.originalContent && pendingConfirmation.modifiedContent && (
+              <div className="border-t border-border/50">
+                <DiffViewer
+                  original={pendingConfirmation.originalContent}
+                  modified={pendingConfirmation.modifiedContent}
+                  mode="lines"
+                  showLineNumbers={true}
+                  maxHeight={200}
+                  className="border-0 rounded-none"
+                />
+              </div>
+            )}
+
+            {/* Confirmation buttons */}
+            <div className="flex items-center justify-end gap-1 px-3 py-1.5 border-t border-border/50">
               <Button
                 size="sm"
                 variant="ghost"
