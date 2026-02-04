@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import { prepareMessages } from './utils';
 import useSettingStore from '@/stores/setting';
 
 export interface QuickPrompt {
@@ -37,9 +36,11 @@ export async function fetchAiPlaceholder(text: string): Promise<string | false> 
       Generate a very short question based on the following content:
       ${text}`
 
-    // 准备消息
-    const { messages } = await prepareMessages(placeholderPrompt, true)
-    
+    // 准备消息 - 不加载记忆，直接使用简单消息
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'user', content: placeholderPrompt }
+    ]
+
     const openai = new OpenAI({
       baseURL: defaultConfig.baseURL,
       apiKey: defaultConfig.apiKey,
@@ -108,21 +109,24 @@ export async function fetchAiQuickPrompts(text: string): Promise<QuickPrompt[]> 
 
     // 构建生成4条提示词的 prompt
     const prompt = `
-You are a note-taking software with an intelligent assistant. Generate 4 different quick prompt suggestions based on the following content.
+You are a note-taking software assistant. Generate 4 different quick prompt suggestions.
 
 Requirements:
-1. Each prompt should be short and actionable (under 15 characters)
-2. Each prompt must be different and serve various purposes
-3. Prompts should be in Chinese unless the content is clearly in English
-4. Return ONLY a JSON array of strings, no other text
-5. Do not include any special characters or punctuation in the prompts
+1. Each prompt: short, actionable, under 15 characters
+2. All 4 prompts must be different
+3. Use Chinese unless content is clearly English
+4. NO special characters or punctuation
+5. Respond with ONLY a valid JSON array
 
-Format: ["prompt1", "prompt2", "prompt3", "prompt4"]
+Your response must be exactly this format (nothing else):
+["prompt1", "prompt2", "prompt3", "prompt4"]
 
-Content to analyze:
-${text || 'No content provided, generate general note-taking prompts'}`
+Content: ${text || 'General note-taking'}`
 
-    const { messages } = await prepareMessages(prompt, true)
+    // 准备消息 - 不加载记忆，直接使用简单消息
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'user', content: prompt }
+    ]
 
     const openai = new OpenAI({
       baseURL: config.baseURL,
@@ -142,22 +146,34 @@ ${text || 'No content provided, generate general note-taking prompts'}`
     // 尝试解析 JSON 结果
     try {
       // 清理可能的 markdown 代码块标记
-      const cleanResult = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      const prompts = JSON.parse(cleanResult)
+      let cleanResult = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
 
-      if (Array.isArray(prompts) && prompts.length >= 4) {
-        return prompts.slice(0, 4).map((text, index) => ({
-          id: `ai-prompt-${index}`,
-          text: String(text).trim()
-        }))
+      // 尝试提取 JSON 数组（处理返回文本中包含额外内容的情况）
+      const arrayMatch = cleanResult.match(/\[[\s\S]*\]/)
+      if (arrayMatch) {
+        cleanResult = arrayMatch[0]
       }
 
-      // 如果解析的数组不足4条，返回能解析的部分
-      if (Array.isArray(prompts)) {
-        return prompts.map((text, index) => ({
-          id: `ai-prompt-${index}`,
-          text: String(text).trim()
-        }))
+      // 尝试修复常见的 JSON 问题（如缺少引号）
+      try {
+        const prompts = JSON.parse(cleanResult)
+
+        if (Array.isArray(prompts) && prompts.length >= 4) {
+          return prompts.slice(0, 4).map((text, index) => ({
+            id: `ai-prompt-${index}`,
+            text: String(text).trim()
+          }))
+        }
+
+        // 如果解析的数组不足4条，返回能解析的部分
+        if (Array.isArray(prompts)) {
+          return prompts.map((text, index) => ({
+            id: `ai-prompt-${index}`,
+            text: String(text).trim()
+          }))
+        }
+      } catch {
+        // JSON parse failed, continue to fallback
       }
     } catch (parseError) {
       console.error('Failed to parse AI response as JSON:', parseError)
@@ -204,7 +220,10 @@ Do not include any special characters or punctuation.
 
 Content: ${text || 'No content provided'}`
 
-    const { messages } = await prepareMessages(prompt, true)
+    // 准备消息 - 不加载记忆，直接使用简单消息
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'user', content: prompt }
+    ]
 
     const openai = new OpenAI({
       baseURL: config.baseURL,
