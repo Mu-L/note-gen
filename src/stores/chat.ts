@@ -77,6 +77,10 @@ interface ChatState {
   linkedResource: LinkedResource | null
   setLinkedResource: (resource: LinkedResource | null) => void
 
+  // 关联文件的行号预览（用于 AI 对话时快速了解文件结构）
+  linkedResourcePreview: string | null
+  setLinkedResourcePreview: (preview: string | null) => void
+
   // === 新增：会话管理 ===
   // 当前会话
   currentConversationId: number | null
@@ -202,6 +206,9 @@ const useChatStore = create<ChatState>((set, get) => ({
         // 保留 RAG 字段，因为它们应该在整个 Agent 执行期间显示
         ragSources: currentState.ragSources,
         ragSourceDetails: currentState.ragSourceDetails,
+        // 重置 Final Answer 模式
+        isFinalAnswerMode: false,
+        finalAnswerContent: undefined,
       }
     })
   },
@@ -236,6 +243,11 @@ const useChatStore = create<ChatState>((set, get) => ({
   linkedResource: null,
   setLinkedResource: (resource: LinkedResource | null) => {
     set({ linkedResource: resource })
+  },
+
+  linkedResourcePreview: null,
+  setLinkedResourcePreview: (preview: string | null) => {
+    set({ linkedResourcePreview: preview })
   },
 
   chats: [],
@@ -434,7 +446,6 @@ const useChatStore = create<ChatState>((set, get) => ({
         const githubRepo = await getSyncRepoName('github')
         files = await githubGetFiles({ path: `${path}/${filename}`, repo: githubRepo })
         res = await uploadGithubFile({
-          ext: 'json',
           file: jsonToBase64(chats),
           repo: githubRepo,
           path,
@@ -446,7 +457,6 @@ const useChatStore = create<ChatState>((set, get) => ({
         const giteeRepo = await getSyncRepoName('gitee')
         files = await giteeGetFiles({ path: `${path}/${filename}`, repo: giteeRepo })
         res = await uploadGiteeFile({
-          ext: 'json',
           file: jsonToBase64(chats),
           repo: giteeRepo,
           path,
@@ -461,7 +471,6 @@ const useChatStore = create<ChatState>((set, get) => ({
           ? files.find(file => file.name === filename)
           : (files?.name === filename ? files : undefined)
         res = await uploadGitlabFile({
-          ext: 'json',
           file: jsonToBase64(chats),
           repo: gitlabRepo,
           path,
@@ -476,7 +485,6 @@ const useChatStore = create<ChatState>((set, get) => ({
           ? files.find(file => file.name === filename)
           : (files?.name === filename ? files : undefined)
         res = await uploadGiteaFile({
-          ext: 'json',
           file: jsonToBase64(chats),
           repo: giteaRepo,
           path,

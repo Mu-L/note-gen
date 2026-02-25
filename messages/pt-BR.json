@@ -40,7 +40,8 @@
     "warning": "Aviso",
     "info": "Informação",
     "unsaved": "Não salvo",
-    "saving": "Salvando"
+    "saving": "Salvando",
+    "configureSync": "Configurar Sincronização"
   },
   "settings": {
     "defaultModels": {
@@ -346,6 +347,36 @@
           "title": "Modelo de Commit",
           "desc": "Para gerar automaticamente mensagens de commit do Git com base nas alterações do arquivo"
         }
+      },
+      "mermaid": {
+        "title": "Diagrama",
+        "rendering": "Renderizando...",
+        "renderError": "Erro de renderização",
+        "clickToEdit": "Clique para editar código",
+        "clickToAdd": "Clique para adicionar diagrama",
+        "placeholder": "Digite o código do diagrama Mermaid...",
+        "preview": "Visualizar",
+        "done": "Concluído",
+        "diagramTypes": {
+          "flowchart": "Fluxograma",
+          "sequence": "Sequência",
+          "classDiagram": "Diagrama de Classes",
+          "stateDiagram": "Diagrama de Estados",
+          "er": "Diagrama ER",
+          "gantt": "Gantt",
+          "pie": "Gráfico de Pizza",
+          "journey": "Jornada"
+        },
+        "templates": {
+          "flowchart": "graph TD\n    A[Início] --> B[Processo]\n    B --> C[Fim]",
+          "sequence": "sequenceDiagram\n    participant Alice\n    participant Bob\n    Alice->>Bob: Olá\n    Bob-->>Alice: Resposta",
+          "classDiagram": "classDiagram\n    Animal <|-- Duck\n    Animal <|-- Fish\n    Animal : +int age\n    Animal : +String gender",
+          "stateDiagram": "stateDiagram-v2\n    [*] --> Active\n    Active --> [*]",
+          "er": "erDiagram\n    CUSTOMER ||--o{ ORDER : places\n    CUSTOMER ||--o{ DELIVERY-ADDRESS : uses",
+          "gantt": "gantt\n    title Plano de Projeto\n    dateFormat YYYY-MM-DD\n    section Fase 1\n    Tarefa1 :a1, 2024-01-01, 30d\n    section Fase 2\n    Tarefa2 :after a1, 20d",
+          "pie": "pie title Alocação de Recursos\n    \"CPU\" : 45\n    \"Memória\" : 30\n    \"Armazenamento\" : 25",
+          "journey": "journey\n    title Meu Trabalho Diário\n    section Manhã\n    Deslocamento : 7:00, 5\n    Trabalho : 9:00, 8"
+        }
       }
     },
     "record": {
@@ -595,6 +626,11 @@
     "sync": {
       "title": "Sincronização",
       "desc": "Aqui, você pode configurar o repositório de sincronização, que pode ajudá-lo a sincronizar registros, arquivos markdown, configurações do sistema e outras informações.",
+      "selectPlatform": "Selecionar Plataforma de Sincronização",
+      "platformSettings": "Selecionar Plataforma",
+      "settings": "Configurações de Sincronização",
+      "platformDesc": "Configure o Token e informações do repositório para habilitar a sincronização",
+      "moreSettings": "Mais Configurações",
       "repoStatus": "Status do Repositório",
       "syncRepo": "Repositório de Sincronização",
       "syncRepoDesc": "Sincronizar arquivos markdown na escrita",
@@ -607,7 +643,7 @@
       "newToken": "Criar Token de Acesso",
       "newTokenDesc": "Ao criar um novo token, por favor, certifique-se de marcar a permissão 'repo', e após a configuração, ele criará automaticamente um repositório de arquivos (privado) e um repositório de imagens.",
       "giteeTokenDesc": "O token de acesso pessoal do Gitee é usado para sincronização de dados. Ele precisa de permissões de leitura e escrita do repositório. Após a configuração, ele criará automaticamente um repositório de arquivos (privado) e um repositório de imagens.",
-      "imageRepoSetting": "Armazenamento Local/Nuvem",
+      "imageRepoSetting": "Ativar Hospedagem de Imagens",
       "imageRepoSettingDesc": "Você já configurou um repositório de imagens, pode escolher usar o repositório de imagens ou usar o armazenamento local.",
       "jsdelivrSetting": "jsDelivr",
       "autoSyncDesc": "Quando habilitado, o editor sincronizará automaticamente com o GitHub 10 segundos após a interrupção da entrada",
@@ -618,12 +654,12 @@
       "customImageRepoDesc": "Deixe em branco para usar o nome do repositório padrão",
       "backupMethod": "Método de Backup",
       "backupMethodDesc": "Após definir como o método de backup principal, todas as funções relacionadas à sincronização na escrita usarão o método de backup atual (exceto para hospedagem de imagens)",
-      "isPrimaryBackup": "{type} é o método de backup principal atual",
-      "setPrimaryBackup": "Definir como Backup Principal",
       "createRepo": "Criar Repositório",
       "creating": "Criando",
       "checkRepo": "Verificar Repositório",
       "checking": "Verificando",
+      "enterToken": "Por favor, insira o Access Token",
+      "enterTokenHint": "Por favor, insira o Access Token primeiro para verificar o status do repositório",
       "defaultRepoName": "Padrão: {name}",
       "gitlabInstanceType": "Tipo de Instância GitLab",
       "gitlabInstanceTypeDesc": "Selecione o tipo de instância GitLab para conectar",
@@ -645,11 +681,14 @@
       "autoSyncOptions": {
         "placeholder": "Selecione o tempo de sincronização automática",
         "disabled": "Desabilitado",
+        "2s": "2 segundos",
+        "3s": "3 segundos",
+        "5s": "5 segundos",
         "10s": "10 segundos",
+        "20s": "20 segundos",
         "30s": "30 segundos",
         "1m": "1 minuto",
-        "5m": "5 minutos",
-        "30m": "30 minutos"
+        "2m": "2 minutos"
       },
       "exclusions": {
         "title": "Configuração de Exclusão de Sincronização",
@@ -674,6 +713,8 @@
     "imageHosting": {
       "title": "Hospedagem de Imagens",
       "desc": "Aqui, você pode configurar serviços de hospedagem de imagens para armazenar e gerenciar suas imagens.",
+      "type": "Selecionar Plataforma",
+      "typeDesc": "Selecione o provedor de serviços de hospedagem de imagens",
       "customRepoName": "Nome Personalizado do Repositório",
       "customRepoNameDesc": "Deixe em branco para usar o nome do repositório padrão",
       "isPrimaryBackup": "Método principal atual de hospedagem de imagens: {type}",
@@ -1882,7 +1923,8 @@
   "article": {
     "sync": {
       "syncingRemote": "Buscando arquivo remoto...",
-      "syncComplete": "Sincronização Concluída"
+      "syncComplete": "Sincronização Concluída",
+      "pullingRemote": "Obtendo conteúdo mais recente do servidor remoto..."
     },
     "syncConfirm": {
       "title": "Atualização de Arquivo Remoto Detectada",
@@ -2134,7 +2176,17 @@
           "tooltip": "Traduzir",
           "description": "Traduzir o texto selecionado",
           "selectContent": "Por favor, selecione o conteúdo primeiro",
-          "promptTemplate": "Traduzir este texto: \n{content}\n, para {language}, retorne diretamente o resultado traduzido."
+          "promptTemplate": "Traduzir este texto: \n{content}\n, para {language}, retorne diretamente o resultado traduzido.",
+          "fail": "Falha na tradução",
+          "failNoSelection": "Por favor, selecione o texto para traduzir",
+          "translating": "Traduzindo",
+          "translatingTo": "Traduzindo para {language}...",
+          "success": "Tradução concluída",
+          "successTo": "Traduzido para {language}",
+          "customLanguage": "Idioma personalizado...",
+          "customLanguagePlaceholder": "Digite o idioma de destino, ex.: Inglês, Japonês, etc.",
+          "customLanguageEmpty": "Por favor, digite o idioma de destino",
+          "customLanguageExample": "ex.: Inglês, Japonês, Francês, etc."
         }
       },
       "upload": {
@@ -2265,6 +2317,12 @@
     }
   },
   "editor": {
+    "placeholder": "Digite \"/\" para abrir o menu, comece a escrever...",
+    "outline": {
+      "title": "Esboço",
+      "open": "Abrir Esboço",
+      "close": "Fechar Esboço"
+    },
     "copySuccess": "Cópia Bem-sucedida",
     "copySuccessDescription": "Copiado para a área de transferência",
     "search": {
@@ -2319,7 +2377,20 @@
         "tooltip": "Traduzir",
         "description": "Traduzir o texto selecionado",
         "selectContent": "Por favor, selecione o conteúdo primeiro",
-        "promptTemplate": "Traduzir este texto: \n{content}\n, para {language}, retorne diretamente o resultado traduzido."
+        "promptTemplate": "Traduzir este texto: \n{content}\n, para {language}, retorne diretamente o resultado traduzido.",
+        "fail": "Falha na tradução",
+        "failNoSelection": "Por favor, selecione o texto para traduzir",
+        "translating": "Traduzindo...",
+        "translatingTo": "Traduzindo para {language}...",
+        "success": "Tradução concluída",
+        "successTo": "Traduzido para {language}",
+        "customLanguageEmpty": "Por favor, digite o idioma de destino",
+        "customLanguageExample": "ex.: Inglês, Japonês, Francês, etc."
+      },
+      "quoteDisplay": {
+        "fromFile": "Citado de {fileName}",
+        "line": "Citado de {fileName} linha {line}",
+        "lines": "Citado de {fileName} linhas {start}-{end}"
       }
     },
     "upload": {
@@ -2358,5 +2429,165 @@
   },
   "quickRecord": {
     "description": "Clique para selecionar uma ferramenta de registro e criar registros rapidamente"
+  },
+  "editor": {
+    "bubbleMenu": {
+      "ai": "IA",
+      "polish": "Polir",
+      "concise": "Conciso",
+      "expand": "Expandir",
+      "translate": "Traduzir",
+      "translateSubtitle": "Traduzir para",
+      "quoteToChat": "Citar no Chat",
+      "link": "Link",
+      "linkPlaceholder": "Digite a URL do link",
+      "confirm": "Confirmar",
+      "cancel": "Cancelar",
+      "bold": "Negrito",
+      "italic": "Itálico",
+      "strike": "Tachado",
+      "underline": "Sublinhado",
+      "inlineCode": "Código na linha",
+      "highlight": "Destacar",
+      "blockquote": "Citação",
+      "bulletList": "Lista com marcadores",
+      "orderedList": "Lista numerada",
+      "taskList": "Lista de tarefas",
+      "codeBlock": "Bloco de código",
+      "languages": {
+        "English": "Inglês",
+        "Japanese": "Japonês",
+        "Korean": "Coreano",
+        "French": "Francês",
+        "German": "Alemão",
+        "Spanish": "Espanhol",
+        "Portuguese": "Português",
+        "Russian": "Russo",
+        "Arabic": "Árabe"
+      },
+      "customLanguagePlaceholder": "Idioma personalizado..."
+    },
+    "aiSuggestion": {
+      "accept": "Aceitar",
+      "reject": "Rejeitar",
+      "generating": "Gerando...",
+      "abort": "Abortar"
+    },
+    "image": {
+      "insert": "Inserir imagem",
+      "uploading": "Enviando...",
+      "uploadSuccess": "Imagem enviada para o servidor de imagens",
+      "saveSuccess": "Imagem salva localmente",
+      "uploadFailed": "Falha ao inserir imagem",
+      "sizeSmall": "Pequeno (25%)",
+      "sizeMedium": "Médio (50%)",
+      "sizeLarge": "Grande (75%)",
+      "sizeOriginal": "Tamanho Original",
+      "editAlt": "Editar texto alternativo",
+      "editSrc": "Editar URL",
+      "altPlaceholder": "Digite o texto alternativo...",
+      "srcPlaceholder": "Digite a URL da imagem...",
+      "delete": "Excluir imagem"
+    },
+    "mermaid": {
+      "rendering": "Renderizando...",
+      "renderError": "Erro de renderização",
+      "clickToEdit": "Clique para editar código",
+      "clickToAdd": "Clique para adicionar diagrama",
+      "placeholder": "Digite o código do diagrama Mermaid...",
+      "preview": "Visualizar",
+      "done": "Concluído",
+      "diagramTypes": {
+        "flowchart": "Fluxograma",
+        "sequence": "Sequência",
+        "classDiagram": "Diagrama de Classes",
+        "stateDiagram": "Diagrama de Estados",
+        "er": "Diagrama ER",
+        "gantt": "Gantt",
+        "pie": "Gráfico de Pizza",
+        "journey": "Jornada"
+      },
+      "templates": {
+        "flowchart": "graph TD\n    A[Início] --> B[Processo]\n    B --> C[Fim]",
+        "sequence": "sequenceDiagram\n    participant Alice\n    participant Bob\n    Alice->>Bob: Olá\n    Bob-->>Alice: Resposta",
+        "classDiagram": "classDiagram\n    Animal <|-- Duck\n    Animal <|-- Fish\n    Animal : +int age\n    Animal : +String gender",
+        "stateDiagram": "stateDiagram-v2\n    [*] --> Active\n    Active --> [*]",
+        "er": "erDiagram\n    CUSTOMER ||--o{ ORDER : places\n    CUSTOMER ||--o{ DELIVERY-ADDRESS : uses",
+        "gantt": "gantt\n    title Plano de Projeto\n    dateFormat YYYY-MM-DD\n    section Fase 1\n    Tarefa1 :a1, 2024-01-01, 30d\n    section Fase 2\n    Tarefa2 :after a1, 20d",
+        "pie": "pie title Alocação de Recursos\n    \"CPU\" : 45\n    \"Memória\" : 30\n    \"Armazenamento\" : 25",
+        "journey": "journey\n    title Meu Trabalho Diário\n    section Manhã\n    Deslocamento : 7:00, 5\n    Trabalho : 9:00, 8"
+      }
+    },
+    "slashCommand": {
+      "groups": {
+        "ai": "IA",
+        "heading": "Título",
+        "list": "Lista",
+        "block": "Bloco",
+        "align": "Alinhamento",
+        "embed": "Incorporar",
+        "math": "Matemática",
+        "chart": "Gráfico"
+      },
+      "items": {
+        "continue": "Continuar",
+        "continueDesc": "IA continua escrevendo o conteúdo",
+        "heading1": "Título 1",
+        "heading1Desc": "Título grande",
+        "heading2": "Título 2",
+        "heading2Desc": "Título médio",
+        "heading3": "Título 3",
+        "heading3Desc": "Título pequeno",
+        "bulletList": "Lista com Marcadores",
+        "bulletListDesc": "Criar uma lista com marcadores simples",
+        "orderedList": "Lista Ordenada",
+        "orderedListDesc": "Criar uma lista numerada",
+        "taskList": "Lista de Tarefas",
+        "taskListDesc": "Criar uma lista de tarefas com caixas de seleção",
+        "image": "Imagem",
+        "imageDesc": "Inserir imagem local ou hospedada",
+        "table": "Tabela",
+        "tableDesc": "Inserir uma tabela",
+        "blockquote": "Citação",
+        "blockquoteDesc": "Capturar conteúdo citado",
+        "codeBlock": "Bloco de Código",
+        "codeBlockDesc": "Capturar trechos de código",
+        "divider": "Divisor",
+        "dividerDesc": "Criar um divisor horizontal",
+        "inlineMath": "Math Inline",
+        "inlineMathDesc": "Inserir fórmula LaTeX inline",
+        "blockMath": "Math em Bloco",
+        "blockMathDesc": "Inserir fórmula LaTeX em bloco",
+        "flowchart": "Fluxograma",
+        "flowchartDesc": "Inserir um fluxograma",
+        "sequence": "Diagrama de Sequência",
+        "sequenceDesc": "Inserir um diagrama de sequência",
+        "gantt": "Gráfico de Gantt",
+        "ganttDesc": "Inserir um gráfico de Gantt",
+        "classDiagram": "Diagrama de Classes",
+        "classDiagramDesc": "Inserir um diagrama de classes",
+        "stateDiagram": "Diagrama de Estados",
+        "stateDiagramDesc": "Inserir um diagrama de estados",
+        "pie": "Gráfico de Pizza",
+        "pieDesc": "Inserir um gráfico de pizza",
+        "erDiagram": "Diagrama ER",
+        "erDiagramDesc": "Inserir um diagrama de entidade-relacionamento",
+        "journey": "Mapa de Jornada",
+        "journeyDesc": "Inserir um mapa de jornada do usuário"
+      },
+      "imageUpload": {
+        "success": "Upload bem-sucedido",
+        "saveSuccess": "Salvo com sucesso",
+        "savePath": "Salvo em: {path}",
+        "failed": "Falha ao inserir imagem"
+      }
+    }
+  },
+  "tabContext": {
+    "close": "Fechar",
+    "closeOthers": "Fechar Outros",
+    "closeAll": "Fechar Tudo",
+    "closeLeft": "Fechar à Esquerda",
+    "closeRight": "Fechar à Direita"
   }
 }

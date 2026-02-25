@@ -36,7 +36,7 @@ interface ChatSendProps {
 export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ inputValue, onSent, linkedResource, attachedImages = [], quoteData = null }, ref) => {
   const { primaryModel } = useSettingStore()
   const { currentTagId } = useTagStore()
-  const { insert, loading, setLoading, saveChat, setAgentState, maybeCondense } = useChatStore()
+  const { insert, loading, setLoading, saveChat, setAgentState, maybeCondense, linkedResourcePreview } = useChatStore()
   const { isRagEnabled } = useVectorStore()
   const abortControllerRef = useRef<AbortController | null>(null)
   const agentHandlerRef = useRef<AgentHandler | null>(null)
@@ -135,6 +135,13 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
     // 每次都创建新的 AgentHandler，使用当前的 placeholderMessage
     const agentHandler = new AgentHandler({
       requestConfirmation,
+      onFinalAnswerRender: (markdownContent) => {
+        // 检测到 Final Answer 时触发渲染
+        setAgentState({
+          isFinalAnswerMode: true,
+          finalAnswerContent: markdownContent
+        })
+      },
       onComplete: async (result, steps, stopped) => {
         // 获取 Agent 执行历史，保存完整的 ReAct 步骤
         const { agentState } = useChatStore.getState()
@@ -182,6 +189,12 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
           agentHistory: JSON.stringify(agentHistory),
         }, true)
 
+        // 清空 Final Answer 模式状态
+        setAgentState({
+          isFinalAnswerMode: false,
+          finalAnswerContent: undefined
+        })
+
         // 清空 ref
         agentHandlerRef.current = null
       },
@@ -204,6 +217,12 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
           ragSourceDetails: currentMessage?.ragSourceDetails,
           content: `Error: ${error}`,
         }, true)
+
+        // 清空 Final Answer 模式状态
+        setAgentState({
+          isFinalAnswerMode: false,
+          finalAnswerContent: undefined
+        })
 
         // 清空 ref
         agentHandlerRef.current = null
@@ -288,23 +307,29 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
         }, true)
       }
 
-      // 3. 如果有关联文件（非文件夹），读取文件内容
+      // 3. 如果有关联文件（非文件夹），使用行号预览
       if (linkedResource && !isLinkedFolder(linkedResource)) {
-        try {
-          const workspace = await getWorkspacePath()
-          let linkedFileContent = ''
-          if (workspace.isCustom) {
-            linkedFileContent = await readTextFile(linkedResource.path)
-          } else {
-            const { path, baseDir } = await getFilePathOptions(linkedResource.path)
-            linkedFileContent = await readTextFile(path, { baseDir })
-          }
+        if (linkedResourcePreview) {
+          // 使用预生成的行号预览
+          context += `\n${linkedResourcePreview}\n`
+        } else {
+          // 回退：读取完整文件内容
+          try {
+            const workspace = await getWorkspacePath()
+            let linkedFileContent = ''
+            if (workspace.isCustom) {
+              linkedFileContent = await readTextFile(linkedResource.path)
+            } else {
+              const { path, baseDir } = await getFilePathOptions(linkedResource.path)
+              linkedFileContent = await readTextFile(path, { baseDir })
+            }
 
-          if (linkedFileContent) {
-            context += `\n## 关联文件内容\n\nThe following is the content of the linked file "${linkedResource.name}" (${linkedResource.relativePath}):\n${linkedFileContent}\n`
+            if (linkedFileContent) {
+              context += `\n## 关联文件内容\n\nThe following is the content of the linked file "${linkedResource.name}" (${linkedResource.relativePath}):\n${linkedFileContent}\n`
+            }
+          } catch (error) {
+            console.error('Failed to read linked file in Agent mode:', error)
           }
-        } catch (error) {
-          console.error('Failed to read linked file in Agent mode:', error)
         }
       }
 

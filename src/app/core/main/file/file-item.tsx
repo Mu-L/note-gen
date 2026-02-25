@@ -33,7 +33,7 @@ export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?:
   const [name, setName] = useState(item.name)
   const [isComposing, setIsComposing] = useState(false) // 追踪输入法合成状态
   const inputRef = useRef<HTMLInputElement>(null)
-  const { activeFilePath, setActiveFilePath, readArticle, setCurrentArticle, fileTree, setFileTree, loadFileTree, vectorIndexedFiles, checkFileVectorIndexed } = useArticleStore()
+  const { activeFilePath, setActiveFilePath, readArticle, setCurrentArticle, fileTree, setFileTree, loadFileTree, vectorIndexedFiles, checkFileVectorIndexed, cleanTabsByDeletedFile, cleanTabsByDeletedFolder } = useArticleStore()
   const setArticleState = useArticleStore.setState
   const { setClipboardItem, clipboardItem, clipboardOperation } = useClipboardStore()
   const { fileManagerTextSize } = useSettingStore()
@@ -154,45 +154,14 @@ export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?:
     const currentPath = computedParentPath(item)
 
     if (item.name.match(/\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i)) {
-      // 图片文件：设置 activeFilePath，让 EditorWrapper 显示图片编辑器
-      if (activeFilePath === currentPath) {
-        setActiveFilePath('')
-        setCurrentArticle('')
-      } else {
-        setActiveFilePath(currentPath)
-        setCurrentArticle('') // 清空文本内容
-      }
+      // 图片文件：设置 activeFilePath，让 EditorLayout 显示图片编辑器
+      setActiveFilePath(currentPath)
     } else if (item.name.match(/\.(md|txt|markdown|py|js|ts|jsx|tsx|css|scss|less|html|xml|json|yaml|yml|sh|bash|java|c|cpp|h|go|rs|sql|rb|php|vue|svelte|astro|toml|ini|conf|cfg|gitignore|env|example|template)$/i)) {
-      // Markdown/文本文件：设置 activeFilePath 并读取内容
-      if (activeFilePath === currentPath) {
-        setActiveFilePath('')
-        setCurrentArticle('')
-      } else {
-        setActiveFilePath(currentPath)
-        // 如果是 skills 文件夹下的文件，不使用 readArticle（避免自动关联到 AI 对话）
-        if (isInSkillsFolder(currentPath)) {
-          // 读取内容但不调用 readArticle，避免触发向量计算等关联逻辑
-          const { readTextFile } = await import('@tauri-apps/plugin-fs')
-          const { getFilePathOptions } = await import('@/lib/workspace')
-          const pathOptions = await getFilePathOptions(currentPath)
+      // Markdown/文本文件：设置 activeFilePath
+      setActiveFilePath(currentPath)
 
-          try {
-            let content = ''
-            const workspace = await (await import('@/lib/workspace')).getWorkspacePath()
-            if (workspace.isCustom) {
-              content = await readTextFile(pathOptions.path)
-            } else {
-              content = await readTextFile(pathOptions.path, { baseDir: pathOptions.baseDir })
-            }
-            setCurrentArticle(content)
-          } catch (error) {
-            console.error('Failed to read file:', error)
-          }
-        } else {
-          // 普通文件，正常读取并关联到 AI 对话
-          readArticle(currentPath, item.sha, item.isLocale)
-        }
-      }
+      // 检查是否是远程文件
+      // 读取内容的逻辑移到 EditorLayout 中处理，避免重复渲染
     } else {
       // 其他文件类型：清空编辑器
       setActiveFilePath('')
@@ -266,11 +235,9 @@ export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?:
         } catch (error) {
           console.error(`删除文件 ${item.name} 的向量数据失败:`, error)
         }
-        // 只有删除的是当前选中的文件时，才清空选中状态
-        if (activeFilePath === currentPath) {
-          setActiveFilePath('')
-          setCurrentArticle('')
-        }
+
+        // 清理已被删除的文件对应的 tabs（包括自动选择其他 tab）
+        await cleanTabsByDeletedFile(currentPath)
       } catch (error) {
         console.error('Delete file failed:', error)
         toast({
@@ -288,32 +255,70 @@ export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?:
       kind: 'warning',
     });
     if (answer) {
+      const currentPath = computedParentPath(item)
+
       try {
         // 获取当前主要备份方式
         const store = await Store.load('store.json');
-        const backupMethod = await store.get<'github' | 'gitee' | 'gitlab'>('primaryBackupMethod') || 'github';
-        
-        switch (backupMethod) {
-          case 'github':
-            await deleteFile({ path: activeFilePath, sha: item.sha as string, repo: RepoNames.sync });
-            break;
-          case 'gitee':
-            await deleteGiteeFile({ path: activeFilePath, sha: item.sha as string, repo: RepoNames.sync });
-            break;
-          case 'gitlab':
-            await deleteGitlabFile({ path: activeFilePath, sha: item.sha as string, repo: RepoNames.sync });
-            break;
-        }
-        
-        // 更新文件树
-        await loadFileTree()
+        const backupMethod = await store.get<'github' | 'gitee' | 'gitlab' | 'gitea'>('primaryBackupMethod') || 'github';
 
-        toast({
-          title: t('context.delete'),
-          description: t('context.deleteSyncFileSuccess'),
-        });
+        let success = false
+        switch (backupMethod) {
+          case 'github': {
+            const result = await deleteFile({ path: currentPath, sha: item.sha as string, repo: RepoNames.sync });
+            success = !!result
+            break;
+          }
+          case 'gitee': {
+            const result = await deleteGiteeFile({ path: currentPath, sha: item.sha as string, repo: RepoNames.sync });
+            success = result !== false
+            break;
+          }
+          case 'gitlab': {
+            const result = await deleteGitlabFile({ path: currentPath, sha: item.sha as string, repo: RepoNames.sync });
+            success = !!result
+            break;
+          }
+          case 'gitea': {
+            const { deleteFile: deleteGiteaFile } = await import('@/lib/sync/gitea')
+            const result = await deleteGiteaFile({ path: currentPath, sha: item.sha as string, repo: RepoNames.sync });
+            success = !!result
+            break;
+          }
+        }
+
+        if (success) {
+          // 只更新当前文件的状态，不刷新整个文件树
+          const cacheTree = cloneDeep(fileTree)
+
+          // 递归查找并更新文件状态
+          const updateFileStatus = (items: typeof cacheTree): boolean => {
+            for (const entry of items) {
+              const entryPath = computedParentPath(entry)
+              if (entryPath === currentPath && entry.isFile) {
+                entry.sha = undefined // 清除远程 SHA
+                return true
+              }
+              if (entry.children && updateFileStatus(entry.children)) {
+                return true
+              }
+            }
+            return false
+          }
+
+          if (updateFileStatus(cacheTree)) {
+            setFileTree(cacheTree)
+          }
+
+          toast({
+            title: t('context.delete'),
+            description: t('context.deleteSyncFileSuccess'),
+          });
+        } else {
+          throw new Error('删除操作返回失败')
+        }
       } catch (error) {
-        console.error(error);
+        console.error('[handleDeleteSyncFile] 删除远程文件失败:', error);
         toast({
           title: t('context.delete'),
           description: t('context.deleteSyncFileError'),
@@ -616,6 +621,8 @@ export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?:
           } else {
             await remove(sourcePathOptions.path, { baseDir: sourcePathOptions.baseDir, recursive: true })
           }
+          // 清理已被删除的原文件夹对应的 tabs
+          await cleanTabsByDeletedFolder(clipboardItem?.path || '')
           setClipboardItem(null, 'none')
         }
       } else {
@@ -643,6 +650,8 @@ export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?:
           } else {
             await remove(sourcePathOptions.path, { baseDir: sourcePathOptions.baseDir })
           }
+          // 清理已被删除的原文件对应的 tabs
+          await cleanTabsByDeletedFile(clipboardItem?.path || '')
           // Clear clipboard after cut & paste operation
           setClipboardItem(null, 'none')
         }

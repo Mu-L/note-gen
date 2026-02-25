@@ -38,7 +38,8 @@
     "warning": "警告",
     "info": "信息",
     "unsaved": "未保存",
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "configureSync": "配置同步"
   },
   "settings": {
     "defaultModels": {
@@ -340,6 +341,36 @@
           "title": "提交模型",
           "desc": "用於自動生成 Git 提交信息，基於文件內容變化智能生成描述性提交信息"
         }
+      },
+      "mermaid": {
+        "title": "圖表",
+        "rendering": "渲染中...",
+        "renderError": "渲染錯誤",
+        "clickToEdit": "點擊編輯源碼",
+        "clickToAdd": "點擊添加圖表",
+        "placeholder": "輸入 Mermaid 圖表代碼...",
+        "preview": "預覽",
+        "done": "完成",
+        "diagramTypes": {
+          "flowchart": "流程圖",
+          "sequence": "時序圖",
+          "classDiagram": "類圖",
+          "stateDiagram": "狀態圖",
+          "er": "ER圖",
+          "gantt": "甘特圖",
+          "pie": "餅圖",
+          "journey": "旅程圖"
+        },
+        "templates": {
+          "flowchart": "graph TD\n    A[開始] --> B[處理]\n    B --> C[結束]",
+          "sequence": "sequenceDiagram\n    participant Alice\n    participant Bob\n    Alice->>Bob: 你好\n    Bob-->>Alice: 回覆",
+          "classDiagram": "classDiagram\n    Animal <|-- Duck\n    Animal <|-- Fish\n    Animal : +int age\n    Animal : +String gender",
+          "stateDiagram": "stateDiagram-v2\n    [*] --> Active\n    Active --> [*]",
+          "er": "erDiagram\n    CUSTOMER ||--o{ ORDER : places\n    CUSTOMER ||--o{ DELIVERY-ADDRESS : uses",
+          "gantt": "gantt\n    title 項目計劃\n    dateFormat YYYY-MM-DD\n    section 第一階段\n    任務1 :a1, 2024-01-01, 30d\n    section 第二階段\n    任務2 :after a1, 20d",
+          "pie": "pie title 資源分配\n    \"CPU\" : 45\n    \"記憶體\" : 30\n    \"儲存\" : 25",
+          "journey": "journey\n    title 我的日常工作\n    section 上午\n    通勤 : 7:00, 5\n    工作 : 9:00, 8"
+        }
       }
     },
     "record": {
@@ -573,6 +604,11 @@
     "sync": {
       "title": "同步配置",
       "desc": "在這裡，你可以配置同步倉庫，它可以幫助你同步記錄、markdown 文件、系統配置等資訊。",
+      "selectPlatform": "選擇同步平台",
+      "platformSettings": "選擇平台",
+      "settings": "同步設置",
+      "platformDesc": "配置 Token 和倉庫資訊以啟用同步功能",
+      "moreSettings": "更多設置",
       "repoStatus": "倉庫狀態",
       "syncRepo": "同步倉庫",
       "syncRepoDesc": "同步寫作中的 markdown 文件。",
@@ -585,7 +621,7 @@
       "newToken": "創建 access token",
       "newTokenDesc": "新建 token 時，請務必勾選 repo 權限，配置後將自動創建文件倉庫（私有）和圖床倉庫。",
       "giteeTokenDesc": "Gitee 私人令牌用於同步數據，需要有倉庫的讀寫權限，配置後將自動創建文件倉庫（私有）和圖床倉庫。",
-      "imageRepoSetting": "本地/圖床",
+      "imageRepoSetting": "開啟圖床",
       "imageRepoSettingDesc": "你已經配置了圖床倉庫，開啟此項將使用圖床倉庫，否則將使用本地儲存。",
       "jsdelivrSetting": "jsDelivr",
       "jsdelivrSettingDesc": "使用 jsdelivr 加速圖片訪問。",
@@ -597,12 +633,12 @@
       "customImageRepoDesc": "留空則使用默認倉庫名",
       "backupMethod": "備份方式",
       "backupMethodDesc": "設置為主要備份方式後，寫作中的所有同步相關功能將使用當前備份方式（圖床功能除外）",
-      "isPrimaryBackup": "當前 {type} 為主要備份方式",
-      "setPrimaryBackup": "設為主要備份方式",
       "createRepo": "創建倉庫",
       "creating": "創建中",
       "checkRepo": "檢查倉庫",
       "checking": "檢查中",
+      "enterToken": "請輸入 Access Token",
+      "enterTokenHint": "請先輸入 Access Token 以檢查倉庫狀態",
       "defaultRepoName": "默認: {name}",
       "gitlabInstanceType": "GitLab 實例類型",
       "gitlabInstanceTypeDesc": "選擇要連接的 GitLab 實例類型",
@@ -616,11 +652,14 @@
       "autoSyncOptions": {
         "placeholder": "選擇自動同步時間",
         "disabled": "關閉",
+        "2s": "2 秒",
+        "3s": "3 秒",
+        "5s": "5 秒",
         "10s": "10 秒",
+        "20s": "20 秒",
         "30s": "30 秒",
         "1m": "1 分鐘",
-        "5m": "5 分鐘",
-        "30m": "30 分鐘"
+        "2m": "2 分鐘"
       },
       "exclusions": {
         "title": "同步排除配置",
@@ -652,6 +691,8 @@
     "imageHosting": {
       "title": "圖床設置",
       "desc": "在這裡，你可以配置圖床服務，用於儲存和管理你的圖片。",
+      "type": "選擇平台",
+      "typeDesc": "選擇圖床服務提供商",
       "customRepoName": "自訂倉庫名",
       "customRepoNameDesc": "留空則使用默認倉庫名",
       "isPrimaryBackup": "當前 {type} 為主要圖床",
@@ -1840,7 +1881,8 @@
   "article": {
     "sync": {
       "syncingRemote": "正在拉取遠端檔案...",
-      "syncComplete": "同步完成"
+      "syncComplete": "同步完成",
+      "pullingRemote": "正在從遠端伺服器獲取最新內容..."
     },
     "syncConfirm": {
       "title": "檢測到遠端檔案更新",
@@ -2060,7 +2102,17 @@
           "tooltip": "翻譯",
           "description": "將選中的文本進行翻譯",
           "selectContent": "請先選擇一段內容",
-          "promptTemplate": "將這段文字：\n{content}\n翻譯為{language}語言，直接返回翻譯後的結果。"
+          "promptTemplate": "將這段文字：\n{content}\n翻譯為{language}語言，直接返回翻譯後的結果。",
+          "fail": "翻譯失敗",
+          "failNoSelection": "請先選擇要翻譯的文本",
+          "translating": "翻譯中",
+          "translatingTo": "正在翻譯為 {language}...",
+          "success": "翻譯完成",
+          "successTo": "已翻譯為 {language}",
+          "customLanguage": "自定義語言...",
+          "customLanguagePlaceholder": "輸入目標語言，如：英語、日語等",
+          "customLanguageEmpty": "請輸入目標語言",
+          "customLanguageExample": "例如：英語、日語、法語等"
         }
       },
       "saveDialog": {
@@ -2185,5 +2237,188 @@
       "model": "大模型识别",
       "modelDesc": "需配置STT模型，更准确"
     }
+  },
+  "editor": {
+    "placeholder": "輸入「/」叫出選單，開始寫作...",
+    "outline": {
+      "title": "大綱",
+      "open": "打開大綱",
+      "close": "關閉大綱"
+    },
+    "translation": {
+      "fail": "翻譯失敗",
+      "failNoSelection": "請先選擇要翻譯的文本",
+      "translating": "翻譯中...",
+      "translatingTo": "正在翻譯為 {language}...",
+      "success": "翻譯完成",
+      "successTo": "已翻譯為 {language}",
+      "customLanguageEmpty": "請輸入目標語言",
+      "customLanguageExample": "例如：英語、日語、法語等"
+    },
+    "quoteDisplay": {
+      "fromFile": "引用自 {fileName}",
+      "line": "引用自 {fileName} 第 {line} 行",
+      "lines": "引用自 {fileName} 第 {start}-{end} 行"
+    },
+    "bubbleMenu": {
+      "ai": "AI",
+      "polish": "潤色",
+      "concise": "精簡",
+      "expand": "擴展",
+      "translate": "翻譯",
+      "translateSubtitle": "翻譯為",
+      "quoteToChat": "引用到對話",
+      "link": "連結",
+      "linkPlaceholder": "輸入連結地址",
+      "confirm": "確認",
+      "cancel": "取消",
+      "bold": "粗體",
+      "italic": "斜體",
+      "strike": "刪除線",
+      "underline": "底線",
+      "inlineCode": "行內代碼",
+      "highlight": "高亮",
+      "blockquote": "引用",
+      "bulletList": "無序列表",
+      "orderedList": "有序列表",
+      "taskList": "任務列表",
+      "codeBlock": "代碼塊",
+      "languages": {
+        "English": "英語",
+        "Japanese": "日語",
+        "Korean": "韓語",
+        "French": "法語",
+        "German": "德語",
+        "Spanish": "西班牙語",
+        "Portuguese": "葡萄牙語",
+        "Russian": "俄語",
+        "Arabic": "阿拉伯語"
+      },
+      "customLanguagePlaceholder": "自定義語言..."
+    },
+    "aiSuggestion": {
+      "accept": "接受",
+      "reject": "拒絕",
+      "generating": "生成中...",
+      "abort": "終止"
+    },
+    "image": {
+      "insert": "插入圖片",
+      "uploading": "上傳中...",
+      "uploadSuccess": "圖片已上傳到圖床",
+      "saveSuccess": "圖片已保存到本地",
+      "uploadFailed": "插入圖片失敗",
+      "sizeSmall": "小 (25%)",
+      "sizeMedium": "中 (50%)",
+      "sizeLarge": "大 (75%)",
+      "sizeOriginal": "原始尺寸",
+      "editAlt": "編輯替代文本",
+      "editSrc": "編輯地址",
+      "altPlaceholder": "輸入替代文本...",
+      "srcPlaceholder": "輸入圖片地址...",
+      "delete": "刪除圖片",
+      "confirm": "確認",
+      "cancel": "取消"
+    },
+    "mermaid": {
+      "rendering": "渲染中...",
+      "renderError": "渲染錯誤",
+      "clickToEdit": "點擊編輯源碼",
+      "clickToAdd": "點擊添加圖表",
+      "placeholder": "輸入 Mermaid 圖表代碼...",
+      "preview": "預覽",
+      "done": "完成",
+      "diagramTypes": {
+        "flowchart": "流程圖",
+        "sequence": "時序圖",
+        "classDiagram": "類圖",
+        "stateDiagram": "狀態圖",
+        "er": "ER圖",
+        "gantt": "甘特圖",
+        "pie": "餅圖",
+        "journey": "旅程圖"
+      },
+      "templates": {
+        "flowchart": "graph TD\n    A[開始] --> B[處理]\n    B --> C[結束]",
+        "sequence": "sequenceDiagram\n    participant Alice\n    participant Bob\n    Alice->>Bob: 你好\n    Bob-->>Alice: 回覆",
+        "classDiagram": "classDiagram\n    Animal <|-- Duck\n    Animal <|-- Fish\n    Animal : +int age\n    Animal : +String gender",
+        "stateDiagram": "stateDiagram-v2\n    [*] --> Active\n    Active --> [*]",
+        "er": "erDiagram\n    CUSTOMER ||--o{ ORDER : places\n    CUSTOMER ||--o{ DELIVERY-ADDRESS : uses",
+        "gantt": "gantt\n    title 項目計劃\n    dateFormat YYYY-MM-DD\n    section 第一階段\n    任務1 :a1, 2024-01-01, 30d\n    section 第二階段\n    任務2 :after a1, 20d",
+        "pie": "pie title 資源分配\n    \"CPU\" : 45\n    \"記憶體\" : 30\n    \"儲存\" : 25",
+        "journey": "journey\n    title 我的日常工作\n    section 上午\n    通勤 : 7:00, 5\n    工作 : 9:00, 8"
+      }
+    },
+    "slashCommand": {
+      "groups": {
+        "ai": "AI",
+        "heading": "標題",
+        "list": "列表",
+        "block": "區塊",
+        "align": "對齊",
+        "embed": "嵌入",
+        "math": "數學",
+        "chart": "圖表"
+      },
+      "items": {
+        "continue": "續寫",
+        "continueDesc": "AI 續寫內容",
+        "heading1": "標題1",
+        "heading1Desc": "大標題",
+        "heading2": "標題2",
+        "heading2Desc": "中標題",
+        "heading3": "標題3",
+        "heading3Desc": "小標題",
+        "bulletList": "無序列表",
+        "bulletListDesc": "建立簡單的項目列表",
+        "orderedList": "有序列表",
+        "orderedListDesc": "建立帶編號的列表",
+        "taskList": "任務列表",
+        "taskListDesc": "建立帶核取方塊的任務列表",
+        "image": "圖片",
+        "imageDesc": "插入本地圖片或圖床圖片",
+        "table": "表格",
+        "tableDesc": "插入表格",
+        "blockquote": "引用",
+        "blockquoteDesc": "擷取引用內容",
+        "codeBlock": "程式碼區塊",
+        "codeBlockDesc": "擷取程式碼片段",
+        "divider": "分隔線",
+        "dividerDesc": "在元素之間建立分隔線",
+        "inlineMath": "行內公式",
+        "inlineMathDesc": "插入行內 LaTeX 公式",
+        "blockMath": "區塊公式",
+        "blockMathDesc": "插入區塊 LaTeX 公式",
+        "flowchart": "流程圖",
+        "flowchartDesc": "插入流程圖",
+        "sequence": "時序圖",
+        "sequenceDesc": "插入時序圖",
+        "gantt": "甘特圖",
+        "ganttDesc": "插入甘特圖",
+        "classDiagram": "類別圖",
+        "classDiagramDesc": "插入類別圖",
+        "stateDiagram": "狀態圖",
+        "stateDiagramDesc": "插入狀態圖",
+        "pie": "圓餅圖",
+        "pieDesc": "插入圓餅圖",
+        "erDiagram": "ER圖",
+        "erDiagramDesc": "插入實體關係圖",
+        "journey": "旅程圖",
+        "journeyDesc": "插入使用者旅程圖"
+      },
+      "imageUpload": {
+        "success": "上傳成功",
+        "saveSuccess": "儲存成功",
+        "savePath": "儲存路徑: {path}",
+        "failed": "插入圖片失敗"
+      }
+    }
+  },
+  "tabContext": {
+    "close": "關閉",
+    "closeOthers": "關閉其他",
+    "closeAll": "關閉全部",
+    "closeLeft": "關閉左側",
+    "closeRight": "關閉右側"
   }
 }

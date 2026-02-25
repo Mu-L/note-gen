@@ -171,11 +171,33 @@ const MessageWrapper = React.memo(function MessageWrapper({ chat, children }: { 
 MessageWrapper.displayName = 'MessageWrapper'
 
 const AgentExecutionStatusWrapper = React.memo(function AgentExecutionStatusWrapper() {
-  const { agentState } = useChatStore()
+  const { agentState, loading } = useChatStore()
 
-  // 只在 Agent 运行时显示
-  if (!agentState.isRunning) {
+  // 只在 Agent 运行时或 Final Answer 模式下显示
+  if (!agentState.isRunning && !agentState.isFinalAnswerMode) {
     return null
+  }
+
+  // Final Answer 模式：同时显示 Markdown 内容 和 步骤历史面板
+  if (agentState.isFinalAnswerMode && agentState.finalAnswerContent) {
+    return (
+      <div className="flex flex-col w-full min-w-0 gap-2">
+        {/* 步骤历史面板 - 始终显示 */}
+        {(agentState.completedSteps?.length > 0 || agentState.thoughtHistory?.length > 0) && (
+          <div className="flex w-full min-w-0">
+            <div className='text-sm leading-6 flex-1 wrap-break-word min-w-0 overflow-hidden'>
+              <AgentExecutionStatus />
+            </div>
+          </div>
+        )}
+        {/* Final Answer 内容 */}
+        <div className="flex w-full min-w-0">
+          <div className='text-sm leading-6 flex-1 wrap-break-word min-w-0 overflow-hidden'>
+            <ChatPreview text={agentState.finalAnswerContent} streaming={loading} />
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -190,7 +212,7 @@ AgentExecutionStatusWrapper.displayName = 'AgentExecutionStatusWrapper'
 
 const Message = React.memo(function Message({ chat }: { chat: Chat }) {
   const t = useTranslations()
-  const { deleteChat, getMcpToolCallsByChatId } = useChatStore()
+  const { deleteChat, getMcpToolCallsByChatId, loading } = useChatStore()
   const content = chat.content
 
   const handleRemoveClearContext = useCallback(() => {
@@ -277,7 +299,7 @@ const Message = React.memo(function Message({ chat }: { chat: Chat }) {
             <ChatThinking chat={chat} />
             {
               <div className={`${content ? 'note-wrapper border w-full overflow-y-auto overflow-x-hidden my-2 p-4 rounded-lg' : ''}`}>
-                <ChatPreview text={content || ''} />
+                <ChatPreview text={content || ''} streaming={loading && chat.role === 'system'} />
               </div>
             }
             <MessageControl chat={chat}>
@@ -327,7 +349,7 @@ const Message = React.memo(function Message({ chat }: { chat: Chat }) {
             )}
 
             <ChatThinking chat={chat} />
-            <ChatPreview text={content || ''} />
+            <ChatPreview text={content || ''} streaming={loading && chat.role === 'system'} />
             <MessageControl chat={chat}>
               <MarkText chat={chat} />
             </MessageControl>

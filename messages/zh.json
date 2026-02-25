@@ -38,7 +38,8 @@
     "info": "信息",
     "restartToApply": "，请重启应用使配置生效",
     "unsaved": "未保存",
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "configureSync": "配置同步"
   },
   "settings": {
     "defaultModels": {
@@ -394,6 +395,36 @@
           "title": "提交模型",
           "desc": "用于自动生成 Git 提交信息，基于文件内容变化智能生成描述性提交信息"
         }
+      },
+      "mermaid": {
+        "title": "图表",
+        "rendering": "渲染中...",
+        "renderError": "渲染错误",
+        "clickToEdit": "点击编辑源码",
+        "clickToAdd": "点击添加图表代码",
+        "placeholder": "输入 Mermaid 图表代码...",
+        "preview": "预览",
+        "done": "完成",
+        "diagramTypes": {
+          "flowchart": "流程图",
+          "sequence": "时序图",
+          "classDiagram": "类图",
+          "stateDiagram": "状态图",
+          "er": "ER图",
+          "gantt": "甘特图",
+          "pie": "饼图",
+          "journey": "旅程图"
+        },
+        "templates": {
+          "flowchart": "graph TD\n    A[开始] --> B[处理]\n    B --> C[结束]",
+          "sequence": "sequenceDiagram\n    participant Alice\n    participant Bob\n    Alice->>Bob: 你好\n    Bob-->>Alice: 回复",
+          "classDiagram": "classDiagram\n    Animal <|-- Duck\n    Animal <|-- Fish\n    Animal : +int age\n    Animal : +String gender",
+          "stateDiagram": "stateDiagram-v2\n    [*] --> Active\n    Active --> [*]",
+          "er": "erDiagram\n    CUSTOMER ||--o{ ORDER : places\n    CUSTOMER ||--o{ DELIVERY-ADDRESS : uses",
+          "gantt": "gantt\n    title 项目计划\n    dateFormat YYYY-MM-DD\n    section 第一阶段\n    任务1 :a1, 2024-01-01, 30d\n    section 第二阶段\n    任务2 :after a1, 20d",
+          "pie": "pie title 资源分配\n    \"CPU\" : 45\n    \"内存\" : 30\n    \"存储\" : 25",
+          "journey": "journey\n    title 我的日常工作\n    section 上午\n    通勤 : 7:00, 5\n    工作 : 9:00, 8"
+        }
       }
     },
     "record": {
@@ -634,6 +665,11 @@
     "sync": {
       "title": "同步配置",
       "desc": "在这里，你可以配置同步仓库，它可以帮助你同步记录、markdown 文件、系统配置等信息。",
+      "selectPlatform": "选择同步平台",
+      "platformSettings": "选择平台",
+      "settings": "同步设置",
+      "platformDesc": "配置 Token 和仓库信息以启用同步功能",
+      "moreSettings": "更多设置",
       "repoStatus": "仓库状态",
       "syncRepo": "同步仓库",
       "syncRepoDesc": "同步写作中的 markdown 文件。",
@@ -646,7 +682,7 @@
       "newToken": "创建 access token",
       "newTokenDesc": "新建 token 时，请务必勾选 repo 权限，配置后将自动创建文件仓库（私有）和图床仓库。",
       "giteeTokenDesc": "Gitee 私人令牌用于同步数据，需要有仓库的读写权限，配置后将自动创建文件仓库（私有）和图床仓库。",
-      "imageRepoSetting": "本地/图床",
+      "imageRepoSetting": "开启图床",
       "imageRepoSettingDesc": "你已经配置了图床仓库，开启此项将使用图床仓库，否则将使用本地存储。",
       "jsdelivrSetting": "jsDelivr",
       "jsdelivrSettingDesc": "使用 jsdelivr 加速图片访问。",
@@ -658,12 +694,12 @@
       "customImageRepoDesc": "留空则使用默认仓库名",
       "backupMethod": "备份方式",
       "backupMethodDesc": "设置为主要备份方式后，写作中的所有同步相关功能将使用当前备份方式（图床功能除外）",
-      "isPrimaryBackup": "当前 {type} 为主要备份方式",
-      "setPrimaryBackup": "设为主要备份方式",
       "createRepo": "创建仓库",
       "creating": "创建中",
       "checkRepo": "检查仓库",
       "checking": "检查中",
+      "enterToken": "请输入 Access Token",
+      "enterTokenHint": "请先输入 Access Token 以检查仓库状态",
       "defaultRepoName": "默认: {name}",
       "gitlabInstanceType": "GitLab 实例类型",
       "gitlabInstanceTypeDesc": "选择要连接的 GitLab 实例类型",
@@ -685,11 +721,14 @@
       "autoSyncOptions": {
         "placeholder": "选择自动同步时间",
         "disabled": "关闭",
+        "2s": "2 秒",
+        "3s": "3 秒",
+        "5s": "5 秒",
         "10s": "10 秒",
+        "20s": "20 秒",
         "30s": "30 秒",
         "1m": "1 分钟",
-        "5m": "5 分钟",
-        "30m": "30 分钟"
+        "2m": "2 分钟"
       },
       "exclusions": {
         "title": "同步排除配置",
@@ -713,6 +752,8 @@
     "imageHosting": {
       "title": "图床设置",
       "desc": "在这里，你可以配置图床服务，用于存储和管理你的图片。",
+      "type": "选择平台",
+      "typeDesc": "选择图床服务提供商",
       "customRepoName": "自定义仓库名",
       "customRepoNameDesc": "留空则使用默认仓库名",
       "isPrimaryBackup": "当前 {type} 为主要图床",
@@ -2003,7 +2044,17 @@
           "tooltip": "翻译",
           "description": "将选中的文本进行翻译",
           "selectContent": "请先选择一段内容",
-          "promptTemplate": "将这段文字：\n{content}\n翻译为{language}语言，直接返回翻译后的结果。"
+          "promptTemplate": "将这段文字：\n{content}\n翻译为{language}语言，直接返回翻译后的结果。",
+          "fail": "翻译失败",
+          "failNoSelection": "请先选择要翻译的文本",
+          "translating": "翻译中",
+          "translatingTo": "正在翻译为 {language}...",
+          "success": "翻译完成",
+          "successTo": "已翻译为 {language}",
+          "customLanguage": "自定义语言...",
+          "customLanguagePlaceholder": "输入目标语言，如：英语、日语等",
+          "customLanguageEmpty": "请输入目标语言",
+          "customLanguageExample": "例如：英语、日语、法语等"
         }
       }
     },
@@ -2114,5 +2165,188 @@
   },
   "quickRecord": {
     "description": "点击选择记录工具，快速创建记录"
+  },
+  "editor": {
+    "placeholder": "输入 \"/\" 呼出菜单，开始写作...",
+    "outline": {
+      "title": "大纲",
+      "open": "打开大纲",
+      "close": "关闭大纲"
+    },
+    "translation": {
+      "fail": "翻译失败",
+      "failNoSelection": "请先选择要翻译的文本",
+      "translating": "翻译中",
+      "translatingTo": "正在翻译为 {language}...",
+      "success": "翻译完成",
+      "successTo": "已翻译为 {language}",
+      "customLanguageEmpty": "请输入目标语言",
+      "customLanguageExample": "例如：英语、日语、法语等"
+    },
+    "quoteDisplay": {
+      "fromFile": "引用自 {fileName}",
+      "line": "引用自 {fileName} 第 {line} 行",
+      "lines": "引用自 {fileName} 第 {start}-{end} 行"
+    },
+    "bubbleMenu": {
+      "ai": "AI",
+      "polish": "润色",
+      "concise": "精简",
+      "expand": "扩展",
+      "translate": "翻译",
+      "translateSubtitle": "翻译为",
+      "quoteToChat": "引用到对话",
+      "link": "链接",
+      "linkPlaceholder": "输入链接地址",
+      "confirm": "确认",
+      "cancel": "取消",
+      "bold": "粗体",
+      "italic": "斜体",
+      "strike": "删除线",
+      "underline": "下划线",
+      "inlineCode": "行内代码",
+      "highlight": "高亮",
+      "blockquote": "引用",
+      "bulletList": "无序列表",
+      "orderedList": "有序列表",
+      "taskList": "任务列表",
+      "codeBlock": "代码块",
+      "languages": {
+        "English": "英语",
+        "Japanese": "日语",
+        "Korean": "韩语",
+        "French": "法语",
+        "German": "德语",
+        "Spanish": "西班牙语",
+        "Portuguese": "葡萄牙语",
+        "Russian": "俄语",
+        "Arabic": "阿拉伯语"
+      },
+      "customLanguagePlaceholder": "自定义语言..."
+    },
+    "aiSuggestion": {
+      "accept": "接受",
+      "reject": "拒绝",
+      "generating": "生成中...",
+      "abort": "终止"
+    },
+    "image": {
+      "insert": "插入图片",
+      "uploading": "上传中...",
+      "uploadSuccess": "图片已上传到图床",
+      "saveSuccess": "图片已保存到本地",
+      "uploadFailed": "插入图片失败",
+      "sizeSmall": "小 (25%)",
+      "sizeMedium": "中 (50%)",
+      "sizeLarge": "大 (75%)",
+      "sizeOriginal": "原始尺寸",
+      "editAlt": "编辑替代文本",
+      "editSrc": "编辑地址",
+      "altPlaceholder": "输入替代文本...",
+      "srcPlaceholder": "输入图片地址...",
+      "delete": "删除图片",
+      "confirm": "确认",
+      "cancel": "取消"
+    },
+    "mermaid": {
+      "rendering": "渲染中...",
+      "renderError": "渲染错误",
+      "clickToEdit": "点击编辑源码",
+      "clickToAdd": "点击添加图表代码",
+      "placeholder": "输入 Mermaid 图表代码...",
+      "preview": "预览",
+      "done": "完成",
+      "diagramTypes": {
+        "flowchart": "流程图",
+        "sequence": "时序图",
+        "classDiagram": "类图",
+        "stateDiagram": "状态图",
+        "er": "ER图",
+        "gantt": "甘特图",
+        "pie": "饼图",
+        "journey": "旅程图"
+      },
+      "templates": {
+        "flowchart": "graph TD\n    A[开始] --> B[处理]\n    B --> C[结束]",
+        "sequence": "sequenceDiagram\n    participant Alice\n    participant Bob\n    Alice->>Bob: 你好\n    Bob-->>Alice: 回复",
+        "classDiagram": "classDiagram\n    Animal <|-- Duck\n    Animal <|-- Fish\n    Animal : +int age\n    Animal : +String gender",
+        "stateDiagram": "stateDiagram-v2\n    [*] --> Active\n    Active --> [*]",
+        "er": "erDiagram\n    CUSTOMER ||--o{ ORDER : places\n    CUSTOMER ||--o{ DELIVERY-ADDRESS : uses",
+        "gantt": "gantt\n    title 项目计划\n    dateFormat YYYY-MM-DD\n    section 第一阶段\n    任务1 :a1, 2024-01-01, 30d\n    section 第二阶段\n    任务2 :after a1, 20d",
+        "pie": "pie title 资源分配\n    \"CPU\" : 45\n    \"内存\" : 30\n    \"存储\" : 25",
+        "journey": "journey\n    title 我的日常工作\n    section 上午\n    通勤 : 7:00, 5\n    工作 : 9:00, 8"
+      }
+    },
+    "slashCommand": {
+      "groups": {
+        "ai": "AI",
+        "heading": "标题",
+        "list": "列表",
+        "block": "块级",
+        "align": "对齐",
+        "embed": "嵌入",
+        "math": "数学",
+        "chart": "图表"
+      },
+      "items": {
+        "continue": "续写",
+        "continueDesc": "AI 续写内容",
+        "heading1": "标题1",
+        "heading1Desc": "大标题",
+        "heading2": "标题2",
+        "heading2Desc": "中标题",
+        "heading3": "标题3",
+        "heading3Desc": "小标题",
+        "bulletList": "无序列表",
+        "bulletListDesc": "创建简单的项目列表",
+        "orderedList": "有序列表",
+        "orderedListDesc": "创建带编号的列表",
+        "taskList": "任务列表",
+        "taskListDesc": "创建带复选框的任务列表",
+        "image": "图片",
+        "imageDesc": "插入本地图片或图床图片",
+        "table": "表格",
+        "tableDesc": "插入表格",
+        "blockquote": "引用",
+        "blockquoteDesc": "捕获引用内容",
+        "codeBlock": "代码块",
+        "codeBlockDesc": "捕获代码片段",
+        "divider": "分割线",
+        "dividerDesc": "在元素之间创建分隔线",
+        "inlineMath": "行内公式",
+        "inlineMathDesc": "插入行内 LaTeX 公式",
+        "blockMath": "块级公式",
+        "blockMathDesc": "插入块级 LaTeX 公式",
+        "flowchart": "流程图",
+        "flowchartDesc": "插入流程图",
+        "sequence": "时序图",
+        "sequenceDesc": "插入时序图",
+        "gantt": "甘特图",
+        "ganttDesc": "插入甘特图",
+        "classDiagram": "类图",
+        "classDiagramDesc": "插入类图",
+        "stateDiagram": "状态图",
+        "stateDiagramDesc": "插入状态图",
+        "pie": "饼图",
+        "pieDesc": "插入饼图",
+        "erDiagram": "ER图",
+        "erDiagramDesc": "插入实体关系图",
+        "journey": "旅程图",
+        "journeyDesc": "插入用户旅程图"
+      },
+      "imageUpload": {
+        "success": "上传成功",
+        "saveSuccess": "保存成功",
+        "savePath": "保存路径: __PATH__",
+        "failed": "插入图片失败"
+      }
+    }
+  },
+  "tabContext": {
+    "close": "关闭",
+    "closeOthers": "关闭其他",
+    "closeAll": "关闭全部",
+    "closeLeft": "关闭左侧",
+    "closeRight": "关闭右侧"
   }
 }
