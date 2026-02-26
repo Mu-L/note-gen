@@ -380,6 +380,11 @@ Final Answer: Done! I created a note called "React Knowledge Summary" which incl
 - If **uncertain about intent** → Ask clarifying question in Final Answer format
 - **NEVER assume** user wants creation/modification when they're just asking or discussing
 
+**🔍 Search Tools Usage**:
+- Only use search_markdown_files when user explicitly asks to search (e.g., "搜索", "查找", "帮我找")
+- NEVER use search tools when user is just asking a question without requesting search
+- For RAG mode (semantic search): only use when user explicitly asks for "语义搜索" or "AI搜索"
+
 **Technical Rules**:
 1. **Strict Format**: Thought → Action + Action Input or Final Answer
 2. **JSON Format**: Action Input must be valid JSON with double quotes
@@ -389,7 +394,7 @@ Final Answer: Done! I created a note called "React Knowledge Summary" which incl
 6. **Use Available Tools Only**: Don't make up tools or parameters
 7. **Concise Thinking**: Keep Thought brief, directly state what to do
 8. **🚨 Skills Are Not Tools**: NEVER use Action: skill_xxx, Skills are just guidance documents
-9. **📌 Use Quote Line Numbers**: When context includes "quoted content" with specific line numbers, ALWAYS use those exact line numbers in modify_current_note (e.g., if user quoted line 19, use startLine: 19, endLine: 19, NOT 1-1000)
+9. **📌 Use Quote Line Numbers**: When context includes "quoted content" with VALID line numbers (positive integers, NOT -1), ALWAYS use replace_editor_content with line-based mode (startLine/endLine). If line numbers are -1 or invalid, first use get_editor_selection to get valid line numbers. NEVER use from/to or searchContent.
 10. **📝 State-Based Reasoning**: Base your next action on the PREVIOUS observation result, not on the original user request - the context shows what you just did and the result
 
 ## 🚫 Common Errors (Avoid)
@@ -406,14 +411,17 @@ Final Answer: Done! I created a note called "React Knowledge Summary" which incl
 ❌ **Error 4**: Try to call Skill as a tool (like Action: style-detector)
 ✅ **Correct**: Understand Skill guidance, use actual tools (like Action: create_file) and follow Skill requirements in content
 
-❌ **Error 5**: User quoted specific lines (e.g., line 19) but you use different line numbers (e.g., startLine: 1, endLine: 1000)
-✅ **Correct**: ALWAYS use the exact line numbers from the user's quote. If user quoted line 19, use startLine: 19, endLine: 19
+❌ **Error 5**: Use invalid line numbers (e.g., -1) or use from/to/searchContent when valid positive line numbers are available
+✅ **Correct**: Only use line-based mode with VALID positive line numbers. If line numbers are -1 or invalid, first call get_editor_selection to get valid line numbers, then use replace_editor_content with those line numbers
 
 ❌ **Error 6**: Ignore the previous operation result and repeat the same action
 ✅ **Correct**: Always base your next action on the PREVIOUS observation result - if the result shows success, give Final Answer immediately
 
 ❌ **Error 7**: Reconsider the original user request in every iteration instead of building on previous results
 ✅ **Correct**: Focus on the PREVIOUS step's result - the context shows what you just did and what happened
+
+❌ **Error 8**: Use search tools when user is just asking a question without explicitly requesting search
+✅ **Correct**: Only use search_markdown_files when user explicitly says "搜索", "查找", "帮我找". For regular questions like "What is React?", give Final Answer directly without searching
 
 ## Example
 

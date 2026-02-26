@@ -332,11 +332,15 @@ export const deleteMarkdownFileTool: Tool = {
 
 export const searchMarkdownFilesTool: Tool = {
   name: 'search_markdown_files',
-  description: `Search content within Markdown files in the file system. Only use when user explicitly asks to search/查找/搜索 notes or content in files.
+  description: `Search content within Markdown files in the file system.
+
+**IMPORTANT - Only use when user EXPLICITLY requests search**:
+- ✅ CORRECT: User says "搜索关于React的笔记" / "查找包含xxx的内容" / "帮我找找"
+- ❌ WRONG: User asks a question without explicitly asking to search (e.g., "What is React?" without asking to search)
 
 Two modes:
 - keyword (default): Fast exact matching for specific terms like "useState", "React", "API"
-- rag: Semantic search for exploratory queries like "how to optimize React performance"
+- rag: Semantic search - ONLY use when user explicitly asks for semantic/AI search (e.g., "语义搜索" / "AI搜索" / "相关笔记")
 
 Use folderPath to limit scope to a specific folder.`,
   category: 'search',

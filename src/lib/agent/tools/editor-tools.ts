@@ -123,6 +123,12 @@ export const replaceEditorContentTool: Tool = {
   name: 'replace_editor_content',
   description: `📝 **Editor Operation**: Replace content in the specified range with new content.
 
+**IMPORTANT - Use Line Numbers When Quoting**:
+When the user quotes specific lines from the editor, you MUST use line-based mode (startLine/endLine) - this is required behavior.
+- If user quoted line 5: use startLine: 5, endLine: 5
+- If user quoted lines 5-10: use startLine: 5, endLine: 10
+- NEVER use position-based mode (from/to) or text-based mode when line numbers are available
+
 **Use Cases:**
 - AI wants to modify specific lines/paragraphs
 - Precise content replacement based on selection or text search
@@ -130,25 +136,49 @@ export const replaceEditorContentTool: Tool = {
 
 **Parameters (choose one of these modes):**
 
-**Mode 1: Position-based (use current selection if not specified)**
-- \`content\`: New content to replace with
-- \`from\`: Start position (0-indexed, optional)
-- \`to\`: End position (0-indexed, optional)
+**Mode 1: Line-based (RECOMMENDED when user quotes content)**
+- \`startLine\`: Start line number (1-based, required for line-based mode)
+- \`endLine\`: End line number (1-based, required for line-based mode)
+- \`replaceContent\`: New content to replace with
 
-**Mode 2: Text-based search (recommended for AI)**
+**Mode 2: Text-based search**
 - \`searchContent\`: Text to search for (must match exactly)
 - \`replaceContent\`: New content to replace with
 - \`occurrence\`: Which occurrence to replace (1-based, default: 1)
 
-**Mode 3: Line-based**
-- \`startLine\`: Start line number (1-based)
-- \`endLine\`: End line number (1-based)
-- \`replaceContent\`: New content to replace with
+**Mode 3: Position-based (use current selection if not specified)**
+- \`content\`: New content to replace with
+- \`from\`: Start position (0-indexed, optional)
+- \`to\`: End position (0-indexed, optional)
 
-**Note:** Use \`get_editor_content\` to read the current document content first.`,
+**Note:** Use \`get_editor_content\` to read the current document content first. Always prefer line-based mode when line numbers are available from user's quote.`,
   category: 'editor',
   requiresConfirmation: false,
   parameters: [
+    {
+      name: 'startLine',
+      type: 'number',
+      description: 'Start line number (1-based, REQUIRED when user quotes content)',
+      required: false,
+    },
+    {
+      name: 'endLine',
+      type: 'number',
+      description: 'End line number (1-based, REQUIRED when user quotes content)',
+      required: false,
+    },
+    {
+      name: 'replaceContent',
+      type: 'string',
+      description: 'New content to replace with (text-based/line-based mode)',
+      required: false,
+    },
+    {
+      name: 'searchContent',
+      type: 'string',
+      description: 'Text to search for (text-based mode)',
+      required: false,
+    },
     {
       name: 'content',
       type: 'string',
@@ -168,33 +198,9 @@ export const replaceEditorContentTool: Tool = {
       required: false,
     },
     {
-      name: 'searchContent',
-      type: 'string',
-      description: 'Text to search for (text-based mode)',
-      required: false,
-    },
-    {
-      name: 'replaceContent',
-      type: 'string',
-      description: 'New content to replace with (text-based/line-based mode)',
-      required: false,
-    },
-    {
       name: 'occurrence',
       type: 'number',
       description: 'Which occurrence to replace (1-based, default: 1)',
-      required: false,
-    },
-    {
-      name: 'startLine',
-      type: 'number',
-      description: 'Start line number (1-based, line-based mode)',
-      required: false,
-    },
-    {
-      name: 'endLine',
-      type: 'number',
-      description: 'End line number (1-based, line-based mode)',
       required: false,
     },
   ],

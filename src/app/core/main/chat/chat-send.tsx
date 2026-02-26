@@ -337,7 +337,9 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
       if (quoteData) {
         const { fileName, startLine, endLine, fullContent } = quoteData
         let lineInfo = ''
-        if (startLine !== -1 && endLine !== -1) {
+        let hasValidLineNumbers = startLine !== -1 && endLine !== -1
+
+        if (hasValidLineNumbers) {
           if (startLine === endLine) {
             lineInfo = `第 ${startLine} 行`
           } else {
@@ -353,9 +355,15 @@ export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ i
 ${fullContent}
 ---
 
-**重要**: 如果用户要求修改引用的内容，你必须使用上述确切的行号。
+${hasValidLineNumbers ? `**🚨 必须使用行号修改**: 当用户引用内容并要求修改时，你必须使用 replace_editor_content 工具的 line-based 模式，传入精确的行号：
 - 单行修改: startLine: ${startLine}, endLine: ${endLine}
 - 多行范围: startLine: ${startLine}, endLine: ${endLine}
+- 必须使用 replaceContent 参数传入新内容
+
+**禁止**:
+- 禁止使用 from/to 位置参数
+- 禁止使用 searchContent 文本搜索模式
+- 禁止获取整个文档内容后再操作` : `**注意**: 此引用内容没有有效的行号信息。如果需要修改，请先使用 get_editor_selection 工具获取当前选中的行号信息。`}
 
 请基于这段引用内容回答用户的问题。
 
