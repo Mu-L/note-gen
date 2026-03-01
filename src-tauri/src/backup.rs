@@ -55,6 +55,12 @@ pub async fn import_app_data_from_file(
             continue;
         }
 
+        // 跳过 SQLite 临时文件，让数据库重新创建
+        let file_name_str = file_name.to_string_lossy();
+        if file_name_str.ends_with(".db-shm") || file_name_str.ends_with(".db-wal") {
+            continue;
+        }
+
         let src_path = entry.path();
         let dest_path = data_dir.join(&file_name);
 
@@ -151,6 +157,12 @@ pub async fn import_app_data(app_handle: AppHandle, zip_path: String) -> Result<
         let file_name = entry.file_name();
 
         if file_name == "store.json" {
+            continue;
+        }
+
+        // 跳过 SQLite 临时文件，让数据库重新创建
+        let file_name_str = file_name.to_string_lossy();
+        if file_name_str.ends_with(".db-shm") || file_name_str.ends_with(".db-wal") {
             continue;
         }
 
