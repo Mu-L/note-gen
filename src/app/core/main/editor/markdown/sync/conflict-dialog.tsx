@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { compareFileVersions, pullRemoteFile, saveLocalFile } from '@/lib/sync/auto-sync'
+import { pullRemoteFile, saveLocalFile } from '@/lib/sync/auto-sync'
 import { updateFileSyncTime } from '@/lib/sync/conflict-resolution'
 import emitter from '@/lib/emitter'
 

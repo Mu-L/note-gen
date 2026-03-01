@@ -1006,8 +1006,7 @@ export function TipTapEditor({
         // Insert content with markdown parsing
         // Wrap in setTimeout to avoid React lifecycle flushSync conflict
         setTimeout(() => {
-          const tr = editor.state.tr.insertContent(content, { contentType: 'markdown' })
-          editor.dispatch(tr)
+          editor.commands.insertContent(content, { contentType: 'markdown' })
 
           // Use the actual cursor position after transaction
           const newPosition = editor.state.selection.from

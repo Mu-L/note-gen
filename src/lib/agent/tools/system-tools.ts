@@ -1,6 +1,6 @@
 import { Tool, ToolResult } from '../types'
 import { skillManager } from '@/lib/skills'
-import { resolveSkillDirectory, resolveScriptRelativePath, escapeShellArg, buildShellCommand } from '@/lib/skills/path-utils'
+import { resolveSkillDirectory, buildShellCommand } from '@/lib/skills/path-utils'
 import { handleDependencyError } from '@/lib/skills/dependency-installer'
 
 /**

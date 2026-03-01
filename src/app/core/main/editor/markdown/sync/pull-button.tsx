@@ -7,7 +7,6 @@ import useArticleStore from '@/stores/article'
 import { compareFileVersions, pullRemoteFile, saveLocalFile } from '@/lib/sync/auto-sync'
 import { updateFileSyncTime } from '@/lib/sync/conflict-resolution'
 import { isSyncConfigured } from '@/lib/sync/sync-manager'
-import { ask } from '@tauri-apps/plugin-dialog'
 import emitter from '@/lib/emitter'
 import { toast } from '@/hooks/use-toast'
 import { ConflictDialog } from './conflict-dialog'
@@ -25,7 +24,6 @@ export function PullButton({ editor }: PullButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isConfigured, setIsConfigured] = useState(false)
   const [pullStatus, setPullStatus] = useState<PullStatus>('idle')
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showConflictDialog, setShowConflictDialog] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastInputTimeRef = useRef<number>(Date.now())
@@ -101,7 +99,6 @@ export function PullButton({ editor }: PullButtonProps) {
     } catch (error) {
       console.error('Pull failed:', error)
       setPullStatus('error')
-      setErrorMessage(error instanceof Error ? error.message : '拉取失败')
       toast({
         title: '拉取失败',
         description: error instanceof Error ? error.message : '请检查网络连接后重试',
@@ -146,10 +143,9 @@ export function PullButton({ editor }: PullButtonProps) {
           setPullStatus('update-available')
           setHasUpdate(true)
           return
-        } catch (error) {
+        } catch {
           // 如果拉取失败，标记为错误
           setPullStatus('error')
-          setErrorMessage('获取远程内容失败')
           toast({
             title: '获取远程更新失败',
             description: '请检查网络连接后重试',
@@ -166,7 +162,6 @@ export function PullButton({ editor }: PullButtonProps) {
     } catch (error) {
       console.error('Auto pull check failed:', error)
       setPullStatus('error')
-      setErrorMessage(error instanceof Error ? error.message : '检查更新失败')
       // 静默处理自动检查的错误，不弹 toast 打扰用户
     }
   }, [activeFilePath, isLoading, isUserActive, timeSinceInput])

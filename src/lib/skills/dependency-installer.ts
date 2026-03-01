@@ -5,7 +5,7 @@
  */
 
 import { Command } from '@tauri-apps/plugin-shell'
-import { readTextFile, writeTextFile, exists, BaseDirectory } from '@tauri-apps/plugin-fs'
+import { writeTextFile, exists } from '@tauri-apps/plugin-fs'
 
 /**
  * Parsed dependency information

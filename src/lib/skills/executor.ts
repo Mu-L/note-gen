@@ -12,7 +12,7 @@ import type {
   ScriptExecutionResult,
   SkillScript,
 } from './types'
-import { resolveSkillDirectory, resolveScriptRelativePath, escapeShellArg, buildShellCommand } from './path-utils'
+import { resolveSkillDirectory, resolveScriptRelativePath, buildShellCommand } from './path-utils'
 
 // ============================================================================
 // SkillExecutor 类
@@ -294,7 +294,7 @@ export class SkillExecutor {
     const relativeScriptPath = resolveScriptRelativePath(script.path, skillBaseName)
 
     // 使用参数转义函数
-    const shellCommand = buildShellCommand(workingDirectory, command, [relativeScriptPath, ...(args || [])])
+    const shellCommand = buildShellCommand(workingDirectory, workingDirectory, command, [relativeScriptPath, ...(args || [])])
 
     const result = await Command.create('bash', ['-c', shellCommand]).execute()
 
