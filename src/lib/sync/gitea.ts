@@ -169,13 +169,11 @@ export async function uploadFile({
  */
 export async function updateFileContent({
   path,
-  ref,
   repo,
   content,
   message
 }: {
   path: string;
-  ref?: string;
   repo: string;
   content: string;
   message?: string;
@@ -183,7 +181,8 @@ export async function updateFileContent({
   try {
     // 先获取文件信息，获取 sha
     const fileInfo = await getFiles({ path, repo });
-    const sha = fileInfo?.sha;
+    // getFiles 可能返回数组（目录）或对象（文件），需要检查类型
+    const sha = fileInfo && !Array.isArray(fileInfo) ? fileInfo.sha : undefined;
 
     // 调用 uploadFile 上传文件
     return await uploadFile({
@@ -208,7 +207,7 @@ export async function updateFileContent({
  * 获取 Gitea 仓库文件列表
  * @param params 查询参数
  */
-export async function getFiles({ path, repo }: { path: string; repo: string }) {
+export async function getFiles({ path, repo, sha }: { path: string; repo: string; sha?: string }) {
   try {
     const store = await Store.load('store.json');
     const giteaUsername = await store.get<string>('giteaUsername');
@@ -223,7 +222,9 @@ export async function getFiles({ path, repo }: { path: string; repo: string }) {
 
     // 对路径进行 URL 编码，处理特殊字符
     const encodedPath = path.replace(/\s/g, '_').split('/').map(encodeURIComponent).join('/');
-    const url = `${baseUrl}/repos/${giteaUsername}/${repo}/contents/${encodedPath}`;
+    // Gitea API 使用 sha 参数来获取特定 commit/branch 的文件内容
+    const shaParam = sha ? `?sha=${sha}` : '';
+    const url = `${baseUrl}/repos/${giteaUsername}/${repo}/contents/${encodedPath}${shaParam}`;
 
     const response = await fetch(url, {
       method: 'GET',
@@ -365,7 +366,9 @@ export async function getFileCommits({ path, repo }: { path: string; repo: strin
     const proxy = await getProxyConfig();
 
     // Gitea API 需要指定分支（sha 参数），默认使用 main 分支
-    const url = `${baseUrl}/repos/${giteaUsername}/${repo}/commits?sha=main&path=${path}&per_page=100`;
+    // 对 path 进行编码，避免特殊字符导致 404
+    const encodedPath = encodeURIComponent(path);
+    const url = `${baseUrl}/repos/${giteaUsername}/${repo}/commits?sha=main&path=${encodedPath}&per_page=100`;
 
     const response = await fetch(url, {
       method: 'GET',
@@ -392,6 +395,91 @@ export async function getFileCommits({ path, repo }: { path: string; repo: strin
  * 获取特定 commit 的文件内容
  * @param params 查询参数
  */
+/**
+ * 获取特定 commit 的文件内容（通过 Git tree API）
+ * @param params 查询参数
+ */
+export async function getFileContentFromCommit({ path, ref, repo }: { path: string; ref: string; repo: string }) {
+  try {
+    const store = await Store.load('store.json');
+    const giteaUsername = await store.get<string>('giteaUsername');
+
+    if (!giteaUsername) {
+      throw new Error('用户名未配置');
+    }
+
+    const baseUrl = await getGiteaApiBaseUrl();
+    const headers = await getCommonHeaders();
+    const proxy = await getProxyConfig();
+
+    // 先获取 commit 信息，获取 tree SHA
+    const commitUrl = `${baseUrl}/repos/${giteaUsername}/${repo}/git/commits/${ref}`;
+
+    const commitResponse = await fetch(commitUrl, {
+      method: 'GET',
+      headers,
+      proxy
+    });
+
+    if (!commitResponse.ok) {
+      return null;
+    }
+
+    const commitData = await commitResponse.json();
+    // tree SHA 在 commit.tree.sha
+    const treeSha = commitData.commit?.tree?.sha || commitData.tree?.sha;
+
+    if (!treeSha) {
+      return null;
+    }
+
+    // 获取文件在 tree 中的路径
+    const safePath = path.replace(/\s/g, '_');
+    const treeUrl = `${baseUrl}/repos/${giteaUsername}/${repo}/git/trees/${treeSha}?recursive=1`;
+
+    const treeResponse = await fetch(treeUrl, {
+      method: 'GET',
+      headers,
+      proxy
+    });
+
+    if (!treeResponse.ok) {
+      return null;
+    }
+
+    const treeData = await treeResponse.json();
+    // 查找目标文件
+    const fileEntry = treeData.tree?.find((item: any) => item.path === safePath);
+
+    if (!fileEntry || fileEntry.type !== 'blob') {
+      return null;
+    }
+
+    // 获取文件内容
+    const blobUrl = `${baseUrl}/repos/${giteaUsername}/${repo}/git/blobs/${fileEntry.sha}`;
+
+    const blobResponse = await fetch(blobUrl, {
+      method: 'GET',
+      headers,
+      proxy
+    });
+
+    if (!blobResponse.ok) {
+      return null;
+    }
+
+    const blobData = await blobResponse.json();
+
+    return {
+      content: blobData.content || '',
+      encoding: blobData.encoding || 'base64'
+    };
+
+  } catch (error) {
+    return null;
+  }
+}
+
 export async function getFileContent({ path, ref, repo }: { path: string; ref: string; repo: string }) {
   try {
     const store = await Store.load('store.json');
@@ -405,14 +493,27 @@ export async function getFileContent({ path, ref, repo }: { path: string; ref: s
     const headers = await getCommonHeaders();
     const proxy = await getProxyConfig();
 
-    // 获取特定 commit 的文件内容
-    const url = `${baseUrl}/repos/${giteaUsername}/${repo}/contents/${path}?ref=${ref}`;
+    // 获取特定 commit 的文件内容，对 path 进行编码
+    // 先将空格替换为下划线，与 getFiles 保持一致
+    const safePath = path.replace(/\s/g, '_');
+    const encodedPath = encodeURIComponent(safePath);
+    // Gitea API 使用 sha 参数而不是 ref 参数来获取特定 commit 的文件内容
+    const url = `${baseUrl}/repos/${giteaUsername}/${repo}/contents/${encodedPath}?sha=${ref}`;
+
+    console.log('[Gitea getFileContent] URL:', url);
 
     const response = await encodeFetch(url, {
       method: 'GET',
       headers,
       proxy
     });
+
+    console.log('[Gitea getFileContent] Response status:', response.status);
+
+    if (response.status === 404) {
+      const errorText = await response.text();
+      console.log('[Gitea getFileContent] 404 响应:', errorText);
+    }
 
     if (response.status >= 200 && response.status < 300) {
       const data = await response.json() as GiteaFileContent;
