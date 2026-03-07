@@ -99,7 +99,14 @@ export function BubbleMenu({
     const { selection } = editor.state
     const { from, to } = selection
 
-    if (from === to) {
+    // 检查选区是否有效（空选区、光标位置、无效位置都不显示）
+    if (from === to || from < 0 || to < 0 || from > editor.state.doc.content.size || to > editor.state.doc.content.size) {
+      setShow(false)
+      return
+    }
+
+    // 检查编辑器是否有焦点（没有焦点时不显示）
+    if (!editor.view.hasFocus()) {
       setShow(false)
       return
     }
@@ -211,6 +218,18 @@ export function BubbleMenu({
 
   useEffect(() => {
     const updateHandler = () => updatePosition()
+
+    // 初始化时检查是否有有效的选区
+    const { selection } = editor.state
+    const { from, to } = selection
+
+    // 只有在有选中文本时才显示工具栏
+    if (from !== to) {
+      updatePosition()
+    } else {
+      setShow(false)
+    }
+
     editor.on('selectionUpdate', updateHandler)
     editor.on('transaction', updatePosition)
 
