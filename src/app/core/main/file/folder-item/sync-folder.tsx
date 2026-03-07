@@ -168,22 +168,69 @@ export default function SyncFolder({ item }: { item: DirTree }) {
           }
           case 'gitea': {
             // Gitea 上传
-            const existingFiles = await getGiteaFiles({
-              path: file.path,
-              repo: RepoNames.sync
-            });
-            let giteaSha: string | undefined = undefined;
-            if (existingFiles && !Array.isArray(existingFiles)) {
-              giteaSha = existingFiles.sha;
+            try {
+              const giteaAccessToken = await store.get<string>('giteaAccessToken');
+              const giteaUsername = await store.get<string>('giteaUsername');
+
+              if (!giteaAccessToken || !giteaUsername) {
+                console.error('[Gitea Sync] 配置缺失 - accessToken:', !!giteaAccessToken, 'username:', !!giteaUsername);
+              }
+
+              let giteaSha: string | undefined = undefined;
+
+              // 先尝试获取文件 SHA
+              try {
+                const existingFiles = await getGiteaFiles({
+                  path: file.path,
+                  repo: RepoNames.sync
+                });
+                if (existingFiles && !Array.isArray(existingFiles)) {
+                  giteaSha = existingFiles.sha;
+                }
+              } catch (shaError) {
+                console.error('[Gitea Sync] 获取 SHA 失败:', shaError);
+              }
+
+              // 无论 SHA 是否存在，都尝试上传
+              // 如果文件已存在但没有 SHA，会返回 422 错误
+              // 这种情况下，我们尝试使用 PUT 方法（传一个假的 sha 值触发更新逻辑）
+              uploadResult = await uploadGiteaFile({
+                file: base64Content,
+                filename: file.name,
+                repo: RepoNames.sync,
+                path: filePath,
+                sha: giteaSha,
+                message: giteaSha ? `Update ${file.name} from folder: ${item.name}` : `Sync folder: ${item.name}`
+              });
+
+              // 如果上传失败且没有 SHA，尝试使用 PUT 方法（需要 sha）
+              if (!uploadResult && !giteaSha) {
+                // 尝试获取现有文件的 SHA
+                try {
+                  const fileInfo = await getGiteaFiles({
+                    path: file.path,
+                    repo: RepoNames.sync
+                  });
+                  if (fileInfo && !Array.isArray(fileInfo)) {
+                    giteaSha = fileInfo.sha;
+                    // 使用 SHA 重试上传
+                    uploadResult = await uploadGiteaFile({
+                      file: base64Content,
+                      filename: file.name,
+                      repo: RepoNames.sync,
+                      path: filePath,
+                      sha: giteaSha,
+                      message: `Update ${file.name} from folder: ${item.name}`
+                    });
+                  }
+                } catch (retryError) {
+                  console.error('[Gitea Sync] 重试失败:', retryError);
+                }
+              }
+            } catch (giteaError) {
+              console.error('[Gitea Sync] 上传失败:', giteaError);
+              throw giteaError;
             }
-            uploadResult = await uploadGiteaFile({
-              file: base64Content,
-              filename: file.name,
-              repo: RepoNames.sync,
-              path: filePath,
-              sha: giteaSha,
-              message: giteaSha ? `Update ${file.name} from folder: ${item.name}` : `Sync folder: ${item.name}`
-            });
             break;
           }
         }

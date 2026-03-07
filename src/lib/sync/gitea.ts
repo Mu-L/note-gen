@@ -98,11 +98,17 @@ export async function uploadFile({
     // 将空格转换成下划线
     _filename = _filename.replace(/\s/g, '_');
 
-    // path 是完整路径（如 notes/test.md），需要分离出目录和文件名
-    // 参考 Gitee 的处理方式
-    const _path = path ? `/${path}` : '';
-    const encodedPath = _path.split('/').slice(0, -1).map(p => encodeURIComponent(p.replace(/\s/g, '_'))).join('/');
-    const normalizedPath = _path ? `${encodedPath}/${_filename}` : _filename;
+    // path 是目录路径（如 notes 或 notes/subfolder），filename 是文件名
+    // 需要组合成完整路径：path/filename
+    let normalizedPath: string;
+    if (path) {
+      // 目录 + 文件名
+      const encodedDir = path.split('/').map(p => encodeURIComponent(p.replace(/\s/g, '_'))).join('/');
+      normalizedPath = `${encodedDir}/${_filename}`;
+    } else {
+      // 只有文件名
+      normalizedPath = _filename;
+    }
 
     // 将内容转换为 Base64（Gitea API 要求）
     const base64Content = Buffer.from(file, 'utf-8').toString('base64')
@@ -144,6 +150,11 @@ export async function uploadFile({
     }
 
     if (response.status === 400) {
+      return null;
+    }
+
+    // 422 表示文件已存在（需要 SHA 才能更新），返回 null 以便触发重试
+    if (response.status === 422) {
       return null;
     }
 
@@ -507,8 +518,6 @@ export async function getFileContent({ path, ref, repo }: { path: string; ref: s
       headers,
       proxy
     });
-
-    console.log('[Gitea getFileContent] Response status:', response.status);
 
     if (response.status === 404) {
       const errorText = await response.text();
