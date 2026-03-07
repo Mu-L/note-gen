@@ -15,7 +15,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from '@/hooks/use-toast'
 import useUsername from '@/hooks/use-username'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import useMarkStore from "@/stores/mark"
 import useTagStore from "@/stores/tag"
 import useChatStore from "@/stores/chat"
@@ -24,6 +24,8 @@ import { Store } from "@tauri-apps/plugin-store"
 import { uint8ArrayToBase64, decodeBase64ToString } from "@/lib/sync/github"
 import { getSyncRepoName } from "@/lib/sync/repo-utils"
 import { getGiteaApiBaseUrl } from "@/lib/sync/gitea"
+import { s3Upload, s3Download, s3HeadObject, s3Delete } from "@/lib/sync/s3"
+import { S3Config } from "@/types/sync"
 import { filterSyncData, mergeSyncData } from "@/config/sync-exclusions"
 import { confirm } from "@tauri-apps/plugin-dialog"
 
@@ -176,13 +178,27 @@ export function SyncToggle() {
   const t = useTranslations()
   const username = useUsername()
   const [syncing, setSyncing] = useState(false)
+  const [s3Configured, setS3Configured] = useState(false)
 
   const { primaryBackupMethod } = useSettingStore()
+
+  // 检测 S3 是否配置
+  useEffect(() => {
+    async function checkS3() {
+      if (primaryBackupMethod === 's3') {
+        const store = await Store.load('store.json')
+        const s3Config = await store.get<S3Config>('s3SyncConfig')
+        setS3Configured(!!s3Config?.bucket)
+      }
+    }
+    checkS3()
+  }, [primaryBackupMethod])
   const providerNames: Record<string, string> = {
     'github': 'Github',
     'gitee': 'Gitee',
     'gitlab': 'Gitlab',
-    'gitea': 'Gitea'
+    'gitea': 'Gitea',
+    's3': 'S3'
   }
   const syncProvider = primaryBackupMethod ? providerNames[primaryBackupMethod] || primaryBackupMethod : ''
 
@@ -278,6 +294,21 @@ export function SyncToggle() {
           })
           break;
         }
+        case 's3': {
+          const s3Config = await store.get<S3Config>('s3SyncConfig')
+          if (s3Config) {
+            const s3Key = `${path}/${filename}`
+            // 检查文件是否存在
+            const existingFile = await s3HeadObject(s3Config, s3Key)
+            if (existingFile) {
+              // 存在则先删除再上传（S3 不支持更新文件）
+              await s3Delete(s3Config, s3Key)
+            }
+            const result = await s3Upload(s3Config, s3Key, filteredContent)
+            settingsRes = result ? { success: true } : null
+          }
+          break;
+        }
       }
       
       if (tagRes && markRes && settingsRes) {
@@ -351,11 +382,31 @@ export function SyncToggle() {
           remoteFile = await giteaGetFile({ path: `${path}/${filename}`, repo: giteaRepo, accessToken: accessToken!, giteaUsername: giteaUsername! })
           break;
         }
+        case 's3': {
+          const s3Config = await store.get<S3Config>('s3SyncConfig')
+          if (s3Config) {
+            const s3Key = `${path}/${filename}`
+            const content = await s3Download(s3Config, s3Key)
+            if (content) {
+              remoteFile = { content }
+            }
+          }
+          break;
+        }
       }
 
       if (remoteFile) {
-        const configJson = decodeBase64ToString(remoteFile.content)
-        const remoteSettings = JSON.parse(configJson)
+        // S3 返回的 content 是字符串，Git 平台需要 base64 解码
+        let remoteSettings: Record<string, any>
+        if (primaryBackupMethod === 's3') {
+          // s3Download 返回 { content: string; etag: string; lastModified: string }
+          // remoteFile.content 是整个对象，需要取 .content 属性
+          const s3Content = (remoteFile as any).content?.content
+          remoteSettings = JSON.parse(s3Content)
+        } else {
+          const configJson = decodeBase64ToString(remoteFile.content)
+          remoteSettings = JSON.parse(configJson)
+        }
         
         const mergedSettings = mergeSyncData(localSettings, remoteSettings)
         
@@ -378,7 +429,9 @@ export function SyncToggle() {
     setSyncing(false)
   }
 
-  if (!username) {
+  // Git 平台需要用户名，S3 需要配置
+  const isConfigured = username || (primaryBackupMethod === 's3' && s3Configured)
+  if (!isConfigured) {
     return null
   }
 

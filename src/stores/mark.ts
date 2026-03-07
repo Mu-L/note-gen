@@ -3,9 +3,11 @@ import { uploadFile as uploadGithubFile, getFiles as githubGetFiles, decodeBase6
 import { uploadFile as uploadGiteeFile, getFiles as giteeGetFiles } from '@/lib/sync/gitee';
 import { uploadFile as uploadGitlabFile, getFiles as gitlabGetFiles, getFileContent as gitlabGetFileContent } from '@/lib/sync/gitlab';
 import { uploadFile as uploadGiteaFile, getFiles as giteaGetFiles, getFileContent as giteaGetFileContent } from '@/lib/sync/gitea';
+import { s3Upload, s3Delete, s3HeadObject, s3Download } from '@/lib/sync/s3'
 import { getSyncRepoName } from '@/lib/sync/repo-utils';
 import { Store } from '@tauri-apps/plugin-store';
 import { create } from 'zustand'
+import { S3Config } from '@/types/sync'
 
 export interface MarkQueue {
   queueId: string
@@ -249,7 +251,19 @@ const useMarkStore = create<MarkState>((set, get) => ({
           filename,
           sha: giteaMarkFile?.sha || '',
         })
-      break;
+        break;
+      case 's3': {
+        const s3Config = await store.get<S3Config>('s3SyncConfig')
+        if (s3Config) {
+          const s3Key = `${path}/${filename}`
+          const existingFile = await s3HeadObject(s3Config, s3Key)
+          if (existingFile) {
+            await s3Delete(s3Config, s3Key)
+          }
+          res = await s3Upload(s3Config, s3Key, JSON.stringify(marks))
+        }
+        break;
+      }
     }
     if (res) {
       result = true
@@ -281,13 +295,28 @@ const useMarkStore = create<MarkState>((set, get) => ({
         const giteaRepoName = await getSyncRepoName('gitea')
         files = await giteaGetFileContent({ path: `${path}/${filename}`, ref: 'main', repo: giteaRepoName })
         break;
+      case 's3': {
+        const s3Config = await store.get<S3Config>('s3SyncConfig')
+        if (s3Config) {
+          const s3Key = `${path}/${filename}`
+          const s3Result = await s3Download(s3Config, s3Key)
+          if (s3Result) {
+            // S3 返回的 content 是字符串，直接解析
+            result = JSON.parse(s3Result.content)
+          }
+        }
+        break;
+      }
     }
+    // S3 已经直接解析到 result 了，这里处理 Git 平台
     if (files) {
       const configJson = decodeBase64ToString(files.content)
       result = JSON.parse(configJson)
     }
-    await deleteAllMarks()
-    await insertMarks(result)
+    if (result.length > 0) {
+      await deleteAllMarks()
+      await insertMarks(result)
+    }
     set({ syncState: false })
     return result
   },

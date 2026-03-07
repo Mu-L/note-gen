@@ -4,12 +4,14 @@ import { uploadFile as uploadGithubFile, getFiles as githubGetFiles, decodeBase6
 import { uploadFile as uploadGiteeFile, getFiles as giteeGetFiles } from '@/lib/sync/gitee';
 import { uploadFile as uploadGitlabFile, getFiles as gitlabGetFiles, getFileContent as gitlabGetFileContent } from '@/lib/sync/gitlab';
 import { uploadFile as uploadGiteaFile, getFiles as giteaGetFiles, getFileContent as giteaGetFileContent } from '@/lib/sync/gitea';
+import { s3Upload, s3Delete, s3HeadObject, s3Download } from '@/lib/sync/s3'
 import { getSyncRepoName } from '@/lib/sync/repo-utils';
 import { Store } from '@tauri-apps/plugin-store';
 import { locales } from '@/lib/locales';
 import { AgentState, ToolCall } from '@/lib/agent/types'
 import { LinkedResource } from '@/lib/files'
 import type { Conversation } from '@/db/conversations'
+import { S3Config } from '@/types/sync'
 
 // MCP 工具调用记录（临时，不保存到数据库）
 export interface McpToolCall {
@@ -510,6 +512,18 @@ const useChatStore = create<ChatState>((set, get) => ({
           sha: giteaChatFile?.sha || '',
         })
         break;
+      case 's3': {
+        const s3Config = await store.get<S3Config>('s3SyncConfig')
+        if (s3Config) {
+          const s3Key = `${path}/${filename}`
+          const existingFile = await s3HeadObject(s3Config, s3Key)
+          if (existingFile) {
+            await s3Delete(s3Config, s3Key)
+          }
+          res = await s3Upload(s3Config, s3Key, JSON.stringify(chats, null, 2))
+        }
+        break;
+      }
     }
     if (res) {
       result = true
@@ -564,13 +578,28 @@ const useChatStore = create<ChatState>((set, get) => ({
         const giteaRepo2 = await getSyncRepoName('gitea')
         files = await giteaGetFileContent({ path: `${path}/${filename}`, ref: 'main', repo: giteaRepo2 })
         break;
+      case 's3': {
+        const s3Config = await store.get<S3Config>('s3SyncConfig')
+        if (s3Config) {
+          const s3Key = `${path}/${filename}`
+          const s3Result = await s3Download(s3Config, s3Key)
+          if (s3Result) {
+            // S3 返回的 content 是字符串，直接解析
+            result = JSON.parse(s3Result.content)
+          }
+        }
+        break;
+      }
     }
+    // S3 已经直接解析到 result 了，这里处理 Git 平台
     if (files) {
       const configJson = decodeBase64ToString(files.content)
       result = JSON.parse(configJson)
     }
-    await deleteAllChats()
-    await insertChats(result)
+    if (result.length > 0) {
+      await deleteAllChats()
+      await insertChats(result)
+    }
     set({ syncState: false })
     return result
   },
