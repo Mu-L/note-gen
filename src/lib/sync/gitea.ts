@@ -88,26 +88,48 @@ export async function uploadFile({
   try {
     const store = await Store.load('store.json');
     const giteaUsername = await store.get<string>('giteaUsername');
-    
+
     if (!giteaUsername) {
       throw new Error('Gitea 用户名未配置');
     }
 
     const id = uuid();
-    let _filename = filename || id;
+    // path 可能是完整路径（如 "视频文案/03_免费的笔记同步方案.md"）
+    // 也可能是目录路径（如 "视频文案"）
+    // filename 是文件名（如 "03_免费的笔记同步方案.md"）
+
+    // 从 path 中分离目录和文件名
+    let dirPath: string;
+    let _filename: string;
+
+    if (path) {
+      const lastSlashIndex = path.lastIndexOf('/');
+      if (lastSlashIndex > 0) {
+        // path 包含目录和文件名
+        dirPath = path.substring(0, lastSlashIndex);
+        _filename = filename || path.substring(lastSlashIndex + 1);
+      } else {
+        // path 只有文件名
+        dirPath = '';
+        _filename = filename || path;
+      }
+    } else {
+      dirPath = '';
+      _filename = filename || id;
+    }
+
     // 将空格转换成下划线
     _filename = _filename.replace(/\s/g, '_');
+    // 对文件名进行编码
+    const encodedFilename = encodeURIComponent(_filename);
 
-    // path 是目录路径（如 notes 或 notes/subfolder），filename 是文件名
-    // 需要组合成完整路径：path/filename
+    // 组合完整路径
     let normalizedPath: string;
-    if (path) {
-      // 目录 + 文件名
-      const encodedDir = path.split('/').map(p => encodeURIComponent(p.replace(/\s/g, '_'))).join('/');
-      normalizedPath = `${encodedDir}/${_filename}`;
+    if (dirPath) {
+      const encodedDir = dirPath.split('/').map(p => encodeURIComponent(p.replace(/\s/g, '_'))).join('/');
+      normalizedPath = `${encodedDir}/${encodedFilename}`;
     } else {
-      // 只有文件名
-      normalizedPath = _filename;
+      normalizedPath = encodedFilename;
     }
 
     // 将内容转换为 Base64（Gitea API 要求）
@@ -505,9 +527,8 @@ export async function getFileContent({ path, ref, repo }: { path: string; ref: s
     const proxy = await getProxyConfig();
 
     // 获取特定 commit 的文件内容，对 path 进行编码
-    // 先将空格替换为下划线，与 getFiles 保持一致
-    const safePath = path.replace(/\s/g, '_');
-    const encodedPath = encodeURIComponent(safePath);
+    // 与 getFiles 保持一致：对每个路径部分分别进行编码
+    const encodedPath = path.replace(/\s/g, '_').split('/').map(encodeURIComponent).join('/');
     // Gitea API 使用 sha 参数而不是 ref 参数来获取特定 commit 的文件内容
     const url = `${baseUrl}/repos/${giteaUsername}/${repo}/contents/${encodedPath}?sha=${ref}`;
 

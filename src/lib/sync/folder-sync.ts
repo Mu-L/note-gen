@@ -99,7 +99,7 @@ export class FolderSync {
           success = await this._gitlabBatchCommit(RepoNames.sync, filesToUpload, message)
           break
         case 'gitea':
-          success = await this._giteaBatchCommit(RepoNames.sync, filesToUpload, message)
+          success = await this._giteaBatchCommit(RepoNames.sync, filesToUpload)
           break
         default:
           return {
@@ -338,7 +338,9 @@ export class FolderSync {
     const headers = new Headers()
     headers.append('Authorization', `Bearer ${giteaAccessToken}`)
 
-    const url = `${apiBaseUrl}/repos/${giteaUsername}/${repo}/contents${path ? '/' + path : ''}`
+    // 对路径进行编码处理，与 getFiles 保持一致
+    const encodedPath = path.replace(/\s/g, '_').split('/').map(encodeURIComponent).join('/')
+    const url = `${apiBaseUrl}/repos/${giteaUsername}/${repo}/contents${encodedPath ? '/' + encodedPath : ''}`
 
     try {
       const response = await fetch(url, { method: 'GET', headers, proxy })
@@ -500,8 +502,7 @@ export class FolderSync {
    */
   async _giteaBatchCommit(
     repo: string,
-    files: Array<{ path: string; content: string; sha?: string }>,
-    message: string
+    files: Array<{ path: string; content: string; sha?: string }>
   ): Promise<boolean> {
     const store = await Store.load('store.json')
     const giteaAccessToken = await store.get<string>('giteaAccessToken')

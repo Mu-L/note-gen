@@ -19,9 +19,7 @@ export function MdEditor({ tabContentsRef, filePath }: MdEditorProps) {
     isPulling,
     setCurrentArticle,
     activeFilePath,
-    currentArticle,
-    aiGeneratingFilePath,
-    aiTerminateFn
+    currentArticle
   } = useArticleStore()
 
   const t = useTranslations('article.file.sync')

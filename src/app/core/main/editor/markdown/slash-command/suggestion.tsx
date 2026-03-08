@@ -286,7 +286,7 @@ export const suggestionItems = (t?: SlashCommandTranslations): SlashCommandItem[
     {
       title: tr.items.image,
       description: tr.items.imageDesc,
-      icon: <Image className="w-4 h-4" />,
+      icon: <Image className="w-4 h-4" aria-hidden="true" />,
       group: tr.groups.block,
       searchTerms: ['image', 'picture', 'photo', 'img'],
       command: async ({ editor, range }: { editor: Editor; range: Range }) => {
