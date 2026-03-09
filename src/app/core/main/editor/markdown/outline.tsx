@@ -136,10 +136,27 @@ export function Outline({ editor, isOpen }: OutlineProps) {
       console.log('[Outline] useEffect extractHeadings: editor not ready')
       return
     }
+
+    // Initial extraction
     try {
       setHeadings(extractHeadings())
     } catch (e) {
       console.error('[Outline] Error in extractHeadings:', e)
+    }
+
+    // Listen to editor update events to keep headings in sync
+    const handleUpdate = () => {
+      try {
+        setHeadings(extractHeadings())
+      } catch (e) {
+        console.error('[Outline] Error in extractHeadings on update:', e)
+      }
+    }
+
+    editor.on('update', handleUpdate)
+
+    return () => {
+      editor.off('update', handleUpdate)
     }
   }, [editor, extractHeadings])
 
@@ -211,24 +228,20 @@ export function Outline({ editor, isOpen }: OutlineProps) {
     const currentHeadings = headingsRef.current
     const heading = currentHeadings.find(h => h.id === id)
     if (heading && editor) {
-      // Try to find the heading position in the current document
-      let foundPos: number | null = null
+      // Use stored position directly - it's calculated from current document
+      const targetPos = heading.pos
 
-      editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === 'heading' && node.textContent.trim() === heading.text && node.attrs.level === heading.level) {
-          foundPos = pos
-          return false // stop traversal
-        }
-      })
+      // First, focus the editor to ensure it can receive commands
+      editor.commands.focus()
 
-      if (foundPos !== null) {
-        editor.commands.setTextSelection(foundPos)
+      // Then set the selection to the heading position
+      editor.commands.setTextSelection(targetPos)
+
+      // Then scroll into view
+      // Use setTimeout to ensure the selection is applied first
+      setTimeout(() => {
         editor.commands.scrollIntoView()
-      } else {
-        // Fallback to stored position
-        editor.commands.setTextSelection(heading.pos)
-        editor.commands.scrollIntoView()
-      }
+      }, 0)
     }
   }, [editor])
 
