@@ -108,10 +108,14 @@ export async function uploadFile({
         // path 包含目录和文件名
         dirPath = path.substring(0, lastSlashIndex);
         _filename = filename || path.substring(lastSlashIndex + 1);
+      } else if (lastSlashIndex === -1 && path) {
+        // path 是纯目录名（如 .settings），filename 单独传
+        dirPath = path;
+        _filename = filename || id;
       } else {
-        // path 只有文件名
+        // path 为空
         dirPath = '';
-        _filename = filename || path;
+        _filename = filename || id;
       }
     } else {
       dirPath = '';
@@ -178,6 +182,31 @@ export async function uploadFile({
     // 422 表示文件已存在（需要 SHA 才能更新），返回 null 以便触发重试
     if (response.status === 422) {
       return null;
+    }
+
+    // 404 表示文件不存在，尝试用 POST 创建新文件
+    if (response.status === 404) {
+      const postMethod = 'POST';
+      const postBody = { ...requestBody };
+      delete postBody.sha; // POST 不需要 sha
+
+      const postResponse = await fetch(url, {
+        method: postMethod,
+        headers,
+        body: JSON.stringify(postBody),
+        proxy
+      });
+
+      if (postResponse.status >= 200 && postResponse.status < 300) {
+        const data = await postResponse.json();
+        return { data } as GiteaResponse<any>;
+      }
+
+      const postErrorData = await postResponse.json();
+      throw {
+        status: postResponse.status,
+        message: postErrorData.message || '同步失败'
+      } as GiteaError;
     }
 
     const errorData = await response.json();
