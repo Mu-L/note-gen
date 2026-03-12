@@ -2093,6 +2093,22 @@
         },
         "notSupported": "Operation not supported"
       },
+      "mobile": {
+        "cancel": "Cancel",
+        "create": "Create",
+        "save": "Save",
+        "emptyDir": "This folder is empty",
+        "root": "Root",
+        "openFiles": "Open files",
+        "remote": "Remote file",
+        "remoteFileNotPulled": "Cloud only · Tap to pull",
+        "remoteFolderOnly": "Cloud-only folder",
+        "file": "File",
+        "folder": "Folder",
+        "folderChildren": "{files} files · {folders} folders",
+        "filePlaceholder": "example.md",
+        "folderPlaceholder": "example-folder"
+      },
       "deleteConfirm": "Are you sure you want to delete this file?"
     },
     "editor": {

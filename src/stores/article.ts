@@ -39,6 +39,7 @@ export interface DirTree extends DirEntry {
   children?: DirTree[]
   parent?: DirTree
   sha?: string
+  size?: number
   isEditing?: boolean
   isLocale: boolean
   createdAt?: string
@@ -501,6 +502,7 @@ const useArticleStore = create<NoteState>((set, get) => ({
           }
           entry.createdAt = fileStat.birthtime?.toISOString()
           entry.modifiedAt = fileStat.mtime?.toISOString()
+          entry.size = fileStat.size
         } catch {
           // 静默失败，不阻塞排序功能
         }
@@ -840,6 +842,8 @@ const useArticleStore = create<NoteState>((set, get) => ({
                 const index = currentFolder?.children?.findIndex(item => item.name === fileName)
                 if (index !== -1 && index !== undefined && currentFolder?.children) {
                   currentFolder.children[index].sha = file.etag
+                  currentFolder.children[index].size = file.size
+                  currentFolder.children[index].modifiedAt = file.lastModified
                 } else {
                   currentFolder?.children?.push({
                     name: fileName,
@@ -849,7 +853,9 @@ const useArticleStore = create<NoteState>((set, get) => ({
                     isEditing: false,
                     isDirectory: isDirectory,
                     sha: file.etag,
+                    size: file.size,
                     isLocale: false,
+                    modifiedAt: file.lastModified,
                     children: isDirectory ? [] : undefined
                   })
                 }
@@ -857,6 +863,8 @@ const useArticleStore = create<NoteState>((set, get) => ({
                 const index = dirs.findIndex(item => item.name === fileName)
                 if (index !== -1 && index !== undefined) {
                   dirs[index].sha = file.etag
+                  dirs[index].size = file.size
+                  dirs[index].modifiedAt = file.lastModified
                 } else {
                   (dirs as any).push({
                     name: fileName,
@@ -866,7 +874,9 @@ const useArticleStore = create<NoteState>((set, get) => ({
                     isEditing: false,
                     isDirectory: isDirectory,
                     sha: file.etag,
+                    size: file.size,
                     isLocale: false,
+                    modifiedAt: file.lastModified,
                     children: isDirectory ? [] : undefined
                   })
                 }
@@ -900,6 +910,7 @@ const useArticleStore = create<NoteState>((set, get) => ({
                 const index = currentFolder?.children?.findIndex(item => item.name === file.name)
                 if (index !== -1 && index !== undefined && currentFolder?.children) {
                   currentFolder.children[index].sha = file.sha
+                  currentFolder.children[index].size = (file as any).size
                 } else {
                   currentFolder?.children?.push({
                     name: file.name,
@@ -909,6 +920,7 @@ const useArticleStore = create<NoteState>((set, get) => ({
                     isEditing: false,
                     isDirectory: file.type === 'dir',
                     sha: file.sha,
+                    size: (file as any).size,
                     isLocale: false,
                     children: file.type === 'dir' ? [] : undefined
                   })
@@ -917,6 +929,7 @@ const useArticleStore = create<NoteState>((set, get) => ({
                 const index = dirs.findIndex(item => item.name === file.name)
                 if (index !== -1 && index !== undefined) {
                   dirs[index].sha = file.sha
+                  dirs[index].size = (file as any).size
                 } else {
                   (dirs as any).push({
                     name: file.name,
@@ -926,6 +939,7 @@ const useArticleStore = create<NoteState>((set, get) => ({
                     isEditing: false,
                     isDirectory: file.type === 'dir',
                     sha: file.sha,
+                    size: (file as any).size,
                     isLocale: false,
                     children: file.type === 'dir' ? [] : undefined
                   })
@@ -1165,6 +1179,8 @@ const useArticleStore = create<NoteState>((set, get) => ({
               const index = currentFolder.children?.findIndex(item => item.name === fileName)
               if (index !== undefined && index !== -1 && currentFolder.children) {
                 currentFolder.children[index].sha = file.etag
+                currentFolder.children[index].size = file.size
+                currentFolder.children[index].modifiedAt = file.lastModified
               } else {
                 currentFolder.children?.push({
                   name: fileName,
@@ -1174,7 +1190,9 @@ const useArticleStore = create<NoteState>((set, get) => ({
                   isEditing: false,
                   isDirectory: isDirectory,
                   sha: file.etag,
+                  size: file.size,
                   isLocale: false,
+                  modifiedAt: file.lastModified,
                   children: isDirectory ? [] : undefined
                 })
               }
@@ -1200,6 +1218,7 @@ const useArticleStore = create<NoteState>((set, get) => ({
               const index = currentFolder.children?.findIndex(item => item.name === file.name)
               if (index !== undefined && index !== -1 && currentFolder.children) {
                 currentFolder.children[index].sha = file.sha
+                currentFolder.children[index].size = (file as any).size
               } else {
                 currentFolder.children?.push({
                   name: file.name,
@@ -1209,6 +1228,7 @@ const useArticleStore = create<NoteState>((set, get) => ({
                   isEditing: false,
                   isDirectory: file.type === 'dir',
                   sha: file.sha,
+                  size: (file as any).size,
                   isLocale: false,
                   children: file.type === 'file' ? undefined : []
                 })
@@ -1555,6 +1575,7 @@ const useArticleStore = create<NoteState>((set, get) => ({
             // 再次检查当前是否还是同一个文件
             if (get().activeFilePath === actualPath) {
               set({ currentArticle: remoteContent })
+              emitter.emit('editor-content-from-remote', { content: remoteContent })
             }
 
             // 拉取成功后，更新文件树的 isLocale 状态为本地文件
@@ -1616,6 +1637,7 @@ const useArticleStore = create<NoteState>((set, get) => ({
             // 再次检查当前是否还是同一个文件
             if (get().activeFilePath === actualPath) {
               set({ currentArticle: remoteContent })
+              emitter.emit('editor-content-from-remote', { content: remoteContent })
             }
 
             // 拉取成功后，更新文件树的 isLocale 状态为本地文件

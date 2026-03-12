@@ -1998,6 +1998,22 @@
         "confirmOverwrite": "文件已存在，是否覆盖？",
         "notSupported": "不支持此操作"
       },
+      "mobile": {
+        "cancel": "取消",
+        "create": "创建",
+        "save": "保存",
+        "emptyDir": "该目录为空",
+        "root": "根目录",
+        "openFiles": "打开文件",
+        "remote": "远程文件",
+        "remoteFileNotPulled": "仅云端 · 点击后拉取",
+        "remoteFolderOnly": "仅云端目录",
+        "file": "文件",
+        "folder": "文件夹",
+        "folderChildren": "{files} 个文件 · {folders} 个文件夹",
+        "filePlaceholder": "示例.md",
+        "folderPlaceholder": "示例文件夹"
+      },
       "deleteConfirm": "确认删除此文件吗？"
     },
     "editor": {
