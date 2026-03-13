@@ -17,7 +17,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import { useCallback, useEffect, useMemo, useImperativeHandle, forwardRef, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useImperativeHandle, forwardRef, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Store } from "@tauri-apps/plugin-store"
 import { Label } from "@/components/ui/label"
@@ -404,25 +404,23 @@ export const OrganizeNotes = forwardRef<{ openOrganize: () => void }, OrganizeNo
     }
   }, [loading, terminateGeneration])
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!open) return
-      if (e.key === 'Enter' && !e.isComposing) {
-        e.preventDefault()
-        handleOrganize()
-      } else if (e.key === 'Escape') {
-        e.preventDefault()
-        setOpen(false)
-      } else if (e.key === 'Escape' && loading) {
-        e.preventDefault()
-        terminateGeneration()
-      }
+  const handleDialogKeyDown = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!open || e.nativeEvent.isComposing) return
+
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleOrganize()
+      return
     }
 
-    setTimeout(() => {
-      window.addEventListener('keydown', handleKeyDown)
-    }, 500);
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      if (loading) {
+        terminateGeneration()
+      } else {
+        setOpen(false)
+      }
+    }
   }, [open, loading, handleOrganize, terminateGeneration])
 
   const handleSetting = useCallback(() => {
@@ -431,7 +429,7 @@ export const OrganizeNotes = forwardRef<{ openOrganize: () => void }, OrganizeNo
 
   return (
     <AlertDialog onOpenChange={setOpen} open={open}>
-      <AlertDialogContent>
+      <AlertDialogContent onKeyDown={handleDialogKeyDown}>
         <AlertDialogHeader>
           <AlertDialogTitle>{t('organizeAs')}</AlertDialogTitle>
           <Tabs defaultValue={tab} onValueChange={value => setTab(value)}>
