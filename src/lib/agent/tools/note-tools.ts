@@ -8,6 +8,56 @@ import useChatStore from '@/stores/chat'
 import { isLinkedFolder } from '@/lib/files'
 import emitter from '@/lib/emitter'
 
+function normalizeLinkedCandidate(candidate: unknown): string {
+  return typeof candidate === 'string' ? candidate.trim() : ''
+}
+
+function getLinkedFileName(path: unknown): string {
+  const normalized = normalizeLinkedCandidate(path)
+  return normalized.split('/').pop() || normalized
+}
+
+function matchesLinkedFileCandidate(
+  candidate: unknown,
+  linkedResource: { relativePath?: string; name?: string; path?: string }
+): boolean {
+  const normalized = normalizeLinkedCandidate(candidate)
+  if (!normalized) {
+    return false
+  }
+
+  const linkedPaths = new Set([
+    linkedResource.relativePath,
+    linkedResource.name,
+    linkedResource.path,
+    getLinkedFileName(linkedResource.relativePath),
+    getLinkedFileName(linkedResource.path),
+  ].filter(Boolean))
+
+  return linkedPaths.has(normalized) || linkedPaths.has(getLinkedFileName(normalized))
+}
+
+function getBatchLinkedFileReadPlan(
+  filePaths: string[],
+  linkedResource: { relativePath?: string; name?: string; path?: string }
+): { filesToRead: string[]; skippedFiles: string[] } {
+  const filesToRead: string[] = []
+  const skippedFiles: string[] = []
+
+  for (const filePath of filePaths) {
+    if (matchesLinkedFileCandidate(filePath, linkedResource)) {
+      skippedFiles.push(filePath)
+    } else {
+      filesToRead.push(filePath)
+    }
+  }
+
+  return {
+    filesToRead,
+    skippedFiles,
+  }
+}
+
 export const listMarkdownFilesTool: Tool = {
   name: 'list_markdown_files',
   description: 'List all Markdown files in the workspace.',
@@ -566,8 +616,20 @@ export const readMarkdownFilesBatchTool: Tool = {
 
       const results = []
       const errors = []
+      const skipped = []
+      const { linkedResource } = useChatStore.getState()
+      const readPlan = linkedResource && !isLinkedFolder(linkedResource)
+        ? getBatchLinkedFileReadPlan(params.filePaths, linkedResource)
+        : { filesToRead: params.filePaths, skippedFiles: [] }
 
-      for (const filePath of params.filePaths) {
+      for (const filePath of readPlan.skippedFiles) {
+        skipped.push({
+          filePath,
+          alreadyInContext: true,
+        })
+      }
+
+      for (const filePath of readPlan.filesToRead) {
         try {
           let content = ''
 
@@ -592,13 +654,15 @@ export const readMarkdownFilesBatchTool: Tool = {
         success: !hasErrors,
         data: {
           files: results,
+          skipped,
           failed: errors,
           successCount: results.length,
+          skippedCount: skipped.length,
           failCount: errors.length,
         },
         message: hasErrors
-          ? `部分失败：成功读取 ${results.length} 个文件，${errors.length} 个失败`
-          : `成功读取 ${results.length} 个文件`,
+          ? `部分失败：成功读取 ${results.length} 个文件，跳过 ${skipped.length} 个已在上下文中的文件，${errors.length} 个失败`
+          : `成功读取 ${results.length} 个文件，跳过 ${skipped.length} 个已在上下文中的文件`,
         error: hasErrors
           ? `部分文件读取失败：${errors.map(e => `${e.filePath}: ${e.error}`).join('; ')}`
           : undefined,

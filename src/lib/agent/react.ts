@@ -16,6 +16,144 @@ import {
 } from './tool-policy'
 import OpenAI from 'openai'
 
+function buildIterationUserMessage(
+  iteration: number,
+  userInput: string,
+  lastObservation?: string
+): string {
+  if (iteration <= 1) {
+    return `This is iteration ${iteration}, please give your Thought and Action (or Final Answer):\n\nUser Request: ${userInput}`
+  }
+
+  return `## User Request
+${userInput}
+
+## Previous Step Result
+${lastObservation || 'No previous result'}
+
+---
+Keep working toward the user request above.
+If the task is completed, respond with Final Answer.
+If you need to continue, provide your next Thought and Action.`
+}
+
+function normalizeLinkedCandidate(candidate: unknown): string {
+  return typeof candidate === 'string' ? candidate.trim() : ''
+}
+
+function getLinkedFileName(path: unknown): string {
+  const normalized = normalizeLinkedCandidate(path)
+  return normalized.split('/').pop() || normalized
+}
+
+function matchesLinkedFileCandidate(
+  candidate: unknown,
+  linkedResource: { relativePath?: string; name?: string; path?: string }
+): boolean {
+  const normalized = normalizeLinkedCandidate(candidate)
+  if (!normalized) {
+    return false
+  }
+
+  const linkedPaths = new Set([
+    linkedResource.relativePath,
+    linkedResource.name,
+    linkedResource.path,
+    getLinkedFileName(linkedResource.relativePath),
+    getLinkedFileName(linkedResource.path),
+  ].filter(Boolean))
+
+  return linkedPaths.has(normalized) || linkedPaths.has(getLinkedFileName(normalized))
+}
+
+function shouldBlockRedundantLinkedFileRead(
+  toolName: string,
+  params: Record<string, any>,
+  linkedResource: { relativePath?: string; name?: string; path?: string }
+): boolean {
+  if (toolName === 'read_markdown_file') {
+    return typeof params.filePath === 'string' && matchesLinkedFileCandidate(params.filePath, linkedResource)
+  }
+
+  if (toolName === 'read_markdown_files_batch') {
+    if (!Array.isArray(params.filePaths) || params.filePaths.length === 0) {
+      return false
+    }
+
+    return params.filePaths.every((filePath: unknown) =>
+      typeof filePath === 'string' && matchesLinkedFileCandidate(filePath, linkedResource)
+    )
+  }
+
+  if (toolName === 'check_folder_exists') {
+    return typeof params.folderPath === 'string' && matchesLinkedFileCandidate(params.folderPath, linkedResource)
+  }
+
+  return false
+}
+
+function isExplicitTagOrMarkIntent(userInput: string): boolean {
+  return /标签|標籤|tag|记录|紀錄|mark|摘录|摘錄|收集箱|inbox/i.test(userInput)
+}
+
+function shouldKeepFocusOnLinkedNote(
+  userInput: string,
+  linkedResource: { relativePath?: string; name?: string; path?: string },
+  toolName: string
+): boolean {
+  const tagMarkToolNames = new Set([
+    'list_tags',
+    'search_tags',
+    'read_marks',
+    'search_marks',
+    'search_all_marks',
+  ])
+
+  if (!tagMarkToolNames.has(toolName) || isExplicitTagOrMarkIntent(userInput)) {
+    return false
+  }
+
+  const linkedPath = linkedResource.relativePath || linkedResource.path || linkedResource.name || ''
+  return /\.md$/i.test(linkedPath)
+}
+
+function isSuccessfulObservation(observation?: string): boolean {
+  if (!observation) {
+    return false
+  }
+
+  return !observation.includes('失败') &&
+    !observation.includes('错误') &&
+    !observation.includes('阻止')
+}
+
+function shouldBlockRepeatedNoteExploration(
+  toolName: string,
+  params: Record<string, any>,
+  steps: ReActStep[]
+): boolean {
+  const hasSuccessfulBatchRead = steps.some((step) =>
+    step.action?.tool === 'read_markdown_files_batch' &&
+    isSuccessfulObservation(step.observation) &&
+    step.observation?.includes('成功读取')
+  )
+
+  if (toolName === 'list_markdown_files' && hasSuccessfulBatchRead) {
+    return true
+  }
+
+  if (toolName !== 'read_markdown_files_batch') {
+    return false
+  }
+
+  const currentParams = JSON.stringify(params || {})
+  return steps.some((step) =>
+    step.action?.tool === 'read_markdown_files_batch' &&
+    JSON.stringify(step.action?.params || {}) === currentParams &&
+    isSuccessfulObservation(step.observation)
+  )
+}
+
 export interface ReActConfig {
   maxIterations: number
   onThought?: (thought: string) => void
@@ -55,6 +193,19 @@ export class ReActAgent {
     allowWrite: false,
     allowDestructive: false,
     allowExecute: false,
+  }
+
+  private summarizeTextForDebug(text: string | undefined, maxLength = 160): string {
+    if (!text) {
+      return ''
+    }
+
+    const normalized = text.replace(/\s+/g, ' ').trim()
+    if (normalized.length <= maxLength) {
+      return normalized
+    }
+
+    return `${normalized.slice(0, maxLength)}...`
   }
 
   constructor(config: ReActConfig) {
@@ -99,6 +250,16 @@ export class ReActAgent {
     const contextString = isMessagesArray ? undefined : contextOrMessages as string | undefined
     const messagesArray = isMessagesArray ? contextOrMessages as OpenAI.Chat.ChatCompletionMessageParam[] : undefined
 
+    console.info('[AgentDebug] run:start', {
+      userInputPreview: this.summarizeTextForDebug(userInput),
+      hasContextString: Boolean(contextString),
+      contextLength: contextString?.length || 0,
+      hasMessagesArray: Boolean(messagesArray?.length),
+      messagesCount: messagesArray?.length || 0,
+      hasImageUrls: Boolean(imageUrls?.length),
+      imageCount: imageUrls?.length || 0,
+    })
+
     while (this.currentIteration < this.config.maxIterations) {
       // 检查是否已停止
       if (this.stopped) {
@@ -115,6 +276,14 @@ export class ReActAgent {
 
       // 每次迭代都重新构建系统提示词，因为 Skills 指令依赖于当前迭代次数
       const systemPrompt = await this.buildSystemPrompt()
+
+      console.info('[AgentDebug] iteration:start', {
+        iteration: this.currentIteration,
+        stepCount: this.steps.length,
+        systemPromptLength: systemPrompt.length,
+        contextLength: contextString?.length || 0,
+        messagesCount: messagesArray?.length || 0,
+      })
 
       const thought = await this.think(userInput, contextString, messagesArray, systemPrompt, imageUrls)
 
@@ -607,7 +776,7 @@ Observation: ${step.observation}
       if (this.currentIteration === 1) {
         messagesForAI.push({
           role: 'user',
-          content: `This is iteration ${this.currentIteration}, please give your Thought and Action (or Final Answer):\n\nUser Request: ${userInput}`
+          content: buildIterationUserMessage(this.currentIteration, userInput)
         })
       } else {
         // 后续迭代：只发送上一步的结果
@@ -615,9 +784,25 @@ Observation: ${step.observation}
         const lastObservation = lastStep?.observation || 'No previous result'
         messagesForAI.push({
           role: 'user',
-          content: `## Previous Step Result\n${lastObservation}\n\n---\nIf the task is completed, respond with Final Answer.\nIf you need to continue, provide your next Thought and Action.`
+          content: buildIterationUserMessage(this.currentIteration, userInput, lastObservation)
         })
       }
+
+      console.info('[AgentDebug] think:messages', {
+        iteration: this.currentIteration,
+        mode: 'messages',
+        historyLength: historyContext.length,
+        userInputPreview: this.summarizeTextForDebug(userInput),
+        contextLength: context?.length || 0,
+        messagesCount: messagesForAI.length,
+        lastObservationPreview: this.summarizeTextForDebug(this.steps[this.steps.length - 1]?.observation),
+        finalUserMessagePreview: this.summarizeTextForDebug(
+          (() => {
+            const content = messagesForAI[messagesForAI.length - 1]?.content
+            return typeof content === 'string' ? content : undefined
+          })()
+        ),
+      })
 
       // 调用实际的 LLM API
       try {
@@ -694,10 +879,7 @@ ${context ? `## 上下文信息\n${context}\n` : ''}
 ## 对话历史
 ${historyContext}
 
-## User Request
-${userInput}
-
-This is iteration ${this.currentIteration}, please give your Thought and Action (or Final Answer):`
+${buildIterationUserMessage(this.currentIteration, userInput)}`
     } else {
       // 后续迭代：只发送上一步的结果
       const lastStep = this.steps[this.steps.length - 1]
@@ -707,13 +889,19 @@ This is iteration ${this.currentIteration}, please give your Thought and Action 
 ## 已完成的步骤
 ${historyContext}
 
-## 上一步操作结果
-${lastObservation}
-
----
-如果任务已完成，请回复 Final Answer。
-如果需要继续操作，请提供你的 Thought 和 Action。`
+${buildIterationUserMessage(this.currentIteration, userInput, lastObservation)}`
     }
+
+    console.info('[AgentDebug] think:prompt', {
+      iteration: this.currentIteration,
+      mode: 'prompt',
+      historyLength: historyContext.length,
+      promptLength: prompt.length,
+      contextLength: context?.length || 0,
+      userInputPreview: this.summarizeTextForDebug(userInput),
+      lastObservationPreview: this.summarizeTextForDebug(this.steps[this.steps.length - 1]?.observation),
+      promptPreview: this.summarizeTextForDebug(prompt, 240),
+    })
 
     // 调用实际的 LLM API
     try {
@@ -1595,12 +1783,29 @@ ${skillsList.join('\n---\n\n')}
     params: Record<string, any> = {}
   ): { allowed: boolean; requiresConfirmation: boolean; reason?: string } {
     const folderPath = typeof params.folderPath === 'string' ? params.folderPath.trim() : ''
+    const { linkedResource } = useChatStore.getState()
 
     if (toolName === 'check_folder_exists' && /\.md$/i.test(folderPath)) {
       return {
         allowed: false,
         requiresConfirmation: false,
         reason: 'Markdown 文件路径应使用 read_markdown_file，而不是 check_folder_exists',
+      }
+    }
+
+    if (linkedResource && !isLinkedFolder(linkedResource) && shouldKeepFocusOnLinkedNote(this.currentUserInput, linkedResource, toolName)) {
+      return {
+        allowed: false,
+        requiresConfirmation: false,
+        reason: '当前任务应聚焦关联笔记文件内容，不应切换到标签或记录工具',
+      }
+    }
+
+    if (shouldBlockRepeatedNoteExploration(toolName, params, this.steps)) {
+      return {
+        allowed: false,
+        requiresConfirmation: false,
+        reason: '已经获得足够的笔记文件内容，无需重复列出或读取，请直接基于已有内容继续整理并给出最终答案',
       }
     }
 
@@ -1628,6 +1833,14 @@ ${skillsList.join('\n---\n\n')}
       return '已直接使用关联文件上下文：这篇笔记的完整内容已经在当前对话中，无需再次读取。'
     }
 
+    if (reason.includes('聚焦关联笔记文件内容')) {
+      return '已保持任务聚焦：当前应先基于关联笔记文件继续分析或整理，不要切换到标签/记录工具。'
+    }
+
+    if (reason.includes('已经获得足够的笔记文件内容')) {
+      return '已避免重复探索：你已经拿到足够的笔记内容，请直接基于已读取内容继续整理，并给出 Final Answer。'
+    }
+
     if (reason.includes('执行命令或脚本')) {
       return '已保持分析模式：不会执行命令或脚本。'
     }
@@ -1648,7 +1861,9 @@ ${skillsList.join('\n---\n\n')}
       return false
     }
 
-    return observation.includes('已调整工具选择：')
+    return observation.includes('已调整工具选择：') ||
+      observation.includes('已保持任务聚焦：') ||
+      observation.includes('已避免重复探索：')
   }
 
   private isRedundantLinkedFileRead(toolName: string, params: Record<string, any>): boolean {
@@ -1658,37 +1873,7 @@ ${skillsList.join('\n---\n\n')}
       return false
     }
 
-    const linkedPaths = new Set([
-      linkedResource.relativePath,
-      linkedResource.name,
-      linkedResource.path,
-    ])
-
-    const matchesLinkedFile = (candidate: string) => {
-      const normalized = candidate.trim()
-      if (!normalized) {
-        return false
-      }
-
-      const fileName = normalized.split('/').pop() || normalized
-      return linkedPaths.has(normalized) || linkedPaths.has(fileName)
-    }
-
-    if (toolName === 'read_markdown_file') {
-      return typeof params.filePath === 'string' && matchesLinkedFile(params.filePath)
-    }
-
-    if (toolName === 'read_markdown_files_batch') {
-      return Array.isArray(params.filePaths) && params.filePaths.some((filePath: unknown) =>
-        typeof filePath === 'string' && matchesLinkedFile(filePath)
-      )
-    }
-
-    if (toolName === 'check_folder_exists') {
-      return typeof params.folderPath === 'string' && matchesLinkedFile(params.folderPath)
-    }
-
-    return false
+    return shouldBlockRedundantLinkedFileRead(toolName, params, linkedResource)
   }
 
   private isSupportOnlyTool(toolName?: string): boolean {
