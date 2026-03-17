@@ -60,6 +60,7 @@ import { buildMobileSelectionContext, isMobileSelectionContextStale } from './mo
 import { MobileEditorContextBar } from './mobile-editor-context-bar'
 import { MobileEditorMoreSheet } from './mobile-editor-more-sheet'
 import { shouldRestorePendingQuote } from './quote-session'
+import { getEditorContentContainerClass } from '@/lib/editor-layout-styles'
 import './style.css'
 
 const lowlight = createLowlight(common)
@@ -2088,7 +2089,7 @@ export function TipTapEditor({
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleEditorDrop}
       >
-        <div className={centeredContent ? 'max-w-3xl mx-auto px-4' : ''}>
+        <div className={getEditorContentContainerClass({ centeredContent, isMobile })}>
         <EditorContent editor={editor} className="h-full relative">
           {!isMobile && <ImageBubbleMenu editor={editor} />}
 
