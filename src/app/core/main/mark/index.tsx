@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import React from "react"
+import { useEffect } from "react"
 import { TagManage } from './tag-manage'
 import { MarkList } from './mark-list'
 import { MarkToolbar } from './mark-toolbar'
@@ -9,10 +10,16 @@ import useMarkStore from "@/stores/mark"
 import { Button } from "@/components/ui/button"
 import { clearTrash } from "@/db/marks"
 import { confirm } from '@tauri-apps/plugin-dialog';
+import { filterMarks } from "./mark-filters.mjs";
 
 export function NoteSidebar() {
   const t = useTranslations();
-  const { trashState, marks, setMarks } = useMarkStore()
+  const { trashState, marks, setMarks, recordFilters, initRecordViewMode } = useMarkStore()
+  const visibleTrashMarks = React.useMemo(() => filterMarks(marks, recordFilters), [marks, recordFilters])
+
+  useEffect(() => {
+    initRecordViewMode()
+  }, [initRecordViewMode])
 
   async function handleClearTrash() {
     const res = await confirm(t('record.trash.confirm'), {
@@ -30,7 +37,7 @@ export function NoteSidebar() {
       {trashState ? (
         <>
           <div className="flex p-2 border-b items-center justify-between">
-            <p className="text-xs text-zinc-500">{t('record.trash.records', { count: marks.length })}</p>
+            <p className="text-xs text-zinc-500">{t('record.trash.records', { count: visibleTrashMarks.length })}</p>
             {marks.length > 0 && (
               <Button variant="ghost" size="sm" onClick={handleClearTrash}>
                 {t('record.trash.empty')}
