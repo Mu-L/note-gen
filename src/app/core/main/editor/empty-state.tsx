@@ -10,6 +10,8 @@ import emitter from '@/lib/emitter'
 import { useEffect, useState } from 'react'
 import useShortcutStore from '@/stores/shortcut'
 import useSettingStore from '@/stores/setting'
+import { useSidebarStore } from '@/stores/sidebar'
+import { createNewNoteFromEmptyState } from './empty-state-actions'
 
 interface ActionItem {
   icon: React.ReactNode
@@ -21,10 +23,18 @@ interface ActionItem {
 
 export function EmptyState() {
   const { newFile } = useArticleStore()
+  const { setLeftSidebarTab } = useSidebarStore()
   const t = useTranslations('article.emptyState')
   const { shortcuts } = useShortcutStore()
   const { addWorkspaceHistory } = useSettingStore()
   const [textRecordShortcut, setTextRecordShortcut] = useState('')
+
+  const handleCreateNote = async () => {
+    await createNewNoteFromEmptyState({
+      setLeftSidebarTab,
+      newFile,
+    })
+  }
 
   // 注册快捷键
   useEffect(() => {
@@ -32,13 +42,13 @@ export function EmptyState() {
       // Cmd/Ctrl + N 创建笔记
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault()
-        newFile()
+        void handleCreateNote()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [newFile])
+  }, [newFile, setLeftSidebarTab])
 
   // 读取文本记录快捷键
   useEffect(() => {
@@ -102,9 +112,7 @@ export function EmptyState() {
       title: t('actions.newNote.title'),
       description: t('actions.newNote.desc'),
       shortcut: '⌘ N',
-      onClick: () => {
-        newFile()
-      }
+      onClick: () => void handleCreateNote()
     },
     {
       icon: <MessageSquareText className="w-5 h-5" />,
