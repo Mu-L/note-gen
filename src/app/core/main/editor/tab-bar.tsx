@@ -391,6 +391,7 @@ export function TabBar({
               <TooltipButton
                 icon={<Undo2 className="w-4 h-4" />}
                 tooltipText={`撤销 (${modKey}+Z)`}
+                side="bottom"
                 onClick={() => {
                   emitter.emit('editor-undo')
                   // Update state after action
@@ -401,6 +402,7 @@ export function TabBar({
               <TooltipButton
                 icon={<Redo2 className="w-4 h-4" />}
                 tooltipText={`重做 (${modKey}+Shift+Z)`}
+                side="bottom"
                 onClick={() => {
                   emitter.emit('editor-redo')
                   // Update state after action
