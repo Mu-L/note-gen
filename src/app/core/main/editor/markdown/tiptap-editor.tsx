@@ -6,7 +6,6 @@ import Placeholder from '@tiptap/extension-placeholder'
 import Link from '@tiptap/extension-link'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import CharacterCount from '@tiptap/extension-character-count'
 import Highlight from '@tiptap/extension-highlight'
 import Underline from '@tiptap/extension-underline'
@@ -52,6 +51,7 @@ import { AISuggestionFloating } from './ai-suggestion-floating'
 import emitter from '@/lib/emitter'
 import { QuoteMark } from './quote-mark'
 import { MarkdownParagraph } from './markdown-paragraph'
+import { StableCodeBlockLowlight } from './code-block-extension'
 import useSettingStore from '@/stores/setting'
 import useChatStore from '@/stores/chat'
 import { Loader2, X } from 'lucide-react'
@@ -315,7 +315,7 @@ export function TipTapEditor({
       TaskItem.configure({
         nested: true,
       }),
-      CodeBlockLowlight.configure({
+      StableCodeBlockLowlight.configure({
         lowlight,
       }),
       CharacterCount,
