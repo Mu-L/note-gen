@@ -27,6 +27,7 @@ import { deleteFile as deleteGitlabFile } from '@/lib/sync/gitlab'
 import { deleteFile as deleteGiteaFile } from '@/lib/sync/gitea'
 import { s3Delete } from '@/lib/sync/s3'
 import { webdavDelete } from '@/lib/sync/webdav'
+import { getSyncRepoName } from '@/lib/sync/repo-utils'
 import { RepoNames } from '@/lib/sync/github.types'
 import { Store } from '@tauri-apps/plugin-store'
 import { S3Config, WebDAVConfig } from '@/types/sync'
@@ -501,26 +502,29 @@ export function WritingHeader() {
 
     const store = await Store.load('store.json')
     const backupMethod = await store.get<'github' | 'gitee' | 'gitlab' | 'gitea' | 's3' | 'webdav'>('primaryBackupMethod') || 'github'
+    const repoName = backupMethod === 's3' || backupMethod === 'webdav'
+      ? RepoNames.sync
+      : await getSyncRepoName(backupMethod)
 
     let success = false
     switch (backupMethod) {
       case 'github': {
-        const result = await deleteFile({ path: entry.relativePath, sha: entry.sha, repo: RepoNames.sync })
+        const result = await deleteFile({ path: entry.relativePath, sha: entry.sha, repo: repoName })
         success = !!result
         break
       }
       case 'gitee': {
-        const result = await deleteGiteeFile({ path: entry.relativePath, sha: entry.sha, repo: RepoNames.sync })
+        const result = await deleteGiteeFile({ path: entry.relativePath, sha: entry.sha, repo: repoName })
         success = result !== false
         break
       }
       case 'gitlab': {
-        const result = await deleteGitlabFile({ path: entry.relativePath, sha: entry.sha, repo: RepoNames.sync })
+        const result = await deleteGitlabFile({ path: entry.relativePath, sha: entry.sha, repo: repoName })
         success = !!result
         break
       }
       case 'gitea': {
-        const result = await deleteGiteaFile({ path: entry.relativePath, sha: entry.sha, repo: RepoNames.sync })
+        const result = await deleteGiteaFile({ path: entry.relativePath, sha: entry.sha, repo: repoName })
         success = !!result
         break
       }

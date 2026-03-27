@@ -23,6 +23,7 @@ import { deleteFile as deleteGitlabFile } from "@/lib/sync/gitlab";
 import { deleteFile as deleteGiteaFile } from "@/lib/sync/gitea";
 import { s3Delete } from "@/lib/sync/s3";
 import { webdavDelete } from "@/lib/sync/webdav";
+import { getSyncRepoName } from "@/lib/sync/repo-utils";
 import { generateUniqueFilename } from "@/lib/default-filename";
 import { MobileActionMenu, MobileMenuItem, MobileSeparator } from "./mobile-action-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -311,26 +312,29 @@ export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?:
         // 获取当前主要备份方式
         const store = await Store.load('store.json');
         const backupMethod = await store.get<'github' | 'gitee' | 'gitlab' | 'gitea' | 's3' | 'webdav'>('primaryBackupMethod') || 'github';
+        const repoName = backupMethod === 's3' || backupMethod === 'webdav'
+          ? RepoNames.sync
+          : await getSyncRepoName(backupMethod)
 
         let success = false
         switch (backupMethod) {
           case 'github': {
-            const result = await deleteFile({ path: currentPath, sha: item.sha as string, repo: RepoNames.sync });
+            const result = await deleteFile({ path: currentPath, sha: item.sha as string, repo: repoName });
             success = !!result
             break;
           }
           case 'gitee': {
-            const result = await deleteGiteeFile({ path: currentPath, sha: item.sha as string, repo: RepoNames.sync });
+            const result = await deleteGiteeFile({ path: currentPath, sha: item.sha as string, repo: repoName });
             success = result !== false
             break;
           }
           case 'gitlab': {
-            const result = await deleteGitlabFile({ path: currentPath, sha: item.sha as string, repo: RepoNames.sync });
+            const result = await deleteGitlabFile({ path: currentPath, sha: item.sha as string, repo: repoName });
             success = !!result
             break;
           }
           case 'gitea': {
-            const result = await deleteGiteaFile({ path: currentPath, sha: item.sha as string, repo: RepoNames.sync });
+            const result = await deleteGiteaFile({ path: currentPath, sha: item.sha as string, repo: repoName });
             success = !!result
             break;
           }
