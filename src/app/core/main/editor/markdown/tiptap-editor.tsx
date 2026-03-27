@@ -1296,7 +1296,13 @@ export function TipTapEditor({
             position: coords,
           })
         },
-        controller.signal
+        controller.signal,
+        (thinkingText) => {
+          emitter.emit('update-ai-thinking-content', {
+            thinkingText,
+            position: initialCoords,
+          })
+        },
       )
 
       // Streaming complete - replace all content with proper Markdown parsing
@@ -1380,7 +1386,13 @@ export function TipTapEditor({
             position: coords,
           })
         },
-        controller.signal
+        controller.signal,
+        (thinkingText) => {
+          emitter.emit('update-ai-thinking-content', {
+            thinkingText,
+            position: initialCoords,
+          })
+        },
       )
 
       // Streaming complete - replace all content with proper Markdown parsing
@@ -1464,7 +1476,13 @@ export function TipTapEditor({
             position: coords,
           })
         },
-        controller.signal
+        controller.signal,
+        (thinkingText) => {
+          emitter.emit('update-ai-thinking-content', {
+            thinkingText,
+            position: initialCoords,
+          })
+        },
       )
 
       // Streaming complete - replace all content with proper Markdown parsing

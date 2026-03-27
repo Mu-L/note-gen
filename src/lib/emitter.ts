@@ -88,6 +88,10 @@ interface Events {
     suggestedText: string;
     position: { top: number; left: number; right: number; bottom: number };
   };
+  'update-ai-thinking-content': {
+    thinkingText: string;
+    position: { top: number; left: number; right: number; bottom: number };
+  };
   'ai-streaming-complete': {
     originalText: string;
     suggestedText: string;
