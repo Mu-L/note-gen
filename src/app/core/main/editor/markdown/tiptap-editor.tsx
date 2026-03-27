@@ -35,6 +35,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { handleImageUpload } from '@/lib/image-handler'
 import useArticleStore from '@/stores/article'
 import { convertImageByWorkspace } from '@/lib/utils'
+import { resolveImagePathFromMarkdown } from '@/lib/markdown-image-path'
 import { isMobileDevice } from '@/lib/check'
 import { useTranslations } from 'next-intl'
 import { BubbleMenu as BubbleMenuComponent } from './bubble-menu'
@@ -1546,18 +1547,13 @@ export function TipTapEditor({
       const editorDom = editor.view.dom
       const images = editorDom.querySelectorAll('img')
 
-      // 获取当前文件的父目录，用于计算相对路径
       const currentFilePath = useArticleStore.getState().activeFilePath
-      const parentDir = currentFilePath?.includes('/')
-        ? currentFilePath.substring(0, currentFilePath.lastIndexOf('/'))
-        : ''
 
       for (const img of images) {
         const src = img.getAttribute('src')
         // 如果是相对路径，转换为 asset://
-        if (src && !src.startsWith('http') && !src.startsWith('asset://') && !src.startsWith('tauri://')) {
-          // 计算完整的相对路径（基于当前文件所在目录）
-          const fullRelativePath = parentDir ? `${parentDir}/${src}` : src
+        if (src && currentFilePath && !src.startsWith('http') && !src.startsWith('asset://') && !src.startsWith('tauri://')) {
+          const fullRelativePath = resolveImagePathFromMarkdown(currentFilePath, src)
           // 异步转换路径
           convertImageByWorkspace(fullRelativePath).then((assetUrl: string) => {
             // 只有当 src 仍然是相对路径时才更新（避免覆盖已转换的）
@@ -1571,9 +1567,8 @@ export function TipTapEditor({
         if (img && !img.onerror) {
           img.onerror = async () => {
             const currentSrc = img.getAttribute('src')
-            if (currentSrc && !currentSrc.startsWith('http') && !currentSrc.startsWith('asset://') && !currentSrc.startsWith('tauri://')) {
-              // 计算完整的相对路径（基于当前文件所在目录）
-              const fullRelativePath = parentDir ? `${parentDir}/${currentSrc}` : currentSrc
+            if (currentSrc && currentFilePath && !currentSrc.startsWith('http') && !currentSrc.startsWith('asset://') && !currentSrc.startsWith('tauri://')) {
+              const fullRelativePath = resolveImagePathFromMarkdown(currentFilePath, currentSrc)
               const assetUrl = await convertImageByWorkspace(fullRelativePath)
               img.setAttribute('src', assetUrl)
             }

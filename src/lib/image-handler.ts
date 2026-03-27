@@ -5,11 +5,13 @@ import { v4 as uuidv4 } from 'uuid'
 import { uploadImage } from './imageHosting'
 import { getFilePathOptions, toWorkspaceRelativePath, getWorkspacePath } from './workspace'
 import { convertImageByWorkspace } from './utils'
+import { toMarkdownImagePath } from './markdown-image-path'
+import { getNormalizedImageHosting } from './image-hosting-config'
 
 export interface ImageUploadResult {
   /** Webview 可访问的 URL（用于编辑器显示） */
   src: string
-  /** 相对于工作区的路径（用于 Markdown 保存） */
+  /** 用于 Markdown 保存的路径 */
   relativePath: string
   /** 是否使用了图床上传 */
   useImageHosting: boolean
@@ -52,12 +54,12 @@ export async function handleImageUpload(
   // 2. 如果没有配置图床，保存到本地
   if (activeFilePath) {
     try {
-      const localPath = await saveImageLocally(file, activeFilePath)
+      const { imageRelativePath, markdownRelativePath } = await saveImageLocally(file, activeFilePath)
       // 将本地路径转换为 Webview 可访问的 URL
-      const webviewUrl = await convertImageByWorkspace(localPath)
+      const webviewUrl = await convertImageByWorkspace(imageRelativePath)
       return {
         src: webviewUrl,
-        relativePath: localPath,
+        relativePath: markdownRelativePath,
         useImageHosting: false,
       }
     } catch (error) {
@@ -73,9 +75,12 @@ export async function handleImageUpload(
  * 将图片保存到与 Markdown 文件相同的目录
  * @param file 图片文件
  * @param markdownPath Markdown 文件的路径（可以是完整路径、相对路径或文件名）
- * @returns 相对于工作区的图片路径
+ * @returns 图片的工作区相对路径，以及写回 Markdown 时应使用的相对路径
  */
-async function saveImageLocally(file: File, markdownPath: string): Promise<string> {
+async function saveImageLocally(file: File, markdownPath: string): Promise<{
+  imageRelativePath: string
+  markdownRelativePath: string
+}> {
   // 生成唯一的图片文件名
   const ext = file.name.split('.').pop() || 'png'
   const filename = `${uuidv4()}.${ext}`.replace(/\s/g, '_')
@@ -128,7 +133,12 @@ async function saveImageLocally(file: File, markdownPath: string): Promise<strin
   })
 
   // 返回相对于工作区的路径
-  return toWorkspaceRelativePath(imageRelativePath)
+  const workspaceRelativeImagePath = await toWorkspaceRelativePath(imageRelativePath)
+
+  return {
+    imageRelativePath: workspaceRelativeImagePath,
+    markdownRelativePath: toMarkdownImagePath(markdownPath, workspaceRelativeImagePath),
+  }
 }
 
 /**
@@ -161,9 +171,17 @@ async function ensureDirectoryExists(dirPath: string): Promise<void> {
 export async function isImageHostingConfigured(): Promise<boolean> {
   const store = await Store.load('store.json')
   const useImageRepo = await store.get<boolean>('useImageRepo')
-  const mainImageHosting = await store.get<string>('mainImageHosting')
+  const savedMainImageHosting = await store.get<string>('mainImageHosting')
+  const normalizedImageHosting = getNormalizedImageHosting(savedMainImageHosting)
+  const mainImageHosting = useImageRepo ? normalizedImageHosting.value : savedMainImageHosting
+  const isConfigured = !!(useImageRepo && mainImageHosting && mainImageHosting !== 'none')
 
-  return !!(useImageRepo && mainImageHosting && mainImageHosting !== 'none')
+  if (useImageRepo && normalizedImageHosting.shouldPersist) {
+    await store.set('mainImageHosting', normalizedImageHosting.value)
+    await store.save()
+  }
+
+  return isConfigured
 }
 
 /**
