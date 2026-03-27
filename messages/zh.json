@@ -874,7 +874,7 @@
       "setPrimaryBackup": "设为主要图床",
       "smms": {
         "token": {
-          "desc": "请创建并输入 SM.MS Token。",
+          "desc": "请创建并输入 S.EE Token。",
           "createToken": "创建 Token"
         },
         "disk": "磁盘使用情况",

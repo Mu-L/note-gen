@@ -1,25 +1,23 @@
-import { useTranslations } from 'next-intl';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, LoaderCircle, CheckCircle, XCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Store } from "@tauri-apps/plugin-store";
-import { type SMMSUserInfo, type SMMSImageHostingSetting } from "@/lib/imageHosting/smms";
+import { type SMMSImageHostingSetting } from "@/lib/imageHosting/smms";
 import useImageStore from "@/stores/imageHosting";
 import { getUserInfo } from "@/lib/imageHosting/smms";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OpenBroswer } from "@/components/open-broswer";
 
-const CREATE_TOKEN_URL = 'https://sm.ms/home/apitoken'
+const CREATE_TOKEN_URL = 'https://s.ee/user/developers'
 
 export default function SMMSImageHosting() {
-  const t = useTranslations('settings.imageHosting');
   useImageStore()
 
   const [loading, setLoading] = useState(false)
   const [token, setToken] = useState('')
   const [tokenVisible, setTokenVisible] = useState(false)
-  const [userInfo, setUserInfo] = useState<SMMSUserInfo | null>(null)
+  const [isConnected, setIsConnected] = useState(false)
 
   async function init() {
     const store = await Store.load('store.json');
@@ -40,11 +38,9 @@ export default function SMMSImageHosting() {
   // 获取用户信息
   async function handleSetUserInfo() {
     setLoading(true)
-    setUserInfo(null)
+    setIsConnected(false)
     const user = await getUserInfo()
-    if (user) {
-      setUserInfo(user)
-    }
+    setIsConnected(!!user)
     setLoading(false)
   }
 
@@ -60,10 +56,10 @@ export default function SMMSImageHosting() {
     if (loading) {
       return <LoaderCircle className="size-4 animate-spin text-blue-500" />;
     }
-    if (token && userInfo) {
+    if (token && isConnected) {
       return <CheckCircle className="size-4 text-green-500" />;
     }
-    if (token && !userInfo) {
+    if (token && !isConnected) {
       return <XCircle className="size-4 text-red-500" />;
     }
     return <XCircle className="size-4 text-gray-500" />;
@@ -73,10 +69,10 @@ export default function SMMSImageHosting() {
     if (loading) {
       return '检测中';
     }
-    if (token && userInfo) {
+    if (token && isConnected) {
       return '已连接';
     }
-    if (token && !userInfo) {
+    if (token && !isConnected) {
       return '连接失败';
     }
     return '未配置';
@@ -87,9 +83,9 @@ export default function SMMSImageHosting() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>SM.MS 图床</CardTitle>
+            <CardTitle>S.EE 图床</CardTitle>
             <CardDescription>
-              使用 SM.MS 免费图片存储服务
+              使用 S.EE 上传和管理图片
             </CardDescription>
           </div>
         </div>
@@ -107,40 +103,21 @@ export default function SMMSImageHosting() {
         {/* Token 配置 */}
         <div className="space-y-2">
           <label className="text-sm font-medium">API Token</label>
-          <p className="text-xs text-muted-foreground">{t('smms.token.desc')}</p>
+          <p className="text-xs text-muted-foreground">请输入 S.EE API Token，现有配置可继续复用。</p>
           <div className="flex items-center gap-2">
             <Input
               className="flex-1"
               type={tokenVisible ? 'text' : 'password'}
               value={token}
               onChange={(e) => handleSetToken(e.target.value)}
-              placeholder="输入 SM.MS API Token"
+              placeholder="输入 S.EE API Token"
             />
             <Button variant="outline" size="icon" onClick={() => setTokenVisible(!tokenVisible)}>
               {tokenVisible ? <Eye /> : <EyeOff />}
             </Button>
           </div>
-          <OpenBroswer url={CREATE_TOKEN_URL} title={t('smms.token.createToken')} className="text-sm text-blue-500 hover:underline" />
+          <OpenBroswer url={CREATE_TOKEN_URL} title="打开 S.EE 开发者页面" className="text-sm text-blue-500 hover:underline" />
         </div>
-
-        {/* 磁盘使用情况 */}
-        {token && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">磁盘使用情况</label>
-            <div className="p-3 border rounded-lg">
-              <div className="flex items-center gap-2">
-                {loading && <LoaderCircle className="animate-spin size-4" />}
-                {!loading && userInfo && (
-                  <span className="text-sm">{userInfo?.disk_usage} / {userInfo?.disk_limit}</span>
-                )}
-                {!loading && !userInfo && (
-                  <span className="text-sm text-red-500">{t('smms.error')}</span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
       </CardContent>
     </Card>
   )

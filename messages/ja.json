@@ -785,7 +785,7 @@
       "setPrimaryBackup": "主要バックアップ方法として設定",
       "smms": {
         "token": {
-          "desc": "SM.MS Token を入力してください。",
+          "desc": "S.EE Token を入力してください。",
           "createToken": "Token を作成"
         },
         "disk": "磁盘使用",

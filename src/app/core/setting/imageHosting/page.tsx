@@ -60,7 +60,7 @@ export default function ImageHostingPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="github">Github</SelectItem>
-              <SelectItem value="smms">SM.MS</SelectItem>
+              <SelectItem value="smms">S.EE</SelectItem>
               <SelectItem value="picgo">PicGo</SelectItem>
               <SelectItem value="s3">S3</SelectItem>
             </SelectContent>

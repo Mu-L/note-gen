@@ -877,7 +877,7 @@
       "setPrimaryBackup": "Set as Primary Image Hosting",
       "smms": {
         "token": {
-          "desc": "Please create and input SM.MS Token.",
+          "desc": "Please create and input S.EE Token.",
           "createToken": "Create Token"
         },
         "disk": "Disk Usage",

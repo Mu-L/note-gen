@@ -832,7 +832,7 @@
       "setPrimaryBackup": "Definir como Hospedagem de Imagem Principal",
       "smms": {
         "token": {
-          "desc": "Por favor, crie e insira o Token SM.MS.",
+          "desc": "Por favor, crie e insira o Token S.EE.",
           "createToken": "Criar Token"
         },
         "disk": "Uso do Disco",
