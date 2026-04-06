@@ -69,18 +69,22 @@ jobs:
         run: |
           export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
           
-          # Initialize Android project if not exists
-          if [ ! -d "src-tauri/gen/android" ]; then
-            echo "📱 Initializing Android project..."
-            pnpm tauri android init
-          else
-            echo "✅ Android project already initialized"
-          fi
+          # Recreate Android project on every CI run to avoid stale/incomplete generated files
+          echo "📱 Reinitializing Android project..."
+          rm -rf src-tauri/gen/android
+          pnpm tauri android init
           
           # Verify initialization
-          if [ ! -d "src-tauri/gen/android" ]; then
+          if [ ! -d "src-tauri/gen/android/app/src/main" ]; then
             echo "❌ Android initialization failed"
             exit 1
+          fi
+
+          # Restore Android permissions that are tracked separately in git
+          echo "🎙️ Restoring Android recording permissions..."
+          MANIFEST_PATH="src-tauri/gen/android/app/src/main/AndroidManifest.xml"
+          if ! grep -q 'android.permission.RECORD_AUDIO' "$MANIFEST_PATH"; then
+            perl -0pi -e 's|<manifest([^>]*)>|<manifest$1>\n  <uses-permission android:name="android.permission.RECORD_AUDIO" \/>\n  <uses-feature android:name="android.hardware.microphone" android:required="false" \/>|' "$MANIFEST_PATH"
           fi
           
           # Set custom Android icon
@@ -93,6 +97,8 @@ jobs:
             "src-tauri/gen/android/app/src/main/res/mipmap-xxhdpi"
             "src-tauri/gen/android/app/src/main/res/mipmap-xxxhdpi"
           )
+
+          mkdir -p "${MIPMAP_DIRS[@]}"
           
           # Install ImageMagick for icon conversion
           sudo apt-get update && sudo apt-get install -y imagemagick
