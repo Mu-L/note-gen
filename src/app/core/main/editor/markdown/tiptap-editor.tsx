@@ -55,6 +55,7 @@ import emitter from '@/lib/emitter'
 import { QuoteMark } from './quote-mark'
 import { MarkdownParagraph, normalizeMarkdownPlaceholders } from './markdown-paragraph'
 import { StableCodeBlockLowlight } from './code-block-extension'
+import { shouldTransformImageSrcToWorkspaceAsset } from './image-src'
 import useSettingStore from '@/stores/setting'
 import useChatStore from '@/stores/chat'
 import { Loader2, X } from 'lucide-react'
@@ -354,7 +355,7 @@ export function TipTapEditor({
                 const relativeSrc = element.getAttribute('data-relative-src') || src
                 const uploading = element.getAttribute('data-uploading') === 'true'
                 // 如果是相对路径（非 http/https/asset://），转换为 asset://
-                if (src && !src.startsWith('http') && !src.startsWith('asset://') && !src.startsWith('tauri://')) {
+                if (shouldTransformImageSrcToWorkspaceAsset(src)) {
                   // 这里不能直接调用 async 函数，需要在后续处理
                   return {
                     src, // 先保持原样，后续通过其他方式处理
@@ -406,7 +407,7 @@ export function TipTapEditor({
         },
               }).configure({
         inline: true,
-        allowBase64: false,
+        allowBase64: true,
         HTMLAttributes: {
           class: 'max-w-full h-auto rounded-lg',
         },
@@ -1624,7 +1625,7 @@ export function TipTapEditor({
       for (const img of images) {
         const src = img.getAttribute('src')
         // 如果是相对路径，转换为 asset://
-        if (src && currentFilePath && !src.startsWith('http') && !src.startsWith('asset://') && !src.startsWith('tauri://')) {
+        if (src && currentFilePath && shouldTransformImageSrcToWorkspaceAsset(src)) {
           const fullRelativePath = resolveImagePathFromMarkdown(currentFilePath, src)
           // 异步转换路径
           convertImageByWorkspace(fullRelativePath).then((assetUrl: string) => {
@@ -1639,7 +1640,7 @@ export function TipTapEditor({
         if (img && !img.onerror) {
           img.onerror = async () => {
             const currentSrc = img.getAttribute('src')
-            if (currentSrc && currentFilePath && !currentSrc.startsWith('http') && !currentSrc.startsWith('asset://') && !currentSrc.startsWith('tauri://')) {
+            if (currentSrc && currentFilePath && shouldTransformImageSrcToWorkspaceAsset(currentSrc)) {
               const fullRelativePath = resolveImagePathFromMarkdown(currentFilePath, currentSrc)
               const assetUrl = await convertImageByWorkspace(fullRelativePath)
               img.setAttribute('src', assetUrl)
