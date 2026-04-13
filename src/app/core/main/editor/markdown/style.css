@@ -241,13 +241,16 @@
 .tiptap-editor .ProseMirror .tableWrapper {
   margin: 1em 0;
   overflow-x: auto;
+  max-width: 100%;
 }
 
 .tiptap-editor .ProseMirror table {
   border-collapse: collapse;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
   margin: 0;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .tiptap-editor .ProseMirror table th,
@@ -258,6 +261,9 @@
   vertical-align: top;
   min-width: 100px;
   empty-cells: hide;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 /* 表格空单元格使用空格替代 nbsp */
@@ -378,29 +384,6 @@
 
 .dark .tiptap-editor .ProseMirror .selectedCell {
   background-color: hsl(var(--primary) / 0.25) !important;
-}
-
-/* 任务列表 */
-.tiptap-editor .ProseMirror table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 1em 0;
-}
-
-.tiptap-editor .ProseMirror table th,
-.tiptap-editor .ProseMirror table td {
-  border: 1px solid hsl(var(--border));
-  padding: 8px 12px;
-  text-align: left;
-}
-
-.tiptap-editor .ProseMirror table th {
-  background-color: hsl(var(--muted) / 0.3);
-  font-weight: 600;
-}
-
-.tiptap-editor .ProseMirror table tr:nth-child(2n) {
-  background-color: hsl(var(--muted) / 0.2);
 }
 
 /* 列表 */
