@@ -21,7 +21,7 @@ import { common, createLowlight } from 'lowlight'
 import { Markdown } from '@tiptap/markdown'
 import { SearchAndReplace } from '@sereneinserenade/tiptap-search-and-replace'
 import UniqueId from '@tiptap/extension-unique-id'
-import { Extension, nodeInputRule } from '@tiptap/core'
+import { Extension, nodeInputRule, ResizableNodeView, type ResizableNodeViewDirection } from '@tiptap/core'
 import { Plugin, TextSelection } from '@tiptap/pm/state'
 import 'katex/dist/katex.min.css'
 import { InlineMath, BlockMath } from './math-extension'
@@ -71,6 +71,101 @@ import { OUTLINE_PANEL_PADDING_CLASS } from '@/lib/outline-styles'
 import './style.css'
 
 const lowlight = createLowlight(common)
+
+const IMAGE_RESIZE_DIRECTIONS: ResizableNodeViewDirection[] = [
+  'top',
+  'right',
+  'bottom',
+  'left',
+  'top-left',
+  'top-right',
+  'bottom-left',
+  'bottom-right',
+]
+
+function parseImageDimension(value: unknown): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value > 0 ? Math.round(value) : null
+  }
+
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  if (!/^\d+(?:\.\d+)?(?:px)?$/i.test(trimmed)) {
+    return null
+  }
+
+  const parsed = Number.parseInt(trimmed.replace(/px$/i, ''), 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+function getImageDimensionFromElement(element: HTMLElement, name: 'width' | 'height'): number | null {
+  return (
+    parseImageDimension(element.getAttribute(name)) ||
+    parseImageDimension(element.style[name])
+  )
+}
+
+function applyImageNodeAttributes(element: HTMLImageElement, attrs: Record<string, unknown>) {
+  const src = typeof attrs.src === 'string' ? attrs.src : ''
+  const alt = typeof attrs.alt === 'string' ? attrs.alt : ''
+  const title = typeof attrs.title === 'string' ? attrs.title : ''
+  const relativeSrc = typeof attrs.relativeSrc === 'string' ? attrs.relativeSrc : ''
+  const width = parseImageDimension(attrs.width)
+  const height = parseImageDimension(attrs.height)
+  const currentSrc = element.getAttribute('src')
+  const currentRelativeSrc = element.getAttribute('data-relative-src') || ''
+  const shouldKeepConvertedSrc =
+    Boolean(relativeSrc) &&
+    currentRelativeSrc === relativeSrc &&
+    shouldTransformImageSrcToWorkspaceAsset(src) &&
+    currentSrc !== src
+
+  if (!shouldKeepConvertedSrc && currentSrc !== src) {
+    element.setAttribute('src', src)
+  }
+
+  element.setAttribute('alt', alt)
+  element.className = 'max-w-full rounded-lg'
+
+  if (title) {
+    element.setAttribute('title', title)
+  } else {
+    element.removeAttribute('title')
+  }
+
+  if (relativeSrc) {
+    element.setAttribute('data-relative-src', relativeSrc)
+  } else {
+    element.removeAttribute('data-relative-src')
+  }
+
+  if (width) {
+    element.setAttribute('width', String(width))
+    element.style.width = `${width}px`
+  } else {
+    element.removeAttribute('width')
+    element.style.removeProperty('width')
+  }
+
+  if (height) {
+    element.setAttribute('height', String(height))
+    element.style.height = `${height}px`
+  } else {
+    element.removeAttribute('height')
+    element.style.removeProperty('height')
+  }
+}
 
 // 自定义扩展：处理粘贴 Markdown 文本
 const PasteMarkdown = Extension.create({
@@ -377,6 +472,8 @@ export function TipTapEditor({
               getAttrs: (element) => {
                 const src = element.getAttribute('src')
                 const relativeSrc = element.getAttribute('data-relative-src') || src
+                const width = getImageDimensionFromElement(element, 'width')
+                const height = getImageDimensionFromElement(element, 'height')
                 const uploading = element.getAttribute('data-uploading') === 'true'
                 // 如果是相对路径（非 http/https/asset://），转换为 asset://
                 if (shouldTransformImageSrcToWorkspaceAsset(src)) {
@@ -385,6 +482,9 @@ export function TipTapEditor({
                     src, // 先保持原样，后续通过其他方式处理
                     relativeSrc: src,
                     alt: element.getAttribute('alt') || '',
+                    title: element.getAttribute('title') || null,
+                    width,
+                    height,
                     uploading,
                   }
                 }
@@ -392,6 +492,9 @@ export function TipTapEditor({
                   src,
                   relativeSrc,
                   alt: element.getAttribute('alt') || '',
+                  title: element.getAttribute('title') || null,
+                  width,
+                  height,
                   uploading,
                 }
               },
@@ -399,12 +502,33 @@ export function TipTapEditor({
           ]
         },
         renderHTML({ node }) {
+          const width = parseImageDimension(node.attrs.width)
+          const height = parseImageDimension(node.attrs.height)
+          const style = [
+            width ? `width: ${width}px` : null,
+            height ? `height: ${height}px` : null,
+          ].filter(Boolean).join('; ')
+
           return ['img', {
             src: node.attrs.src,
             alt: node.attrs.alt || '',
-            class: 'max-w-full h-auto rounded-lg',
-            'data-relative-src': node.attrs.relativeSrc,
+            title: node.attrs.title || null,
+            class: 'max-w-full rounded-lg',
+            width,
+            height,
+            style: style || null,
+            'data-relative-src': node.attrs.relativeSrc || null,
           }]
+        },
+        parseMarkdown(token, helpers) {
+          const src = token.href || ''
+
+          return helpers.createNode('image', {
+            src,
+            title: token.title,
+            alt: token.text,
+            relativeSrc: src,
+          })
         },
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         renderMarkdown(node, _helpers) {
@@ -413,7 +537,102 @@ export function TipTapEditor({
           let src = attrs.relativeSrc || attrs.src || ''
           // 如果是 asset:// 或 tauri:// 路径，提取实际路径
           src = src.replace(/^(tauri|asset|http):\/\/localhost\//, '')
-          return `![${attrs.alt || ''}](${src})`
+          const width = parseImageDimension(attrs.width)
+          const height = parseImageDimension(attrs.height)
+
+          if (!width && !height) {
+            return attrs.title
+              ? `![${attrs.alt || ''}](${src} "${attrs.title}")`
+              : `![${attrs.alt || ''}](${src})`
+          }
+
+          const htmlAttributes = [
+            `src="${escapeHtmlAttribute(src)}"`,
+            `alt="${escapeHtmlAttribute(attrs.alt || '')}"`,
+            attrs.title ? `title="${escapeHtmlAttribute(attrs.title)}"` : null,
+            width ? `width="${width}"` : null,
+            height ? `height="${height}"` : null,
+          ].filter(Boolean).join(' ')
+
+          return `<img ${htmlAttributes}>`
+        },
+        addNodeView() {
+          if (!this.options.resize || !this.options.resize.enabled || typeof document === 'undefined') {
+            return null
+          }
+
+          const { directions, minWidth, minHeight, alwaysPreserveAspectRatio } = this.options.resize
+
+          return ({ node, getPos, editor }) => {
+            const element = document.createElement('img')
+            applyImageNodeAttributes(element, node.attrs)
+
+            const nodeView = new ResizableNodeView({
+              element,
+              editor,
+              node,
+              getPos,
+              onResize: (width, height) => {
+                element.style.width = `${width}px`
+                element.style.height = `${height}px`
+              },
+              onCommit: (width, height) => {
+                const pos = getPos()
+
+                if (typeof pos !== 'number') {
+                  return
+                }
+
+                editor
+                  .chain()
+                  .setNodeSelection(pos)
+                  .updateAttributes(this.name, {
+                    width,
+                    height,
+                  })
+                  .run()
+              },
+              onUpdate: (updatedNode) => {
+                if (updatedNode.type !== node.type) {
+                  return false
+                }
+
+                applyImageNodeAttributes(element, updatedNode.attrs)
+                return true
+              },
+              options: {
+                directions,
+                min: {
+                  width: minWidth,
+                  height: minHeight,
+                },
+                preserveAspectRatio: alwaysPreserveAspectRatio === true,
+                className: {
+                  container: 'image-resize-container',
+                  wrapper: 'image-resize-wrapper',
+                  handle: 'image-resize-handle',
+                  resizing: 'image-resize-active',
+                },
+              },
+            })
+
+            const dom = nodeView.dom as HTMLElement
+            const revealNodeView = () => {
+              dom.style.visibility = ''
+              dom.style.pointerEvents = ''
+            }
+
+            dom.style.visibility = 'hidden'
+            dom.style.pointerEvents = 'none'
+            element.onload = revealNodeView
+            element.onerror = revealNodeView
+
+            if (element.complete) {
+              revealNodeView()
+            }
+
+            return nodeView
+          }
         },
         addInputRules() {
           return [
@@ -429,11 +648,18 @@ export function TipTapEditor({
             }),
           ]
         },
-              }).configure({
+      }).configure({
         inline: true,
         allowBase64: true,
+        resize: {
+          enabled: true,
+          directions: IMAGE_RESIZE_DIRECTIONS,
+          minWidth: 48,
+          minHeight: 48,
+          alwaysPreserveAspectRatio: true,
+        },
         HTMLAttributes: {
-          class: 'max-w-full h-auto rounded-lg',
+          class: 'max-w-full rounded-lg',
         },
       }),
       // 自定义粘贴 Markdown 扩展

@@ -2733,9 +2733,16 @@
       "sizeOriginal": "Tamanho Original",
       "editAlt": "Editar texto alternativo",
       "editSrc": "Editar URL",
+      "editSize": "Definir tamanho",
+      "resetSize": "Redefinir tamanho",
+      "widthPlaceholder": "L",
+      "heightPlaceholder": "A",
       "altPlaceholder": "Digite o texto alternativo...",
       "srcPlaceholder": "Digite a URL da imagem...",
-      "delete": "Excluir imagem"
+      "delete": "Excluir imagem",
+      "reset": "Redefinir",
+      "confirm": "Confirmar",
+      "cancel": "Cancelar"
     },
     "mermaid": {
       "rendering": "Renderizando...",

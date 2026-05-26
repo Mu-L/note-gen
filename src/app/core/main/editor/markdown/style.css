@@ -186,6 +186,164 @@
   margin: 1em 0;
 }
 
+.tiptap-editor .ProseMirror .image-resize-container {
+  display: inline-flex !important;
+  max-width: 100%;
+  vertical-align: middle;
+  margin: 1em 0;
+  line-height: 0;
+}
+
+.tiptap-editor .ProseMirror .image-resize-container.ProseMirror-selectednode {
+  outline: none;
+}
+
+.tiptap-editor .ProseMirror .image-resize-wrapper {
+  max-width: 100%;
+  line-height: 0;
+}
+
+.tiptap-editor .ProseMirror .image-resize-wrapper > img {
+  display: block;
+  margin: 0;
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+.tiptap-editor .ProseMirror .image-resize-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 2px solid hsl(var(--primary) / 0.35);
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.tiptap-editor .ProseMirror .image-resize-container:hover .image-resize-wrapper::after,
+.tiptap-editor .ProseMirror .image-resize-container.ProseMirror-selectednode .image-resize-wrapper::after,
+.tiptap-editor .ProseMirror .image-resize-container[data-resize-state="true"] .image-resize-wrapper::after {
+  opacity: 1;
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle {
+  z-index: 2;
+  opacity: 0;
+  background-color: transparent;
+  transition: opacity 0.12s ease;
+}
+
+.tiptap-editor .ProseMirror .image-resize-container:hover .image-resize-handle,
+.tiptap-editor .ProseMirror .image-resize-container.ProseMirror-selectednode .image-resize-handle,
+.tiptap-editor .ProseMirror .image-resize-container[data-resize-state="true"] .image-resize-handle {
+  opacity: 1;
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle:hover {
+  opacity: 1;
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle::after {
+  content: '';
+  position: absolute;
+  background-color: hsl(var(--primary) / 0.42);
+  border-radius: 999px;
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="left"],
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="right"] {
+  width: 12px;
+  cursor: ew-resize;
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="top"],
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="bottom"] {
+  height: 12px;
+  cursor: ns-resize;
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="left"]::after,
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="right"]::after {
+  width: 2px;
+  height: 28px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="top"]::after,
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="bottom"]::after {
+  width: 28px;
+  height: 2px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="left"] {
+  transform: translateX(-50%);
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="right"] {
+  transform: translateX(50%);
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="top"] {
+  transform: translateY(-50%);
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="bottom"] {
+  transform: translateY(50%);
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="top-left"],
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="top-right"],
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="bottom-left"],
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="bottom-right"] {
+  width: 9px;
+  height: 9px;
+  background-color: hsl(var(--background));
+  border: 2px solid hsl(var(--primary) / 0.55);
+  border-radius: 999px;
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.14);
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="top-left"]::after,
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="top-right"]::after,
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="bottom-left"]::after,
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="bottom-right"]::after {
+  display: none;
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="top-left"]:hover,
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="top-right"]:hover,
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="bottom-left"]:hover,
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="bottom-right"]:hover {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="top-left"] {
+  cursor: nwse-resize;
+  transform: translate(-50%, -50%);
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="top-right"] {
+  cursor: nesw-resize;
+  transform: translate(50%, -50%);
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="bottom-left"] {
+  cursor: nesw-resize;
+  transform: translate(-50%, 50%);
+}
+
+.tiptap-editor .ProseMirror .image-resize-handle[data-resize-handle="bottom-right"] {
+  cursor: nwse-resize;
+  transform: translate(50%, 50%);
+}
+
 /* ========================
    图片上传样式
    ======================== */
