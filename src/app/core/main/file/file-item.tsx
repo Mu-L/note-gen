@@ -1,9 +1,9 @@
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuShortcut } from "@/components/ui/enhanced-context-menu";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuShortcut, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger } from "@/components/ui/enhanced-context-menu";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import useArticleStore, { DirTree } from "@/stores/article";
 import { BaseDirectory, exists, readTextFile, remove, rename, writeTextFile } from "@tauri-apps/plugin-fs";
-import { Copy, Database, File, FileDown, FileUp, FolderOpen, ImageIcon, LoaderCircle, RefreshCwOff, Trash2 } from "lucide-react"
+import { Copy, Database, Download, File, FileCode, FileDown, FileJson, FileText, FileUp, FolderOpen, ImageIcon, LoaderCircle, RefreshCwOff, Trash2 } from "lucide-react"
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ask } from '@tauri-apps/plugin-dialog';
 import { platform } from '@tauri-apps/plugin-os';
@@ -30,6 +30,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import useSettingStore from "@/stores/setting";
 import { VectorKnowledgeMenu } from "./vector-knowledge-menu";
 import { isSkillsFolder } from "@/lib/skills/utils";
+import { exportMarkdownFile, type MarkdownExportFormat } from "../editor/markdown/markdown-export";
 
 type Platform = 'macos' | 'windows' | 'linux' | 'unknown'
 
@@ -59,6 +60,13 @@ function buildFileRenamePlan({
   } as const
 }
 
+function showPdfExportStartToast() {
+  toast({
+    title: '正在导出 PDF',
+    description: '长篇文档可能需要一些时间，请稍候。',
+  })
+}
+
 export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?: () => void }) {
   const [isEditing, setIsEditing] = useState(item.isEditing)
   const [name, setName] = useState(item.name)
@@ -69,7 +77,9 @@ export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?:
   const { setClipboardItem, clipboardItem, clipboardOperation } = useClipboardStore()
   const { fileManagerTextSize } = useSettingStore()
   const t = useTranslations('article.file')
+  const tCommon = useTranslations('common')
   const isMobile = useIsMobile()
+  const [exportingFormat, setExportingFormat] = useState<MarkdownExportFormat | null>(null)
 
   // 检查路径是否在 skills 文件夹下
   const isInSkillsFolder = (itemPath: string): boolean => {
@@ -103,6 +113,7 @@ export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?:
 
   // 检查文件是否已计算向量（skills 文件夹下的文件不显示）
   const hasVector = item.isFile && !isInSkillsFolder(path) && vectorIndexedFiles.has(path)
+  const canExportMarkdownFile = item.isLocale && item.name !== '' && /\.(md|markdown|txt)$/i.test(item.name)
 
   // 向量计算状态图标
   const renderVectorIcon = () => {
@@ -782,6 +793,30 @@ export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?:
     }
   }
 
+  async function handleExportFile(format: MarkdownExportFormat) {
+    try {
+      setExportingFormat(format)
+      const exported = await exportMarkdownFile(
+        format,
+        path,
+        { onPdfRenderStart: showPdfExportStartToast },
+      )
+
+      if (exported) {
+        toast({ title: format === 'pdf' ? 'PDF 导出成功' : '导出成功' })
+      }
+    } catch (error) {
+      console.error(`Export selected file failed: ${path}`, error)
+      toast({
+        title: '导出失败',
+        description: error instanceof Error ? error.message : String(error),
+        variant: 'destructive',
+      })
+    } finally {
+      setExportingFormat(null)
+    }
+  }
+
   async function handleEditEnd() {
     if (currentFolder && currentFolder.children) {
       const index = currentFolder?.children?.findIndex(item => item.name === '')
@@ -998,6 +1033,50 @@ export function FileItem({ item, focusSidebar }: { item: DirTree; focusSidebar?:
             <FolderOpen className="mr-2 h-4 w-4" />
             {t('context.viewDirectory')}
           </ContextMenuItem>
+          <ContextMenuSub>
+            <ContextMenuSubTrigger inset disabled={!canExportMarkdownFile || exportingFormat !== null} menuType="file">
+              <Download className="mr-2 h-4 w-4" />
+              {tCommon('export')}
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent>
+              <ContextMenuItem
+                inset
+                disabled={exportingFormat !== null}
+                onClick={() => { void handleExportFile('markdown') }}
+                menuType="file"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Markdown
+              </ContextMenuItem>
+              <ContextMenuItem
+                inset
+                disabled={exportingFormat !== null}
+                onClick={() => { void handleExportFile('html') }}
+                menuType="file"
+              >
+                <FileCode className="mr-2 h-4 w-4" />
+                HTML
+              </ContextMenuItem>
+              <ContextMenuItem
+                inset
+                disabled={exportingFormat !== null}
+                onClick={() => { void handleExportFile('json') }}
+                menuType="file"
+              >
+                <FileJson className="mr-2 h-4 w-4" />
+                JSON
+              </ContextMenuItem>
+              <ContextMenuItem
+                inset
+                disabled={exportingFormat !== null}
+                onClick={() => { void handleExportFile('pdf') }}
+                menuType="file"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                PDF
+              </ContextMenuItem>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
           <ContextMenuSeparator />
           <VectorKnowledgeMenu
             item={item}
