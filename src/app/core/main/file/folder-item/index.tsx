@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
 import { cloneDeep } from "lodash-es";
-import { computedParentPath, getCurrentFolder } from "@/lib/path";
+import { computedParentPath, getCurrentFolder, joinRelativePath } from "@/lib/path";
 import useSettingStore from '@/stores/setting'
 import { isSkillsFolder } from "@/lib/skills/utils"
 import SyncFolder from './sync-folder'
@@ -412,7 +412,8 @@ export function FolderItem({ item, focusSidebar }: { item: DirTree; focusSidebar
       
       // 获取源路径和目标路径
       const oldPathOptions = await getFilePathOptions(path)
-      const newPathOptions = await getFilePathOptions(`${path.split('/').slice(0, -1).join('/')}/${sanitizedName}`)
+      const parentPath = path.split('/').slice(0, -1).join('/')
+      const newPathOptions = await getFilePathOptions(joinRelativePath(parentPath, sanitizedName))
       
       // 根据工作区类型执行重命名操作
       if (workspace.isCustom) {
@@ -433,7 +434,7 @@ export function FolderItem({ item, focusSidebar }: { item: DirTree; focusSidebar
       // 新建文件夹
       if (sanitizedName !== '') {
         // 检查文件夹是否已存在
-        const newFolderPath = `${path}/${sanitizedName}`
+        const newFolderPath = joinRelativePath(path, sanitizedName)
         const pathOptions = await getFilePathOptions(newFolderPath)
         
         let isExists = false
