@@ -40,7 +40,7 @@ NoteGen is an open-source, cross-platform `Markdown` note app built for messy th
 | ![Windows](https://img.shields.io/badge/Windows-0078D4?logo=windows&logoColor=white&style=for-the-badge) | ![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white&style=for-the-badge) | ![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black&style=for-the-badge) | ![Android](https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=white&style=for-the-badge) | ![iOS](https://img.shields.io/badge/iOS-000000?logo=apple&logoColor=white&style=for-the-badge) |
 | --- | --- | --- | --- | --- |
 | ✅ beta | ✅ beta | ✅ beta | 🛠️ alpha | 🛠️ alpha |
-| [Download](https://notegen.top/en/docs/download#desktop-beta) | [Download](https://notegen.top/en/docs/download#desktop-beta) | [Download](https://notegen.top/en/docs/download#desktop-beta) | [Download](https://notegen.top/en/docs/download#android) | [TestFlight](https://testflight.apple.com/join/8KjFRTCq) |
+| [Download](https://notegen.top/en/download) | [Download](https://notegen.top/en/download) | [Download](https://notegen.top/en/download) | [Download](https://notegen.top/en/download) | [TestFlight](https://testflight.apple.com/join/8KjFRTCq) |
 
 > [UpgradeLink offers application upgrade and download services](http://upgrade.toolsetlink.com/upgrade/example/tauri-example.html)
 
