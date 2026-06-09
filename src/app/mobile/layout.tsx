@@ -21,6 +21,7 @@ import { MobileStatusBar } from "@/components/mobile-statusbar"
 import { TextSizeProvider } from "@/contexts/text-size-context"
 import { SyncConfirmDialog } from "@/components/sync-confirm-dialog"
 import { AutoDataSyncConflictDialog } from "@/components/auto-data-sync-conflict-dialog"
+import { MobileViewport } from "@/components/mobile-viewport"
 import { ControlText } from "@/app/core/main/mark/control-text"
 import { ControlRecording } from "@/app/core/main/mark/control-recording"
 import { ControlImage } from "@/app/core/main/mark/control-image"
@@ -98,13 +99,18 @@ export default function RootLayout({
       disableTransitionOnChange
     >
       <TextSizeProvider>
+        <MobileViewport />
         <MobileStatusBar />
         <TooltipProvider>
-          <div className="flex flex-col h-full">
-            <main className="flex flex-1 w-full overflow-hidden">
+          <div className="mobile-app-shell flex flex-col">
+            <main className="mobile-app-main flex flex-1 w-full overflow-hidden">
               {children}
             </main>
-            {!hideFootbar ? <AppFootbar /> : null}
+            {!hideFootbar ? (
+              <div className="mobile-footbar">
+                <AppFootbar />
+              </div>
+            ) : null}
           </div>
           {/* 隐藏的记录工具组件，用于监听事件 */}
           <div className="absolute opacity-0 pointer-events-none -z-50">

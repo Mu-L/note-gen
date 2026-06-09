@@ -8,7 +8,7 @@ import useArticleStore from '@/stores/article'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import { useTranslations } from 'next-intl'
-import { hasText, readText } from 'tauri-plugin-clipboard-api'
+import { Separator } from '@/components/ui/separator'
 
 interface MobileRecordToolsProps {
   onClose?: () => void
@@ -19,13 +19,9 @@ export function MobileRecordTools({ onClose }: MobileRecordToolsProps) {
   const t = useTranslations()
   const { loadFileTree, setActiveFilePath } = useArticleStore()
 
-  // 移动端截图记录通过系统图片选择导入截图。
-  const mobileTools = [
-    { id: 'write' },
-    { id: 'clipboard' },
+  const recordTools = [
     { id: 'text' },
     { id: 'recording' },
-    { id: 'screenshotImport' },
     { id: 'image' },
     { id: 'link' },
     { id: 'file' },
@@ -73,54 +69,9 @@ export function MobileRecordTools({ onClose }: MobileRecordToolsProps) {
     }
   }
 
-  function isValidUrl(text: string): boolean {
-    const trimmed = text.trim()
-    const urlPattern = /^https?:\/\/.+/i
-    const domainPattern = /^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}/i
-    return urlPattern.test(trimmed) || domainPattern.test(trimmed)
-  }
-
-  const handleSmartClipboard = async () => {
-    try {
-      const hasTextContent = await hasText()
-      if (!hasTextContent) {
-        toast({
-          title: t('record.capture.clipboardEmpty'),
-          description: t('record.capture.clipboardEmptyDescription'),
-        })
-        return
-      }
-
-      const clipboardText = await readText()
-      if (clipboardText && isValidUrl(clipboardText)) {
-        emitter.emit('toolbar-shortcut-link' as any)
-      } else {
-        emitter.emit('toolbar-shortcut-text' as any)
-      }
-      onClose?.()
-    } catch (error) {
-      console.error('Smart clipboard failed:', error)
-      emitter.emit('toolbar-shortcut-text' as any)
-      onClose?.()
-    }
-  }
-
   const handleToolClick = async (toolId: string) => {
     if (toolId === 'write') {
       await handleQuickWrite()
-      return
-    }
-
-    if (toolId === 'clipboard') {
-      await handleSmartClipboard()
-      return
-    }
-
-    if (toolId === 'screenshotImport') {
-      emitter.emit('toolbar-shortcut-image')
-      if (onClose) {
-        onClose()
-      }
       return
     }
 
@@ -132,18 +83,26 @@ export function MobileRecordTools({ onClose }: MobileRecordToolsProps) {
     }
   }
 
-  // 暂时忽略 onClose 参数的 lint 警告，未来可能用于在操作成功后关闭抽屉
-  void onClose
-
   return (
-    <div className="grid w-full grid-cols-3 gap-1">
-      {mobileTools.map((tool) => (
-        <SimpleMobileTool 
-          key={tool.id}
-          toolId={tool.id}
-          onToolClick={handleToolClick}
-        />
-      ))}
+    <div className="flex w-full flex-col gap-3">
+      <SimpleMobileTool
+        toolId="write"
+        featured
+        onToolClick={handleToolClick}
+      />
+      <div className="flex items-center gap-2 px-1">
+        <span className="text-xs font-medium text-muted-foreground">{t('navigation.record')}</span>
+        <Separator className="flex-1" />
+      </div>
+      <div className="grid w-full grid-cols-2 gap-2">
+        {recordTools.map((tool) => (
+          <SimpleMobileTool
+            key={tool.id}
+            toolId={tool.id}
+            onToolClick={handleToolClick}
+          />
+        ))}
+      </div>
     </div>
   )
 }

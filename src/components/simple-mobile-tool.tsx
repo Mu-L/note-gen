@@ -1,37 +1,35 @@
 'use client'
 
 import { Button } from "@/components/ui/button"
-import { CheckSquare, Clipboard, CopySlash, Mic, ImagePlus, Link, FileText, SquarePen, ScanText } from "lucide-react"
+import { CheckSquare, ChevronRight, ImagePlus, Link, Mic, Paperclip, SquarePen, Type } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { cn } from "@/lib/utils"
 
 interface SimpleMobileToolProps {
   toolId: string
   onToolClick?: (toolId: string) => void
+  featured?: boolean
 }
 
-export function SimpleMobileTool({ toolId, onToolClick }: SimpleMobileToolProps) {
+export function SimpleMobileTool({ toolId, onToolClick, featured = false }: SimpleMobileToolProps) {
   const t = useTranslations()
 
   const getToolInfo = (id: string) => {
     switch (id) {
-      case 'clipboard':
-        return { icon: <Clipboard className="w-5 h-5" />, label: t('record.capture.smartClipboard') }
       case 'text':
-        return { icon: <CopySlash className="w-5 h-5" />, label: t('record.mark.type.text') }
+        return { icon: <Type className="size-4" />, label: t('record.mark.type.text') }
       case 'recording':
-        return { icon: <Mic className="w-5 h-5" />, label: t('record.mark.type.recording') }
-      case 'screenshotImport':
-        return { icon: <ScanText className="w-5 h-5" />, label: t('record.mark.type.screenshot') }
+        return { icon: <Mic className="size-4" />, label: t('record.mark.type.recording') }
       case 'image':
-        return { icon: <ImagePlus className="w-5 h-5" />, label: t('record.mark.type.image') }
+        return { icon: <ImagePlus className="size-4" />, label: t('record.mark.type.image') }
       case 'link':
-        return { icon: <Link className="w-5 h-5" />, label: t('record.mark.type.link') }
+        return { icon: <Link className="size-4" />, label: t('record.mark.type.link') }
       case 'file':
-        return { icon: <FileText className="w-5 h-5" />, label: t('record.mark.type.file') }
+        return { icon: <Paperclip className="size-4" />, label: t('record.mark.type.file') }
       case 'todo':
-        return { icon: <CheckSquare className="w-5 h-5" />, label: t('record.mark.type.todo') }
+        return { icon: <CheckSquare className="size-4" />, label: t('record.mark.type.todo') }
       case 'write':
-        return { icon: <SquarePen className="w-5 h-5" />, label: t('navigation.write') }
+        return { icon: <SquarePen className="size-5" />, label: t('navigation.write') }
       default:
         return { icon: null, label: '' }
     }
@@ -47,16 +45,36 @@ export function SimpleMobileTool({ toolId, onToolClick }: SimpleMobileToolProps)
 
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       onClick={handleClick}
-      className="flex h-auto min-h-16 min-w-14 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 hover:bg-accent"
+      className={cn(
+        "group flex h-auto min-w-0 rounded-xl transition-colors",
+        featured
+          ? "min-h-14 w-full justify-start gap-3 px-3"
+          : "min-h-12 justify-start gap-2.5 px-3 py-2"
+      )}
       aria-label={toolInfo.label}
       title={toolInfo.label}
     >
-      <div className="text-primary">
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-lg",
+          featured ? "size-9 bg-muted text-foreground" : "size-8 bg-muted text-foreground"
+        )}
+      >
         {toolInfo.icon}
-      </div>
-      <span className="text-[11px] leading-none text-muted-foreground">{toolInfo.label}</span>
+      </span>
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate text-left leading-none",
+          "text-sm font-medium text-foreground"
+        )}
+      >
+        {toolInfo.label}
+      </span>
+      {featured ? (
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-active:translate-x-0.5" />
+      ) : null}
     </Button>
   )
 }
