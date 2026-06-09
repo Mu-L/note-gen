@@ -2189,6 +2189,13 @@
     "quickRecord": "快捷記錄",
     "write": "寫作",
     "me": "我的",
+    "mobileDock": {
+      "chat": "對話",
+      "record": "記錄",
+      "quickRecord": "快捷",
+      "write": "寫作",
+      "me": "我的"
+    },
     "search": "搜索",
     "githubImageHosting": "Github 圖床",
     "login": "登錄",

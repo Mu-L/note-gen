@@ -18,6 +18,7 @@ import { getToolByName } from "@/lib/agent/tools"
 import { getSessionApprovalScope, matchesSessionApproval } from "@/lib/agent/session-approval"
 import { ImageAttachment } from "./image-attachments"
 import type { RagSource } from "@/lib/rag"
+import { cn } from "@/lib/utils"
 
 interface QuoteData {
   quote: string
@@ -36,9 +37,10 @@ interface ChatSendProps {
   linkedResource?: LinkedResource | null;
   attachedImages?: ImageAttachment[];
   quoteData?: QuoteData | null;
+  dockStyle?: boolean;
 }
 
-export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ inputValue, onSent, linkedResource, attachedImages = [], quoteData = null }, ref) => {
+export const ChatSend = forwardRef<{ sendChat: () => void }, ChatSendProps>(({ inputValue, onSent, linkedResource, attachedImages = [], quoteData = null, dockStyle = false }, ref) => {
   const { primaryModel } = useSettingStore()
   const { currentTagId } = useTagStore()
   const {
@@ -694,12 +696,16 @@ ${hasValidRange ? `**仅在用户明确要求修改/改写/补充/插入时才�
   return (
     <>
       <TooltipButton 
-        variant={loading ? "destructive" : "default"}
+        variant={dockStyle ? "ghost" : loading ? "destructive" : "default"}
         size="sm"
         icon={loading ? <Square className="size-4" /> : <Send className="size-4" />} 
         disabled={!loading && (!primaryModel || !inputValue.trim())} 
         tooltipText={loading ? t('record.chat.input.stop') : t('record.chat.input.send')} 
         onClick={loading ? handleStop : handleSubmit} 
+        buttonClassName={dockStyle ? cn(
+          "rounded-2xl border border-border/50 bg-[hsl(var(--component-active-bg))] text-foreground shadow-none hover:bg-[hsl(var(--component-active-bg))] hover:text-foreground",
+          loading && "border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/10"
+        ) : undefined}
       />
     </>
   )

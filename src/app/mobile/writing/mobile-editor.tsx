@@ -146,7 +146,7 @@ export function MobileEditor({ onEditorReady }: MobileEditorProps) {
         placeholder={tEditor('placeholder')}
         activeFilePath={activeFilePath}
         onReady={handleEditorReady}
-        onEditorReady={onEditorReady as ((editor: any) => void) | undefined}
+        onEditorReady={onEditorReady}
       />
     </div>
   )

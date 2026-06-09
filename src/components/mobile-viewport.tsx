@@ -4,9 +4,16 @@ import { useEffect } from 'react'
 
 const KEYBOARD_OPEN_THRESHOLD = 80
 const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])'
+const KEYBOARD_VIEWPORT_CHECK_DELAYS = [0, 80, 160, 320, 600, 900]
+const EDITABLE_POINTER_WINDOW = 700
+const STABLE_VIEWPORT_FALLBACK_WINDOW = 1200
 
 function isEditableElement(target: EventTarget | null): target is HTMLElement {
   return target instanceof HTMLElement && target.matches(EDITABLE_SELECTOR)
+}
+
+function hasEditableTarget(target: EventTarget | null) {
+  return target instanceof HTMLElement && Boolean(target.closest(EDITABLE_SELECTOR))
 }
 
 export function MobileViewport() {
@@ -14,7 +21,9 @@ export function MobileViewport() {
     const root = document.documentElement
     const body = document.body
     const timers = new Set<number>()
-    let hasEditableFocus = isEditableElement(document.activeElement)
+    let stableViewportHeight = window.visualViewport?.height ?? window.innerHeight
+    let recentEditablePointerAt = 0
+    let stableViewportFallbackUntil = 0
 
     const setTimer = (callback: () => void, delay: number) => {
       const id = window.setTimeout(() => {
@@ -29,13 +38,23 @@ export function MobileViewport() {
       const viewportHeight = viewport?.height ?? window.innerHeight
       const viewportWidth = viewport?.width ?? window.innerWidth
       const viewportOffsetTop = viewport?.offsetTop ?? 0
+      const activeElement = document.activeElement
+      const hasEditableFocus = activeElement instanceof HTMLElement && isEditableElement(activeElement)
       const keyboardInset = Math.max(0, window.innerHeight - viewportHeight - viewportOffsetTop)
-      const keyboardOpen = hasEditableFocus || keyboardInset > KEYBOARD_OPEN_THRESHOLD
+      const keyboardInsetFromStableViewport = Math.max(0, stableViewportHeight - viewportHeight)
+      const allowStableViewportFallback = hasEditableFocus && Date.now() <= stableViewportFallbackUntil
+      const keyboardOpen = keyboardInset > KEYBOARD_OPEN_THRESHOLD
+        || (allowStableViewportFallback && keyboardInsetFromStableViewport > KEYBOARD_OPEN_THRESHOLD)
+      const effectiveKeyboardInset = Math.max(keyboardInset, keyboardInsetFromStableViewport)
+
+      if (!hasEditableFocus && viewportHeight > stableViewportHeight) {
+        stableViewportHeight = viewportHeight
+      }
 
       root.style.setProperty('--mobile-viewport-height', `${viewportHeight}px`)
       root.style.setProperty('--mobile-viewport-width', `${viewportWidth}px`)
       root.style.setProperty('--mobile-viewport-offset-top', `${Math.max(0, viewportOffsetTop)}px`)
-      root.style.setProperty('--mobile-keyboard-inset', `${keyboardOpen ? keyboardInset : 0}px`)
+      root.style.setProperty('--mobile-keyboard-inset', `${keyboardOpen ? effectiveKeyboardInset : 0}px`)
       root.classList.toggle('mobile-keyboard-open', keyboardOpen)
       body.classList.toggle('mobile-keyboard-open', keyboardOpen)
     }
@@ -55,26 +74,44 @@ export function MobileViewport() {
       })
     }
 
+    const scheduleViewportUpdates = () => {
+      KEYBOARD_VIEWPORT_CHECK_DELAYS.forEach((delay) => {
+        setTimer(updateViewportVars, delay)
+      })
+    }
+
+    const armStableViewportFallback = () => {
+      stableViewportFallbackUntil = Date.now() + STABLE_VIEWPORT_FALLBACK_WINDOW
+    }
+
+    const handleEditablePointerStart = (event: Event) => {
+      if (!hasEditableTarget(event.target)) {
+        stableViewportFallbackUntil = 0
+        return
+      }
+
+      recentEditablePointerAt = Date.now()
+      armStableViewportFallback()
+      scheduleViewportUpdates()
+    }
+
     const handleFocusIn = (event: FocusEvent) => {
       if (!isEditableElement(event.target)) {
         return
       }
 
-      hasEditableFocus = true
-      updateViewportVars()
+      if (Date.now() - recentEditablePointerAt <= EDITABLE_POINTER_WINDOW) {
+        armStableViewportFallback()
+      }
+      scheduleViewportUpdates()
       setTimer(keepFocusedElementVisible, 120)
       setTimer(keepFocusedElementVisible, 320)
+      setTimer(keepFocusedElementVisible, 600)
     }
 
     const handleFocusOut = () => {
-      setTimer(() => {
-        hasEditableFocus = isEditableElement(document.activeElement)
-        updateViewportVars()
-      }, 120)
-      setTimer(() => {
-        hasEditableFocus = isEditableElement(document.activeElement)
-        updateViewportVars()
-      }, 320)
+      stableViewportFallbackUntil = 0
+      scheduleViewportUpdates()
     }
 
     const handleOrientationChange = () => {
@@ -88,6 +125,8 @@ export function MobileViewport() {
     window.visualViewport?.addEventListener('scroll', updateViewportVars)
     window.addEventListener('resize', updateViewportVars)
     window.addEventListener('orientationchange', handleOrientationChange)
+    document.addEventListener('pointerdown', handleEditablePointerStart)
+    document.addEventListener('touchstart', handleEditablePointerStart, { passive: true })
     document.addEventListener('focusin', handleFocusIn)
     document.addEventListener('focusout', handleFocusOut)
 
@@ -96,6 +135,8 @@ export function MobileViewport() {
       window.visualViewport?.removeEventListener('scroll', updateViewportVars)
       window.removeEventListener('resize', updateViewportVars)
       window.removeEventListener('orientationchange', handleOrientationChange)
+      document.removeEventListener('pointerdown', handleEditablePointerStart)
+      document.removeEventListener('touchstart', handleEditablePointerStart)
       document.removeEventListener('focusin', handleFocusIn)
       document.removeEventListener('focusout', handleFocusOut)
       timers.forEach((id) => window.clearTimeout(id))

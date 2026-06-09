@@ -932,8 +932,22 @@
 
   /* 确保移动端写作页面的编辑器容器不会阻止滑动 */
   #mobile-writing .tiptap-editor .ProseMirror {
+    padding-bottom: calc(24px + var(--mobile-footbar-reserved-space));
     touch-action: pan-x pan-y !important;
     -webkit-overflow-scrolling: touch !important;
+  }
+
+  .mobile-keyboard-open #mobile-writing .tiptap-editor .ProseMirror {
+    padding-bottom: 0;
+  }
+
+  .mobile-keyboard-open #mobile-writing .mobile-writing-editor-scroll {
+    padding-bottom: 0;
+    scroll-padding-bottom: 0;
+  }
+
+  .mobile-keyboard-open #mobile-writing .mobile-editor-footer {
+    display: none;
   }
 
   #mobile-writing .tiptap-editor .ProseMirror ::selection {

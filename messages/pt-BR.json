@@ -2231,6 +2231,13 @@
     "quickRecord": "Registro Rápido",
     "write": "Escrever",
     "me": "Meu",
+    "mobileDock": {
+      "chat": "Conversa",
+      "record": "Registro",
+      "quickRecord": "Rápido",
+      "write": "Escrever",
+      "me": "Meu"
+    },
     "search": "Pesquisar",
     "githubImageHosting": "Hospedagem de Imagens Github",
     "login": "Entrar",

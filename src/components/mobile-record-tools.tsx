@@ -84,17 +84,17 @@ export function MobileRecordTools({ onClose }: MobileRecordToolsProps) {
   }
 
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex w-full flex-col gap-2">
       <SimpleMobileTool
         toolId="write"
         featured
         onToolClick={handleToolClick}
       />
-      <div className="flex items-center gap-2 px-1">
-        <span className="text-xs font-medium text-muted-foreground">{t('navigation.record')}</span>
-        <Separator className="flex-1" />
+      <div className="flex items-center gap-2 px-2 py-1">
+        <span className="text-xs font-medium text-[hsl(var(--component-inactive-color))]">{t('navigation.record')}</span>
+        <Separator className="flex-1 bg-border/60" />
       </div>
-      <div className="grid w-full grid-cols-2 gap-2">
+      <div className="grid w-full grid-cols-2 gap-1.5">
         {recordTools.map((tool) => (
           <SimpleMobileTool
             key={tool.id}

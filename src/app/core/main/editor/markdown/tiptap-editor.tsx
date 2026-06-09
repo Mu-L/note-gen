@@ -1,6 +1,6 @@
 'use client'
 
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, type Editor as TipTapReactEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Link from '@tiptap/extension-link'
@@ -36,7 +36,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { readFile } from '@tauri-apps/plugin-fs'
 import { handleImageUpload } from '@/lib/image-handler'
 import useArticleStore from '@/stores/article'
-import { convertImageByWorkspace } from '@/lib/utils'
+import { cn, convertImageByWorkspace } from '@/lib/utils'
 import { resolveImagePathFromMarkdown } from '@/lib/markdown-image-path'
 import { isMobileDevice } from '@/lib/check'
 import { useTranslations } from 'next-intl'
@@ -446,7 +446,7 @@ interface TipTapEditorProps {
   editable?: boolean
   activeFilePath?: string
   onReady?: () => void
-  onEditorReady?: (editor: any) => void
+  onEditorReady?: (editor: TipTapReactEditor) => void
   outlineOpen?: boolean
   outlinePosition?: OutlinePosition
   outlineWidth?: number
@@ -1060,10 +1060,17 @@ export function TipTapEditor({
         return
       }
 
-      editor.chain().focus().setTextSelection({
-        from: selectionFrom,
-        to: selectionTo,
-      }).run()
+      if (isMobile) {
+        editor.commands.setTextSelection({
+          from: selectionFrom,
+          to: selectionTo,
+        })
+      } else {
+        editor.chain().focus().setTextSelection({
+          from: selectionFrom,
+          to: selectionTo,
+        }).run()
+      }
 
       requestAnimationFrame(() => {
         if (!scrollContainerRef.current) {
@@ -1088,6 +1095,93 @@ export function TipTapEditor({
       })
     })
   }, [editor, getEditorViewState, setEditorViewState])
+
+  const scrollMobileSelectionIntoView = useCallback(() => {
+    if (!isMobile || !editor || editor.isDestroyed || !scrollContainerRef.current) {
+      return
+    }
+
+    const scrollContainer = scrollContainerRef.current
+    let selectionCoords: { top: number; bottom: number }
+
+    try {
+      selectionCoords = editor.view.coordsAtPos(editor.state.selection.from)
+    } catch {
+      return
+    }
+
+    const containerRect = scrollContainer.getBoundingClientRect()
+    const visualViewport = window.visualViewport
+    const viewportTop = visualViewport?.offsetTop ?? 0
+    const viewportBottom = viewportTop + (visualViewport?.height ?? window.innerHeight)
+    const visibleTop = Math.max(containerRect.top, viewportTop) + 16
+    const visibleBottom = Math.min(containerRect.bottom, viewportBottom) - 24
+
+    if (visibleBottom <= visibleTop) {
+      return
+    }
+
+    let nextScrollTop = scrollContainer.scrollTop
+
+    if (selectionCoords.bottom > visibleBottom) {
+      nextScrollTop += selectionCoords.bottom - visibleBottom
+    } else if (selectionCoords.top < visibleTop) {
+      nextScrollTop -= visibleTop - selectionCoords.top
+    } else {
+      return
+    }
+
+    const maxScrollTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight)
+    const clampedScrollTop = Math.max(0, Math.min(maxScrollTop, nextScrollTop))
+
+    if (Math.abs(clampedScrollTop - scrollContainer.scrollTop) < 1) {
+      return
+    }
+
+    scrollContainer.scrollTo({
+      top: clampedScrollTop,
+      behavior: 'auto',
+    })
+  }, [editor, isMobile])
+
+  useEffect(() => {
+    if (!editor || !isMobile) {
+      return
+    }
+
+    const timers = new Set<number>()
+    const scrollDelays = [0, 80, 180, 360, 600]
+
+    const clearTimers = () => {
+      timers.forEach((timer) => window.clearTimeout(timer))
+      timers.clear()
+    }
+
+    const scheduleSelectionScroll = () => {
+      clearTimers()
+
+      scrollDelays.forEach((delay) => {
+        const timer = window.setTimeout(() => {
+          timers.delete(timer)
+          requestAnimationFrame(scrollMobileSelectionIntoView)
+        }, delay)
+        timers.add(timer)
+      })
+    }
+
+    editor.on('focus', scheduleSelectionScroll)
+    editor.on('selectionUpdate', scheduleSelectionScroll)
+    window.visualViewport?.addEventListener('resize', scheduleSelectionScroll)
+    window.visualViewport?.addEventListener('scroll', scheduleSelectionScroll)
+
+    return () => {
+      clearTimers()
+      editor.off('focus', scheduleSelectionScroll)
+      editor.off('selectionUpdate', scheduleSelectionScroll)
+      window.visualViewport?.removeEventListener('resize', scheduleSelectionScroll)
+      window.visualViewport?.removeEventListener('scroll', scheduleSelectionScroll)
+    }
+  }, [editor, isMobile, scrollMobileSelectionIntoView])
 
   // 处理编辑器内链接点击
   useEffect(() => {
@@ -3222,7 +3316,10 @@ export function TipTapEditor({
       {/* Editor content - scrollable area */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-x-hidden overflow-y-auto relative"
+        className={cn(
+          "flex-1 overflow-x-hidden overflow-y-auto relative",
+          isMobile && "mobile-under-dock-scroll mobile-writing-editor-scroll"
+        )}
         onMouseDownCapture={handleEditorMouseDownCapture}
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleEditorDrop}

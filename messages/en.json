@@ -2277,6 +2277,13 @@
     "quickRecord": "Quick Record",
     "write": "Write",
     "me": "My",
+    "mobileDock": {
+      "chat": "Chat",
+      "record": "Record",
+      "quickRecord": "Quick",
+      "write": "Write",
+      "me": "Me"
+    },
     "search": "Search",
     "githubImageHosting": "Github Image Hosting",
     "login": "Login",

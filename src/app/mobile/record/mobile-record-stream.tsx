@@ -499,7 +499,7 @@ export function MobileRecordStream() {
 
       <RecordSyncStatusBanner settingsHref="/mobile/setting/pages/sync" compact />
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2">
+      <div className="mobile-under-dock-scroll flex-1 min-h-0 overflow-y-auto px-3 py-2">
         {!trashState && queues.length > 0 && (
           <div className="mb-3 space-y-2">
             {queues.map((queue) => (
@@ -543,137 +543,137 @@ export function MobileRecordStream() {
                       : 0
 
                   return (
-                  <div
-                    key={mark.id}
-                    data-mobile-mark-id={mark.id}
-                    className={cn(
-                      "relative overflow-hidden rounded-xl bg-background transition-colors",
-                      highlightedMarkId === mark.id && "record-search-highlight bg-primary/8 dark:bg-primary/15"
-                    )}
-                  >
-                    {!multiMode && (
-                      <div className="absolute inset-y-0 right-0 flex items-center gap-2 px-2">
-                        {trashState ? (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="size-11 rounded-xl shadow-sm"
-                              onClick={() => {
-                                handleRestore(mark)
-                                setSwipedMarkId(null)
-                              }}
-                              title={t('record.mark.toolbar.restore')}
-                              aria-label={t('record.mark.toolbar.restore')}
-                            >
-                              <RotateCcw className="size-4" />
-                              <span className="sr-only">{t('record.mark.toolbar.restore')}</span>
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              className="size-11 rounded-xl shadow-sm"
-                              onClick={() => {
-                                handleDelete(mark)
-                                setSwipedMarkId(null)
-                              }}
-                              title={t('record.mark.toolbar.deleteForever')}
-                              aria-label={t('record.mark.toolbar.deleteForever')}
-                            >
-                              <Trash2 className="size-4" />
-                              <span className="sr-only">{t('record.mark.toolbar.deleteForever')}</span>
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="size-11 rounded-xl shadow-sm"
-                              disabled={!canMoveBetweenTags}
-                              onClick={() => {
-                                setMoveTargetMark(mark)
-                                setSwipedMarkId(null)
-                              }}
-                              title={t('record.mark.toolbar.moveTag')}
-                              aria-label={t('record.mark.toolbar.moveTag')}
-                            >
-                              <MoveRight className="size-4" />
-                              <span className="sr-only">{t('record.mark.toolbar.moveTag')}</span>
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              className="size-11 rounded-xl shadow-sm"
-                              onClick={() => {
-                                handleDelete(mark)
-                                setSwipedMarkId(null)
-                              }}
-                              title={t('record.mark.toolbar.delete')}
-                              aria-label={t('record.mark.toolbar.delete')}
-                            >
-                              <Trash2 className="size-4" />
-                              <span className="sr-only">{t('record.mark.toolbar.delete')}</span>
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    )}
-
                     <div
+                      key={mark.id}
+                      data-mobile-mark-id={mark.id}
                       className={cn(
-                        "rounded-xl border bg-background px-3 py-3 transition-transform duration-200 ease-out",
-                        highlightedMarkId === mark.id && "bg-primary/8 dark:bg-primary/15"
+                        "relative overflow-hidden rounded-xl bg-background transition-colors",
+                        highlightedMarkId === mark.id && "record-search-highlight"
                       )}
-                      style={{ transform: `translateX(${translateX}px)` }}
-                      onTouchStart={(e) => handleItemTouchStart(e, mark.id)}
-                      onTouchMove={handleItemTouchMove}
-                      onTouchEnd={handleItemTouchEnd}
                     >
-                    <div className="flex items-start gap-2">
-                      {multiMode ? (
-                        <div className="pt-1">
-                          <Checkbox checked={selectedIds.has(mark.id)} onCheckedChange={() => toggleSelect(mark.id)} />
-                        </div>
-                      ) : null}
-
-                      <button
-                        type="button"
-                        className="min-w-0 flex-1 text-left"
-                        onClick={() => {
-                          if (swipedMarkId === mark.id) {
-                            setSwipedMarkId(null)
-                            return
-                          }
-                          setActiveMark(mark)
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-[10px]">
-                            {t(`record.mark.type.${mark.type}`)}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">{dayjs(mark.createdAt).format('HH:mm')}</span>
-                          {!trashState && (
-                            <span className="ml-auto text-xs text-muted-foreground">{tagMap.get(mark.tagId) || '-'}</span>
+                      {!multiMode && (
+                        <div className="absolute inset-y-0 right-0 z-0 flex items-center gap-2 bg-background px-2">
+                          {trashState ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="size-11 rounded-xl shadow-sm"
+                                onClick={() => {
+                                  handleRestore(mark)
+                                  setSwipedMarkId(null)
+                                }}
+                                title={t('record.mark.toolbar.restore')}
+                                aria-label={t('record.mark.toolbar.restore')}
+                              >
+                                <RotateCcw className="size-4" />
+                                <span className="sr-only">{t('record.mark.toolbar.restore')}</span>
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="icon"
+                                className="size-11 rounded-xl shadow-sm"
+                                onClick={() => {
+                                  handleDelete(mark)
+                                  setSwipedMarkId(null)
+                                }}
+                                title={t('record.mark.toolbar.deleteForever')}
+                                aria-label={t('record.mark.toolbar.deleteForever')}
+                              >
+                                <Trash2 className="size-4" />
+                                <span className="sr-only">{t('record.mark.toolbar.deleteForever')}</span>
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="size-11 rounded-xl shadow-sm"
+                                disabled={!canMoveBetweenTags}
+                                onClick={() => {
+                                  setMoveTargetMark(mark)
+                                  setSwipedMarkId(null)
+                                }}
+                                title={t('record.mark.toolbar.moveTag')}
+                                aria-label={t('record.mark.toolbar.moveTag')}
+                              >
+                                <MoveRight className="size-4" />
+                                <span className="sr-only">{t('record.mark.toolbar.moveTag')}</span>
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="icon"
+                                className="size-11 rounded-xl shadow-sm"
+                                onClick={() => {
+                                  handleDelete(mark)
+                                  setSwipedMarkId(null)
+                                }}
+                                title={t('record.mark.toolbar.delete')}
+                                aria-label={t('record.mark.toolbar.delete')}
+                              >
+                                <Trash2 className="size-4" />
+                                <span className="sr-only">{t('record.mark.toolbar.delete')}</span>
+                              </Button>
+                            </>
                           )}
                         </div>
-                        {(mark.type === 'image' || mark.type === 'scan') && mark.url ? (
-                          <div className="mt-2 flex items-center gap-2">
-                            <LocalImage
-                              src={mark.url.includes('http') ? mark.url : `/${mark.type === 'scan' ? 'screenshot' : 'image'}/${mark.url}`}
-                              alt=""
-                              className="h-12 w-12 rounded-md object-cover"
-                            />
-                            <p className="line-clamp-2 text-sm text-muted-foreground">{getMarkPreview(mark) || '-'}</p>
-                          </div>
-                        ) : (
-                          <p className="mt-2 line-clamp-2 text-sm">{getMarkPreview(mark) || '-'}</p>
+                      )}
+
+                      <div
+                        className={cn(
+                          "relative z-10 rounded-xl border bg-background px-3 py-3 transition-transform duration-200 ease-out",
+                          highlightedMarkId === mark.id && "border-primary/30 shadow-sm"
                         )}
-                      </button>
+                        style={{ transform: `translateX(${translateX}px)` }}
+                        onTouchStart={(e) => handleItemTouchStart(e, mark.id)}
+                        onTouchMove={handleItemTouchMove}
+                        onTouchEnd={handleItemTouchEnd}
+                      >
+                        <div className="flex items-start gap-2">
+                          {multiMode ? (
+                            <div className="pt-1">
+                              <Checkbox checked={selectedIds.has(mark.id)} onCheckedChange={() => toggleSelect(mark.id)} />
+                            </div>
+                          ) : null}
+
+                          <button
+                            type="button"
+                            className="min-w-0 flex-1 text-left"
+                            onClick={() => {
+                              if (swipedMarkId === mark.id) {
+                                setSwipedMarkId(null)
+                                return
+                              }
+                              setActiveMark(mark)
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-[10px]">
+                                {t(`record.mark.type.${mark.type}`)}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">{dayjs(mark.createdAt).format('HH:mm')}</span>
+                              {!trashState && (
+                                <span className="ml-auto text-xs text-muted-foreground">{tagMap.get(mark.tagId) || '-'}</span>
+                              )}
+                            </div>
+                            {(mark.type === 'image' || mark.type === 'scan') && mark.url ? (
+                              <div className="mt-2 flex items-center gap-2">
+                                <LocalImage
+                                  src={mark.url.includes('http') ? mark.url : `/${mark.type === 'scan' ? 'screenshot' : 'image'}/${mark.url}`}
+                                  alt=""
+                                  className="h-12 w-12 rounded-md object-cover"
+                                />
+                                <p className="line-clamp-2 text-sm text-muted-foreground">{getMarkPreview(mark) || '-'}</p>
+                              </div>
+                            ) : (
+                              <p className="mt-2 line-clamp-2 text-sm">{getMarkPreview(mark) || '-'}</p>
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    </div>
-                  </div>
-                )})}
+                  )})}
               </div>
             </div>
           ))

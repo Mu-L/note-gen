@@ -177,16 +177,18 @@ export const ChatInput = React.memo(function ChatInput() {
   const [isComposing, setIsComposing] = useState(false)
   const [placeholder, setPlaceholder] = useState('')
   const t = useTranslations()
+  const defaultPlaceholder = t('record.chat.input.placeholder.default')
   const [inputHistory, setInputHistory] = useLocalStorage<string[]>('chat-input-history', [])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [tempInput, setTempInput] = useState('')
   const [linkedResource, setLinkedResource] = useState<LinkedResource | null>(null)
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([])
   const [isImageDragOver, setIsImageDragOver] = useState(false)
-  const chatSendRef = useRef<any>(null)
+  const chatSendRef = useRef<{ sendChat: () => void } | null>(null)
   const isMobile = useIsMobile()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const placeholderTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const placeholderRequestIdRef = useRef(0)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const isMobileDevice_ = isMobileDevice()
   const imageDragDepthRef = useRef(0)
@@ -668,8 +670,16 @@ export const ChatInput = React.memo(function ChatInput() {
     }
   }
 
+  const normalizePlaceholderText = useCallback((value: unknown) => {
+    return typeof value === 'string' ? value.trim() : ''
+  }, [])
+
   // 获取输入框占位符
-  async function genInputPlaceholder() {
+  const genInputPlaceholder = useCallback(async () => {
+    const requestId = placeholderRequestIdRef.current + 1
+    placeholderRequestIdRef.current = requestId
+    setPlaceholder(defaultPlaceholder)
+
     if (!primaryModel) return
     if (trashState) return
     const lastClearIndex = chats.findLastIndex(item => item.type === 'clear')
@@ -677,17 +687,35 @@ export const ChatInput = React.memo(function ChatInput() {
     const request_content = `
       ${chatsAfterClear.slice(0, 5).map(item => item.content?.slice(0, 60)).join(';\n\n')}
     `.trim()
-    // 使用 fetchAiQuickPrompts 获取4条提示词
-    const prompts = await fetchAiQuickPrompts(request_content)
-    // 发送事件给 chat-empty 组件，显示前3条
-    if (prompts.length >= 3) {
-      emitter.emit('ai-prompts-generated', prompts)
+
+    try {
+      // 使用 fetchAiQuickPrompts 获取4条提示词
+      const prompts = await fetchAiQuickPrompts(request_content)
+      if (requestId !== placeholderRequestIdRef.current) {
+        return
+      }
+
+      const validPrompts = prompts
+        .map(prompt => ({
+          ...prompt,
+          text: normalizePlaceholderText(prompt.text),
+        }))
+        .filter(prompt => prompt.text.length > 0)
+
+      // 发送事件给 chat-empty 组件，显示前3条
+      if (validPrompts.length >= 3) {
+        emitter.emit('ai-prompts-generated', validPrompts)
+      }
+
+      // 取第4条作为 placeholder
+      const placeholderText = validPrompts[3]?.text
+      setPlaceholder(placeholderText ? `${placeholderText} [Tab]` : defaultPlaceholder)
+    } catch {
+      if (requestId === placeholderRequestIdRef.current) {
+        setPlaceholder(defaultPlaceholder)
+      }
     }
-    // 取第4条作为 placeholder
-    if (prompts.length >= 4 && prompts[3]?.text) {
-      setPlaceholder(prompts[3].text + ' [Tab]')
-    }
-  }
+  }, [chats, defaultPlaceholder, normalizePlaceholderText, primaryModel, trashState])
 
   // 防抖的 placeholder 生成函数，延迟 1.5 秒执行，只执行最后一次
   const debouncedGenPlaceholder = useCallback(() => {
@@ -695,19 +723,22 @@ export const ChatInput = React.memo(function ChatInput() {
     if (placeholderTimerRef.current) {
       clearTimeout(placeholderTimerRef.current)
     }
+    placeholderRequestIdRef.current += 1
+    setPlaceholder(defaultPlaceholder)
     
     // 设置新的定时器
     placeholderTimerRef.current = setTimeout(() => {
       genInputPlaceholder()
     }, 1500) // 1.5秒延迟
-  }, [primaryModel, marks, chats, trashState, t])
+  }, [defaultPlaceholder, genInputPlaceholder])
 
 
   // 插入占位符
   function insertPlaceholder() {
     if (placeholder.includes('[Tab]')) {
       setText(placeholder.replace('[Tab]', ''))
-      setPlaceholder('')
+      placeholderRequestIdRef.current += 1
+      setPlaceholder(defaultPlaceholder)
     }
   }
 
@@ -746,9 +777,9 @@ export const ChatInput = React.memo(function ChatInput() {
     if (marks.length > 0) {
       genInputPlaceholder()
     } else {
-      setPlaceholder(t('record.chat.input.placeholder.default'))
+      setPlaceholder(defaultPlaceholder)
     }
-  }, [primaryModel, marks, t])
+  }, [defaultPlaceholder, genInputPlaceholder, marks, primaryModel])
 
   useEffect(() => {
     emitter.on('revertChat', (event: unknown) => {
@@ -777,12 +808,13 @@ export const ChatInput = React.memo(function ChatInput() {
       textareaRef.current?.focus()
     })
     emitter.on('ai-placeholder-generated', (event: unknown) => {
-      const promptText = event as string
-      if (promptText) {
-        setPlaceholder(promptText)
-      }
+      const promptText = normalizePlaceholderText(event)
+      setPlaceholder(promptText || defaultPlaceholder)
     })
     return () => {
+      if (placeholderTimerRef.current) {
+        clearTimeout(placeholderTimerRef.current)
+      }
       onboardingTypingTimerRefs.current.forEach((timerId) => window.clearTimeout(timerId))
       onboardingTypingTimerRefs.current = []
       emitter.off('revertChat')
@@ -792,7 +824,7 @@ export const ChatInput = React.memo(function ChatInput() {
       emitter.off('quick-prompt-insert')
       emitter.off('ai-placeholder-generated')
     }
-  }, [debouncedGenPlaceholder, setPendingQuote])
+  }, [debouncedGenPlaceholder, defaultPlaceholder, normalizePlaceholderText, setPendingQuote])
 
   useEffect(() => {
     if (!onboardingPromptDraft) {
@@ -1001,7 +1033,13 @@ ${previewLines.join('\n')}
   }, [linkedResource, debouncedGenPlaceholder])
 
   return (
-    <footer id="onboarding-target-chat-input" className="flex flex-col w-full p-1 justify-between items-center">
+    <footer
+      id="onboarding-target-chat-input"
+      className={cn(
+        "flex w-full flex-col items-center justify-between",
+        isMobile ? "px-2 pb-1 pt-0" : "p-1"
+      )}
+    >
       {/* 移动端图片选择 */}
       {isMobileDevice_ && (
         <input
@@ -1021,11 +1059,19 @@ ${previewLines.join('\n')}
       <LinkedFileDisplay
         linkedResource={linkedResource}
         onFileRemove={removeLinkedFile}
+        mobileDockStyle={isMobile}
       />
       <div
         className={cn(
-          "group relative flex flex-col border rounded-xl z-10 gap-1 p-1 w-full bg-background focus-within:border-primary transition-colors overflow-hidden",
-          isImageDragOver && "border-primary bg-primary/5"
+          "group relative z-10 flex w-full flex-col overflow-hidden border",
+          isMobile
+            ? "mobile-dock-surface gap-1 rounded-[1.35rem] p-1.5 transition-[background-color,border-color,transform] duration-200 focus-within:border-border/80"
+            : "gap-1 rounded-xl bg-background p-1 transition-colors focus-within:border-primary",
+          isImageDragOver && (
+            isMobile
+              ? "border-primary/50 bg-[hsl(var(--component-active-bg))]"
+              : "border-primary bg-primary/5"
+          )
         )}
         onDragEnter={handleImageDragEnter}
         onDragOver={handleImageDragOver}
@@ -1040,8 +1086,18 @@ ${previewLines.join('\n')}
           />
         )}
         {isImageDragOver && (
-          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-[1px]">
-            <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm text-foreground shadow-sm">
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-0 z-20 flex items-center justify-center",
+              isMobile ? "bg-background/60 backdrop-blur-xl" : "bg-background/80 backdrop-blur-[1px]"
+            )}
+          >
+            <div
+              className={cn(
+                "flex items-center gap-2 border px-3 py-2 text-sm text-foreground",
+                isMobile ? "mobile-dock-surface rounded-2xl" : "rounded-md bg-background shadow-sm"
+              )}
+            >
               <ImageIcon className="size-4 text-primary" />
               <span>{t('record.chat.input.imageAttachment.dropHint')}</span>
             </div>
@@ -1054,7 +1110,12 @@ ${previewLines.join('\n')}
         <div className="relative w-full flex items-start">
           <Textarea
             ref={textareaRef}
-            className="flex-1 p-2 relative border-none text-xs placeholder:text-sm md:placeholder:text-sm md:text-sm focus-visible:ring-0 shadow-none min-h-[36px] max-h-[240px] resize-none overflow-y-auto"
+            className={cn(
+              "relative flex-1 resize-none overflow-y-auto border-none p-2 shadow-none focus-visible:ring-0",
+              isMobile
+                ? "min-h-[40px] max-h-[220px] bg-transparent text-sm placeholder:text-sm"
+                : "min-h-[36px] max-h-[240px] text-xs placeholder:text-sm md:placeholder:text-sm md:text-sm"
+            )}
             rows={1}
             disabled={!primaryModel || loading}
             value={text}
@@ -1065,7 +1126,7 @@ ${previewLines.join('\n')}
               const newHeight = Math.min(textarea.scrollHeight, 240)
               textarea.style.height = `${newHeight}px`
             }}
-            placeholder={placeholder}
+            placeholder={placeholder || defaultPlaceholder}
             onKeyDown={(e) => {
               const textarea = e.target as HTMLTextAreaElement
               const cursorPosition = textarea.selectionStart
@@ -1102,7 +1163,7 @@ ${previewLines.join('\n')}
               }
               if (e.key === "Backspace") {
                 if (text === '') {
-                  setPlaceholder(t('record.chat.input.placeholder.default'))
+                  setPlaceholder(defaultPlaceholder)
                 }
               }
             }}
@@ -1145,14 +1206,15 @@ ${previewLines.join('\n')}
           </div>
           <div className="flex items-center justify-end gap-2 pr-1">
             <TooltipButton
-              variant="link"
+              variant={isMobile ? "ghost" : "link"}
               size="sm"
               icon={<ImageIcon className="size-4" />}
               tooltipText={t('record.chat.input.attachImage')}
               onClick={isMobile ? handleSelectFromGallery : handleSelectLocalImages}
               disabled={!primaryModel || loading}
+              buttonClassName={isMobile ? "rounded-2xl text-[hsl(var(--component-inactive-color))] hover:bg-[hsl(var(--component-active-bg))] hover:text-foreground" : undefined}
             />
-            <ChatSend inputValue={text} onSent={handleSent} linkedResource={linkedResource} attachedImages={attachedImages} quoteData={activeQuote} ref={chatSendRef} />
+            <ChatSend inputValue={text} onSent={handleSent} linkedResource={linkedResource} attachedImages={attachedImages} quoteData={activeQuote} dockStyle={isMobile} ref={chatSendRef} />
           </div>
         </div>
 

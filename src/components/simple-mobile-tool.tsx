@@ -45,35 +45,34 @@ export function SimpleMobileTool({ toolId, onToolClick, featured = false }: Simp
 
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       onClick={handleClick}
       className={cn(
-        "group flex h-auto min-w-0 rounded-xl transition-colors",
+        "group flex h-auto min-w-0 rounded-2xl border border-border/50 bg-background/50 text-[hsl(var(--component-inactive-color))] backdrop-blur transition-[background-color,border-color,color,transform] duration-200 hover:border-border/70 hover:bg-[hsl(var(--component-active-bg))] hover:text-foreground active:scale-[0.98]",
         featured
-          ? "min-h-14 w-full justify-start gap-3 px-3"
-          : "min-h-12 justify-start gap-2.5 px-3 py-2"
+          ? "min-h-14 w-full justify-start gap-2.5 px-2.5 py-2.5"
+          : "min-h-12 justify-start gap-2 px-2.5 py-2"
       )}
       aria-label={toolInfo.label}
       title={toolInfo.label}
     >
       <span
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-lg",
-          featured ? "size-9 bg-muted text-foreground" : "size-8 bg-muted text-foreground"
+          "flex shrink-0 items-center justify-center rounded-2xl bg-[hsl(var(--component-active-bg))] text-foreground transition-colors duration-200 group-hover:bg-background/70",
+          featured ? "size-10" : "size-9"
         )}
       >
         {toolInfo.icon}
       </span>
       <span
         className={cn(
-          "min-w-0 flex-1 truncate text-left leading-none",
-          "text-sm font-medium text-foreground"
+          "min-w-0 flex-1 truncate text-left text-sm font-medium leading-none text-foreground"
         )}
       >
         {toolInfo.label}
       </span>
       {featured ? (
-        <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-active:translate-x-0.5" />
+        <ChevronRight className="size-4 shrink-0 text-[hsl(var(--component-inactive-color))] transition-transform group-active:translate-x-0.5" />
       ) : null}
     </Button>
   )

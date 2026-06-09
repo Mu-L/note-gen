@@ -10,6 +10,10 @@ input, textarea, select, [contenteditable] {
   --mobile-viewport-offset-top: 0px;
   --mobile-keyboard-inset: 0px;
   --mobile-footbar-height: 3.5rem;
+  --mobile-footbar-gap: 0px;
+  --mobile-footbar-bottom: calc(env(safe-area-inset-bottom) + var(--mobile-footbar-gap));
+  --mobile-footbar-reserved-space: calc(var(--mobile-footbar-height) + var(--mobile-footbar-gap) + env(safe-area-inset-bottom));
+  --mobile-footbar-fade-height: calc(var(--mobile-footbar-reserved-space) + 2rem);
 }
 
 html,
@@ -27,6 +31,7 @@ body {
 }
 
 .mobile-app-shell {
+  position: relative;
   width: 100%;
   height: var(--mobile-viewport-height, 100dvh);
   min-height: 0;
@@ -38,32 +43,123 @@ body {
 
 .mobile-app-main {
   min-height: 0;
+  height: 100%;
 }
 
 .mobile-footbar {
-  height: calc(var(--mobile-footbar-height) + env(safe-area-inset-bottom));
-  min-height: calc(var(--mobile-footbar-height) + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
-  background: hsl(var(--background));
+  position: absolute;
+  isolation: isolate;
+  z-index: 40;
+  right: 0;
+  bottom: var(--mobile-footbar-bottom);
+  left: 0;
+  height: var(--mobile-footbar-height);
+  min-height: var(--mobile-footbar-height);
+  background: transparent;
+  pointer-events: none;
+}
+
+.mobile-footbar::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  bottom: calc(-1 * var(--mobile-footbar-bottom));
+  left: 0;
+  height: var(--mobile-footbar-fade-height);
+  background: linear-gradient(
+    to top,
+    hsl(var(--background)) 0%,
+    hsl(var(--background) / 0.96) 18%,
+    hsl(var(--background) / 0.72) 44%,
+    hsl(var(--background) / 0.28) 72%,
+    hsl(var(--background) / 0) 100%
+  );
+  pointer-events: none;
 }
 
 .mobile-footbar > div {
+  position: relative;
+  z-index: 1;
   height: var(--mobile-footbar-height);
+  pointer-events: auto;
 }
 
 .mobile-keyboard-open .mobile-footbar {
   display: none;
 }
 
+.mobile-dock-surface {
+  border: 1px solid hsl(var(--border) / 0.6);
+  background: hsl(var(--background) / 0.7);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .mobile-dock-surface {
+    background: hsl(var(--background) / 0.6);
+  }
+}
+
+.mobile-setting-screen button,
+.mobile-setting-screen .shadow,
+.mobile-setting-screen .shadow-sm,
+.mobile-setting-screen .shadow-md,
+.mobile-setting-screen .shadow-lg,
+.mobile-setting-screen .shadow-xl,
+.mobile-setting-screen .shadow-2xl {
+  box-shadow: none;
+}
+
 .mobile-chat-input-wrapper {
-  position: relative;
-  z-index: 20;
-  background: hsl(var(--background));
-  padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  bottom: var(--mobile-footbar-reserved-space);
+  left: 0;
+  background: transparent;
+  padding-bottom: 0.25rem;
 }
 
 .mobile-keyboard-open .mobile-chat-input-wrapper {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  left: auto;
   padding-bottom: 0.25rem;
+}
+
+#mobile-chat {
+  position: relative;
+}
+
+#mobile-chat #chats-wrapper {
+  padding-bottom: calc(var(--mobile-footbar-reserved-space) + 9rem);
+  scroll-padding-bottom: calc(var(--mobile-footbar-reserved-space) + 9rem);
+}
+
+.mobile-keyboard-open #mobile-chat #chats-wrapper {
+  padding-bottom: 1rem;
+  scroll-padding-bottom: 1rem;
+}
+
+.mobile-under-dock-scroll {
+  padding-bottom: var(--mobile-footbar-reserved-space);
+  scroll-padding-bottom: var(--mobile-footbar-reserved-space);
+}
+
+.mobile-keyboard-open .mobile-under-dock-scroll {
+  padding-bottom: 0.5rem;
+  scroll-padding-bottom: 0.5rem;
+}
+
+.mobile-editor-footer {
+  margin-bottom: var(--mobile-footbar-reserved-space);
+}
+
+.mobile-keyboard-open .mobile-editor-footer {
+  margin-bottom: 0;
 }
 
 /* Ensure input elements are properly sized on mobile */
