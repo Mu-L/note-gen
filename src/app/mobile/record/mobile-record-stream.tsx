@@ -20,7 +20,7 @@ import useMarkStore, { RecordTimePreset } from '@/stores/mark'
 import useTagStore from '@/stores/tag'
 import { clearTrash, delMark, deleteMarks, delMarkForever, initMarksDb, Mark, restoreMark, restoreMarks, updateMark as updateMarkDb } from '@/db/marks'
 import { insertTag } from '@/db/tags'
-import { cn } from '@/lib/utils'
+import { cn, isHttpUrl } from '@/lib/utils'
 import { RecordSyncStatusBanner } from '@/components/record-sync-status-banner'
 
 const TIME_OPTIONS: RecordTimePreset[] = ['all', 'today', 'last7Days', 'last30Days']
@@ -30,6 +30,18 @@ function getMarkPreview(mark: Mark): string {
   if (mark.type === 'image' || mark.type === 'scan') return mark.desc?.trim() || mark.content?.trim() || ''
   if (mark.type === 'link') return mark.url || mark.desc || ''
   return mark.desc?.trim() || mark.content?.trim() || mark.url || ''
+}
+
+function getMarkImageSrc(mark: Mark) {
+  if (!mark.url || (mark.type !== 'image' && mark.type !== 'scan')) {
+    return ''
+  }
+
+  if (isHttpUrl(mark.url)) {
+    return mark.url
+  }
+
+  return `/${mark.type === 'scan' ? 'screenshot' : 'image'}/${mark.url}`
 }
 
 export function MobileRecordStream() {
@@ -660,8 +672,9 @@ export function MobileRecordStream() {
                             {(mark.type === 'image' || mark.type === 'scan') && mark.url ? (
                               <div className="mt-2 flex items-center gap-2">
                                 <LocalImage
-                                  src={mark.url.includes('http') ? mark.url : `/${mark.type === 'scan' ? 'screenshot' : 'image'}/${mark.url}`}
+                                  src={getMarkImageSrc(mark)}
                                   alt=""
+                                  useThumbnail
                                   className="h-12 w-12 rounded-md object-cover"
                                 />
                                 <p className="line-clamp-2 text-sm text-muted-foreground">{getMarkPreview(mark) || '-'}</p>
@@ -692,7 +705,7 @@ export function MobileRecordStream() {
                 {(activeMark.type === 'image' || activeMark.type === 'scan') && activeMark.url && (
                   <div className="overflow-hidden rounded-lg border bg-muted/20 p-2">
                     <LocalImage
-                      src={activeMark.url.includes('http') ? activeMark.url : `/${activeMark.type === 'scan' ? 'screenshot' : 'image'}/${activeMark.url}`}
+                      src={getMarkImageSrc(activeMark)}
                       alt=""
                       className="h-48 w-full rounded-md object-contain"
                     />
