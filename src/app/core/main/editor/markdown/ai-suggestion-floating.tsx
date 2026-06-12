@@ -192,7 +192,7 @@ export function AISuggestionFloating({ editor }: AISuggestionFloatingProps) {
       } : null)
     }
 
-    const handleStreamingComplete = (data?: SuggestionData & PositionData & { generatedRange?: { from: number; to: number } }) => {
+    const handleStreamingComplete = (data?: SuggestionData & PositionData) => {
       if (data) {
         anchorPositionRef.current = data.position
         setSuggestion({
@@ -231,7 +231,7 @@ export function AISuggestionFloating({ editor }: AISuggestionFloatingProps) {
       setSuggestion(null)
     }
 
-    const handleShowSuggestion = (data: SuggestionData & PositionData & { generatedRange?: { from: number; to: number } }) => {
+    const handleShowSuggestion = (data: SuggestionData & PositionData) => {
       anchorPositionRef.current = data.position
       setSuggestion({
         originalText: data.originalText,
@@ -272,17 +272,25 @@ export function AISuggestionFloating({ editor }: AISuggestionFloatingProps) {
     if (!current) return
 
     if (current.generatedRange) {
-      editor.chain()
+      const command = editor.chain()
         .focus()
         .deleteRange(current.generatedRange)
-        .insertContent(current.originalText)
-        .run()
+
+      if (current.originalText) {
+        command.insertContent(current.originalText)
+      }
+
+      command.run()
     } else {
-      editor.chain()
+      const command = editor.chain()
         .focus()
         .deleteSelection()
-        .insertContent(current.originalText)
-        .run()
+
+      if (current.originalText) {
+        command.insertContent(current.originalText)
+      }
+
+      command.run()
     }
 
     anchorPositionRef.current = null
@@ -294,6 +302,32 @@ export function AISuggestionFloating({ editor }: AISuggestionFloatingProps) {
   const handleAbort = useCallback(() => {
     emitter.emit('abort-ai-streaming')
   }, [])
+
+  useEffect(() => {
+    if (!isVisible || isStreaming) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing) {
+        return
+      }
+
+      if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+        event.preventDefault()
+        handleAccept()
+        return
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        handleReject()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
+  }, [handleAccept, handleReject, isStreaming, isVisible])
 
   useEffect(() => {
     emitter.on('accept-ai-suggestion', handleAccept)
@@ -312,10 +346,15 @@ export function AISuggestionFloating({ editor }: AISuggestionFloatingProps) {
     concise: t('bubbleMenu.concise'),
     expand: t('bubbleMenu.expand'),
     translate: t('bubbleMenu.translate'),
+    continue: t('slashCommand.items.continue'),
+    section: t('slashCommand.items.generateSection'),
+    summary: t('slashCommand.items.summarize'),
+    custom: t('slashCommand.items.customInstruction'),
   }
 
   const showThinkingPanel = Boolean(thinkingText)
   const currentLabel = suggestion && typeLabels[suggestion.type] ? typeLabels[suggestion.type] : t('bubbleMenu.ai')
+  const rejectLabel = suggestion?.originalText ? t('aiSuggestion.reject') : t('aiSuggestion.undo')
 
   return (
     <div
@@ -386,7 +425,7 @@ export function AISuggestionFloating({ editor }: AISuggestionFloatingProps) {
             <button
               onClick={handleReject}
               className="rounded-md p-1 transition-colors hover:bg-muted"
-              title={t('aiSuggestion.reject')}
+              title={rejectLabel}
               type="button"
             >
               <X className="size-4" />

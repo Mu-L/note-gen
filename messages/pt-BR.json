@@ -2839,6 +2839,7 @@
     "aiSuggestion": {
       "accept": "Aceitar",
       "reject": "Rejeitar",
+      "undo": "Desfazer",
       "generating": "Gerando...",
       "abort": "Abortar"
     },
@@ -2909,12 +2910,24 @@
       "items": {
         "continue": "Continuar",
         "continueDesc": "IA continua escrevendo o conteúdo",
+        "generateSection": "Gerar Seção",
+        "generateSectionDesc": "Gerar uma nova seção a partir da nota atual",
+        "summarize": "Resumir",
+        "summarizeDesc": "Resumir a nota atual",
+        "customInstruction": "Instrução Personalizada",
+        "customInstructionDesc": "Digite sua própria instrução para a IA",
         "heading1": "Título 1",
         "heading1Desc": "Título grande",
         "heading2": "Título 2",
         "heading2Desc": "Título médio",
         "heading3": "Título 3",
         "heading3Desc": "Título pequeno",
+        "heading4": "Título 4",
+        "heading4Desc": "Título de nível 4",
+        "heading5": "Título 5",
+        "heading5Desc": "Título de nível 5",
+        "heading6": "Título 6",
+        "heading6Desc": "Título de nível 6",
         "bulletList": "Lista com Marcadores",
         "bulletListDesc": "Criar uma lista com marcadores simples",
         "orderedList": "Lista Ordenada",
@@ -2962,6 +2975,11 @@
       },
       "fileInsert": {
         "failed": "Falha ao inserir link de arquivo"
+      },
+      "customPrompt": {
+        "ariaLabel": "Instrução personalizada de IA",
+        "placeholder": "Digite a instrução de IA",
+        "submit": "Executar"
       }
     }
   },

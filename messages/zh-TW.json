@@ -2879,6 +2879,7 @@
     "aiSuggestion": {
       "accept": "接受",
       "reject": "拒絕",
+      "undo": "撤銷",
       "generating": "生成中...",
       "abort": "終止"
     },
@@ -2949,12 +2950,24 @@
       "items": {
         "continue": "續寫",
         "continueDesc": "AI 續寫內容",
-        "heading1": "標題1",
+        "generateSection": "生成章節",
+        "generateSectionDesc": "根據目前筆記生成一個新章節",
+        "summarize": "總結",
+        "summarizeDesc": "總結目前筆記內容",
+        "customInstruction": "自訂指令",
+        "customInstructionDesc": "輸入自己的指令並讓 AI 執行",
+        "heading1": "一級標題",
         "heading1Desc": "大標題",
-        "heading2": "標題2",
+        "heading2": "二級標題",
         "heading2Desc": "中標題",
-        "heading3": "標題3",
+        "heading3": "三級標題",
         "heading3Desc": "小標題",
+        "heading4": "四級標題",
+        "heading4Desc": "四級標題",
+        "heading5": "五級標題",
+        "heading5Desc": "五級標題",
+        "heading6": "六級標題",
+        "heading6Desc": "六級標題",
         "bulletList": "無序列表",
         "bulletListDesc": "建立簡單的項目列表",
         "orderedList": "有序列表",
@@ -3002,6 +3015,11 @@
       },
       "fileInsert": {
         "failed": "插入檔案連結失敗"
+      },
+      "customPrompt": {
+        "ariaLabel": "自訂 AI 指令",
+        "placeholder": "輸入 AI 指令",
+        "submit": "執行"
       }
     }
   },

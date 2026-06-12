@@ -51,7 +51,12 @@ import { FooterBar } from './footer-bar/index'
 import { Outline } from './outline'
 import { SlashCommand, suggestionOptions } from './slash-command'
 import { SlashCommandPortal } from './slash-command/slash-command-portal'
-import { fetchCompletionStream } from '@/lib/ai/completion'
+import {
+  fetchCompletionStream,
+  fetchEditorAiGenerationStream,
+  sanitizeEditorAiGenerationOutput,
+  type EditorAiGenerationAction,
+} from '@/lib/ai/completion'
 import { fetchAiPolishStream, fetchAiConciseStream, fetchAiExpandStream } from '@/lib/ai/rewrite'
 import { fetchAiTranslateStream } from '@/lib/ai/translate'
 import { AISuggestion } from './ai-suggestion'
@@ -97,9 +102,26 @@ const IMAGE_RESIZE_DIRECTIONS: ResizableNodeViewDirection[] = [
   'bottom-right',
 ]
 
+const AI_GENERATION_LOADING_TEXT = '···'
+
 const INTERNAL_TEXT_FILE_PATH_RE = /\.(?:md|txt|markdown|py|js|ts|jsx|tsx|css|scss|less|html|xml|json|yaml|yml|sh|bash|java|c|cpp|h|go|rs|sql|rb|php|vue|svelte|astro|toml|ini|conf|cfg|gitignore|env|example|template)$/i
 const INTERNAL_IMAGE_FILE_PATH_RE = /\.(?:jpg|jpeg|png|gif|bmp|webp|svg)$/i
 const WINDOWS_ABSOLUTE_PATH_RE = /^[a-zA-Z]:[\\/]/
+
+function isEditorAiGenerationAction(action: unknown): action is EditorAiGenerationAction {
+  return action === 'section' || action === 'summary' || action === 'custom'
+}
+
+function getEditorPositionRect(targetEditor: TipTapReactEditor, position: number) {
+  const safePosition = clampSelectionPosition(position, targetEditor.state.doc.content.size)
+  const coords = targetEditor.view.coordsAtPos(safePosition)
+  return {
+    top: coords.top,
+    left: coords.left,
+    right: coords.right,
+    bottom: coords.bottom,
+  }
+}
 
 type DroppedFileWithPath = File & {
   path?: string
@@ -3022,49 +3044,78 @@ export function TipTapEditor({
         return
       }
 
-      // Create new AbortController for this request
+      abortController?.abort()
       abortController = new AbortController()
 
-      // Insert loading indicator at cursor position
-      const loadingMark = editor.state.schema.marks.strong
-      if (!loadingMark) {
-        // If no strong mark available, insert simple text
-        editor.chain().focus().insertContent('...').run()
-      } else {
-        editor.chain().focus().insertContent('···').run()
+      const startPosition = from
+      let accumulatedResult = ''
+      let loadingVisible = true
+
+      const removeLoadingIndicator = () => {
+        if (!loadingVisible) {
+          return
+        }
+        editor.chain()
+          .focus()
+          .deleteRange({
+            from: startPosition,
+            to: startPosition + AI_GENERATION_LOADING_TEXT.length,
+          })
+          .run()
+        loadingVisible = false
       }
 
-      // Track accumulated result for streaming
-      let accumulatedResult = ''
-      const startPosition = from
+      editor.chain().focus().insertContent(AI_GENERATION_LOADING_TEXT).run()
 
       try {
         await fetchCompletionStream(
           context,
           (chunk, isFirst) => {
             if (isFirst) {
-              // Delete the loading indicator before inserting first chunk
-              const { to } = editor.state.selection
-              editor.chain().focus().deleteRange({ from: to - 3, to }).run()
+              removeLoadingIndicator()
             }
-            // Insert chunk as plain text during streaming
-            editor.chain().focus().insertContent(chunk).run()
+            editor.chain()
+              .focus()
+              .insertContentAt(startPosition + accumulatedResult.length, chunk)
+              .run()
             accumulatedResult += chunk
           },
           abortController.signal
         )
 
-        // Streaming complete - replace content with proper Markdown parsing
-        if (accumulatedResult) {
-          editor.chain()
-            .deleteRange({ from: startPosition, to: startPosition + accumulatedResult.length })
-            .insertContent(accumulatedResult, { contentType: 'markdown' })
-            .run()
+        if (!accumulatedResult) {
+          removeLoadingIndicator()
+          return
         }
+
+        editor.chain()
+          .focus()
+          .deleteRange({ from: startPosition, to: startPosition + accumulatedResult.length })
+          .run()
+
+        const docSizeBeforeInsert = editor.state.doc.content.size
+        editor.chain()
+          .focus()
+          .insertContentAt(startPosition, accumulatedResult, { contentType: 'markdown' })
+          .run()
+
+        const insertedSize = Math.max(0, editor.state.doc.content.size - docSizeBeforeInsert)
+        const generatedRange = {
+          from: startPosition,
+          to: startPosition + insertedSize,
+        }
+
+        editor.commands.setTextSelection(generatedRange.to)
+
+        emitter.emit('show-ai-suggestion', {
+          originalText: '',
+          suggestedText: accumulatedResult,
+          type: 'continue',
+          position: getEditorPositionRect(editor, generatedRange.to),
+          generatedRange,
+        })
       } catch (error) {
-        // Delete loading indicator on error
-        const { to } = editor.state.selection
-        editor.chain().focus().deleteRange({ from: to - 3, to }).run()
+        removeLoadingIndicator()
 
         // Show error toast (but not for aborted requests)
         if (error instanceof Error && error.message !== 'Request was aborted.') {
@@ -3080,6 +3131,159 @@ export function TipTapEditor({
     document.addEventListener('tiptap-ai-continue', handleAIContinue)
     return () => {
       document.removeEventListener('tiptap-ai-continue', handleAIContinue)
+      abortController?.abort()
+    }
+  }, [editor])
+
+  // Handle slash-command AI generation actions that operate without selected text.
+  useEffect(() => {
+    let abortController: AbortController | null = null
+
+    const actionTitle: Record<EditorAiGenerationAction, string> = {
+      section: '生成章节',
+      summary: '总结',
+      custom: '自定义指令',
+    }
+
+    const handleAIGenerate = async (event: Event) => {
+      if (!editor) return
+
+      const detail = (event as CustomEvent<{
+        action?: unknown
+        instruction?: string
+      }>).detail
+
+      if (!isEditorAiGenerationAction(detail?.action)) {
+        return
+      }
+
+      const action = detail.action
+      const instruction = detail.instruction?.trim()
+
+      if (action === 'custom' && !instruction) {
+        toast({
+          title: '自定义指令失败',
+          description: '请输入指令',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      const { from } = editor.state.selection
+      const fullText = normalizeMarkdownPlaceholders(editor.getMarkdown())
+      const plainText = editor.getText()
+      const textBeforeCursor = editor.state.doc.textBetween(0, from, '\n')
+      const textAfterCursor = editor.state.doc.textBetween(from, editor.state.doc.content.size, '\n')
+
+      if (action !== 'custom' && !plainText.trim()) {
+        toast({
+          title: `${actionTitle[action]}失败`,
+          description: '请先输入一些内容',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      abortController?.abort()
+      abortController = new AbortController()
+
+      const startPosition = from
+      let accumulatedResult = ''
+      let loadingVisible = true
+
+      const removeLoadingIndicator = () => {
+        if (!loadingVisible) {
+          return
+        }
+        editor.chain()
+          .focus()
+          .deleteRange({
+            from: startPosition,
+            to: startPosition + AI_GENERATION_LOADING_TEXT.length,
+          })
+          .run()
+        loadingVisible = false
+      }
+
+      editor.chain().focus().insertContent(AI_GENERATION_LOADING_TEXT).run()
+
+      try {
+        await fetchEditorAiGenerationStream(
+          {
+            action,
+            fullText,
+            textBeforeCursor,
+            textAfterCursor,
+            instruction,
+          },
+          (chunk, isFirst) => {
+            if (isFirst) {
+              removeLoadingIndicator()
+            }
+            editor.chain()
+              .focus()
+              .insertContentAt(startPosition + accumulatedResult.length, chunk)
+              .run()
+            accumulatedResult += chunk
+          },
+          abortController.signal
+        )
+
+        if (!accumulatedResult) {
+          removeLoadingIndicator()
+          return
+        }
+
+        const sanitizedResult = sanitizeEditorAiGenerationOutput(accumulatedResult)
+        editor.chain()
+          .focus()
+          .deleteRange({
+            from: startPosition,
+            to: startPosition + accumulatedResult.length,
+          })
+          .run()
+
+        if (!sanitizedResult) {
+          return
+        }
+
+        const docSizeBeforeInsert = editor.state.doc.content.size
+        editor.chain()
+          .focus()
+          .insertContentAt(startPosition, sanitizedResult, { contentType: 'markdown' })
+          .run()
+
+        const insertedSize = Math.max(0, editor.state.doc.content.size - docSizeBeforeInsert)
+        const generatedRange = {
+          from: startPosition,
+          to: startPosition + insertedSize,
+        }
+
+        editor.commands.setTextSelection(generatedRange.to)
+
+        emitter.emit('show-ai-suggestion', {
+          originalText: '',
+          suggestedText: sanitizedResult,
+          type: action,
+          position: getEditorPositionRect(editor, generatedRange.to),
+          generatedRange,
+        })
+      } catch (error) {
+        removeLoadingIndicator()
+
+        if (error instanceof Error && error.message !== 'Request was aborted.') {
+          toast({
+            title: `${actionTitle[action]}失败`,
+            description: error.message || '网络错误',
+            variant: 'destructive',
+          })
+        }
+      }
+    }
+
+    document.addEventListener('tiptap-ai-generate', handleAIGenerate)
+    return () => {
+      document.removeEventListener('tiptap-ai-generate', handleAIGenerate)
       abortController?.abort()
     }
   }, [editor])

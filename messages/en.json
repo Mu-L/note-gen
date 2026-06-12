@@ -2993,6 +2993,7 @@
     "aiSuggestion": {
       "accept": "Accept",
       "reject": "Reject",
+      "undo": "Undo",
       "generating": "Generating...",
       "abort": "Abort"
     },
@@ -3063,12 +3064,24 @@
       "items": {
         "continue": "Continue",
         "continueDesc": "AI continue writing content",
+        "generateSection": "Generate Section",
+        "generateSectionDesc": "Generate a new section from the current note",
+        "summarize": "Summarize",
+        "summarizeDesc": "Summarize the current note",
+        "customInstruction": "Custom Instruction",
+        "customInstructionDesc": "Enter your own instruction for AI",
         "heading1": "Heading 1",
         "heading1Desc": "Large heading",
         "heading2": "Heading 2",
         "heading2Desc": "Medium heading",
         "heading3": "Heading 3",
         "heading3Desc": "Small heading",
+        "heading4": "Heading 4",
+        "heading4Desc": "Level 4 heading",
+        "heading5": "Heading 5",
+        "heading5Desc": "Level 5 heading",
+        "heading6": "Heading 6",
+        "heading6Desc": "Level 6 heading",
         "bulletList": "Bullet List",
         "bulletListDesc": "Create a simple bullet list",
         "orderedList": "Ordered List",
@@ -3116,6 +3129,11 @@
       },
       "fileInsert": {
         "failed": "Failed to insert file link"
+      },
+      "customPrompt": {
+        "ariaLabel": "Custom AI instruction",
+        "placeholder": "Enter AI instruction",
+        "submit": "Run"
       }
     }
   },

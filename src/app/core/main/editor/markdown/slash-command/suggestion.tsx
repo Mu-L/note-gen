@@ -2,6 +2,9 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Heading4,
+  Heading5,
+  Heading6,
   List,
   ListOrdered,
   CheckSquare,
@@ -10,6 +13,9 @@ import {
   Table,
   Minus,
   Sparkles,
+  FileText,
+  ListPlus,
+  MessageSquarePlus,
   Sigma,
   GitBranch,
   GitCommit,
@@ -231,10 +237,28 @@ const createMermaidCommand = (
 })
 
 // 辅助函数: 创建自定义事件命令
-const createCustomEventCommand = (eventName: string, detail?: any) => ({
+const createCustomEventCommand = (eventName: string, detail?: unknown) => ({
   command: ({ editor, range }: { editor: Editor; range: Range }) => {
     editor.chain().focus().deleteRange(range).run()
     const event = new CustomEvent(eventName, { detail })
+    document.dispatchEvent(event)
+  },
+})
+
+const createCustomAiInstructionCommand = () => ({
+  command: ({ editor, range }: { editor: Editor; range: Range }) => {
+    const position = Math.min(range.from, editor.state.doc.content.size)
+    const coords = editor.view.coordsAtPos(position)
+    const event = new CustomEvent('tiptap-ai-custom-instruction-open', {
+      detail: {
+        clientRect: new DOMRect(
+          coords.left,
+          coords.top,
+          Math.max(0, coords.right - coords.left),
+          Math.max(0, coords.bottom - coords.top)
+        ),
+      },
+    })
     document.dispatchEvent(event)
   },
 })
@@ -254,12 +278,24 @@ export interface SlashCommandTranslations {
   items: {
     continue: string
     continueDesc: string
+    generateSection: string
+    generateSectionDesc: string
+    summarize: string
+    summarizeDesc: string
+    customInstruction: string
+    customInstructionDesc: string
     heading1: string
     heading1Desc: string
     heading2: string
     heading2Desc: string
     heading3: string
     heading3Desc: string
+    heading4: string
+    heading4Desc: string
+    heading5: string
+    heading5Desc: string
+    heading6: string
+    heading6Desc: string
     bulletList: string
     bulletListDesc: string
     orderedList: string
@@ -340,12 +376,24 @@ export const suggestionItems = (t?: SlashCommandTranslations): SlashCommandItem[
     items: {
       continue: '续写',
       continueDesc: 'AI 续写内容',
-      heading1: '标题1',
+      generateSection: '生成章节',
+      generateSectionDesc: '根据当前笔记生成一个新章节',
+      summarize: '总结',
+      summarizeDesc: '总结当前笔记内容',
+      customInstruction: '自定义指令',
+      customInstructionDesc: '输入自己的指令并让 AI 执行',
+      heading1: '一级标题',
       heading1Desc: '大标题',
-      heading2: '标题2',
+      heading2: '二级标题',
       heading2Desc: '中标题',
-      heading3: '标题3',
+      heading3: '三级标题',
       heading3Desc: '小标题',
+      heading4: '四级标题',
+      heading4Desc: '四级标题',
+      heading5: '五级标题',
+      heading5Desc: '五级标题',
+      heading6: '六级标题',
+      heading6Desc: '六级标题',
       bulletList: '无序列表',
       bulletListDesc: '创建简单的项目列表',
       orderedList: '有序列表',
@@ -409,6 +457,30 @@ export const suggestionItems = (t?: SlashCommandTranslations): SlashCommandItem[
       ...createCustomEventCommand('tiptap-ai-continue'),
     },
     {
+      title: tr.items.generateSection,
+      description: tr.items.generateSectionDesc,
+      icon: <ListPlus className="w-4 h-4" />,
+      group: tr.groups.ai,
+      searchTerms: ['ai', 'section', 'chapter', 'generate', 'write'],
+      ...createCustomEventCommand('tiptap-ai-generate', { action: 'section' }),
+    },
+    {
+      title: tr.items.summarize,
+      description: tr.items.summarizeDesc,
+      icon: <FileText className="w-4 h-4" />,
+      group: tr.groups.ai,
+      searchTerms: ['ai', 'summary', 'summarize', 'abstract'],
+      ...createCustomEventCommand('tiptap-ai-generate', { action: 'summary' }),
+    },
+    {
+      title: tr.items.customInstruction,
+      description: tr.items.customInstructionDesc,
+      icon: <MessageSquarePlus className="w-4 h-4" />,
+      group: tr.groups.ai,
+      searchTerms: ['ai', 'custom', 'instruction', 'prompt'],
+      ...createCustomAiInstructionCommand(),
+    },
+    {
       title: tr.items.heading1,
       description: tr.items.heading1Desc,
       icon: <Heading1 className="w-4 h-4" />,
@@ -436,6 +508,36 @@ export const suggestionItems = (t?: SlashCommandTranslations): SlashCommandItem[
       searchTerms: ['heading', 'h3', 'header'],
       command: ({ editor, range }: { editor: Editor; range: Range }) => {
         editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run()
+      },
+    },
+    {
+      title: tr.items.heading4,
+      description: tr.items.heading4Desc,
+      icon: <Heading4 className="w-4 h-4" />,
+      group: tr.groups.heading,
+      searchTerms: ['heading', 'h4', 'header'],
+      command: ({ editor, range }: { editor: Editor; range: Range }) => {
+        editor.chain().focus().deleteRange(range).setNode('heading', { level: 4 }).run()
+      },
+    },
+    {
+      title: tr.items.heading5,
+      description: tr.items.heading5Desc,
+      icon: <Heading5 className="w-4 h-4" />,
+      group: tr.groups.heading,
+      searchTerms: ['heading', 'h5', 'header'],
+      command: ({ editor, range }: { editor: Editor; range: Range }) => {
+        editor.chain().focus().deleteRange(range).setNode('heading', { level: 5 }).run()
+      },
+    },
+    {
+      title: tr.items.heading6,
+      description: tr.items.heading6Desc,
+      icon: <Heading6 className="w-4 h-4" />,
+      group: tr.groups.heading,
+      searchTerms: ['heading', 'h6', 'header'],
+      command: ({ editor, range }: { editor: Editor; range: Range }) => {
+        editor.chain().focus().deleteRange(range).setNode('heading', { level: 6 }).run()
       },
     },
 

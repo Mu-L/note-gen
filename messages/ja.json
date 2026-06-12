@@ -2889,6 +2889,7 @@
     "aiSuggestion": {
       "accept": "受け入れ",
       "reject": "拒否",
+      "undo": "元に戻す",
       "generating": "生成中...",
       "abort": "中止"
     },
@@ -2959,12 +2960,24 @@
       "items": {
         "continue": "続ける",
         "continueDesc": "AIが内容を続きます",
+        "generateSection": "章を生成",
+        "generateSectionDesc": "現在のノートから新しい章を生成",
+        "summarize": "要約",
+        "summarizeDesc": "現在のノートを要約",
+        "customInstruction": "カスタム指示",
+        "customInstructionDesc": "自分の指示を入力して AI に実行させる",
         "heading1": "見出し1",
         "heading1Desc": "大見出し",
         "heading2": "見出し2",
         "heading2Desc": "中見出し",
         "heading3": "見出し3",
         "heading3Desc": "小見出し",
+        "heading4": "見出し4",
+        "heading4Desc": "レベル4見出し",
+        "heading5": "見出し5",
+        "heading5Desc": "レベル5見出し",
+        "heading6": "見出し6",
+        "heading6Desc": "レベル6見出し",
         "bulletList": "箇条書き",
         "bulletListDesc": "シンプルな箇条書きリストを作成",
         "orderedList": "番号付きリスト",
@@ -3012,6 +3025,11 @@
       },
       "fileInsert": {
         "failed": "ファイルリンクの挿入に失敗しました"
+      },
+      "customPrompt": {
+        "ariaLabel": "カスタム AI 指示",
+        "placeholder": "AI 指示を入力",
+        "submit": "実行"
       }
     }
   },
