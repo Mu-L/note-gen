@@ -23,8 +23,9 @@ import { Markdown } from '@tiptap/markdown'
 import { SearchAndReplace } from '@sereneinserenade/tiptap-search-and-replace'
 import UniqueId from '@tiptap/extension-unique-id'
 import { Extension, nodeInputRule, ResizableNodeView, type Editor as CoreEditor, type ResizableNodeViewDirection } from '@tiptap/core'
-import { AllSelection, Plugin, PluginKey, TextSelection, type Selection } from '@tiptap/pm/state'
+import { AllSelection, NodeSelection, Plugin, PluginKey, TextSelection, type Selection } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
+import { dropPoint } from '@tiptap/pm/transform'
 import 'katex/dist/katex.min.css'
 import { InlineMath, BlockMath } from './math-extension'
 import { MermaidDiagram } from './mermaid-extension'
@@ -116,6 +117,32 @@ function createDragHandleElement(): HTMLElement {
 const INTERNAL_TEXT_FILE_PATH_RE = /\.(?:md|txt|markdown|py|js|ts|jsx|tsx|css|scss|less|html|xml|json|yaml|yml|sh|bash|java|c|cpp|h|go|rs|sql|rb|php|vue|svelte|astro|toml|ini|conf|cfg|gitignore|env|example|template)$/i
 const INTERNAL_IMAGE_FILE_PATH_RE = /\.(?:jpg|jpeg|png|gif|bmp|webp|svg)$/i
 const WINDOWS_ABSOLUTE_PATH_RE = /^[a-zA-Z]:[\\/]/
+
+type EditorDragHandleMoveRange = {
+  from: number
+  to: number
+}
+
+function shouldCopyInternalEditorDrag(event: DragEvent) {
+  if (typeof navigator === 'undefined') {
+    return event.ctrlKey
+  }
+
+  return /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent)
+    ? event.altKey
+    : event.ctrlKey
+}
+
+function getSelectionMoveRange(selection: Selection): EditorDragHandleMoveRange | null {
+  if (selection.empty) {
+    return null
+  }
+
+  return {
+    from: Math.min(selection.from, selection.to),
+    to: Math.max(selection.from, selection.to),
+  }
+}
 
 function isEditorAiGenerationAction(action: unknown): action is EditorAiGenerationAction {
   return action === 'section' || action === 'summary' || action === 'custom'
@@ -946,6 +973,9 @@ export function TipTapEditor({
 
   // Content version ref for race condition prevention between editor and agent
   const contentVersionRef = useRef(0)
+  const editorDragHandleTargetRangeRef = useRef<EditorDragHandleMoveRange | null>(null)
+  const isEditorDragHandleDraggingRef = useRef(false)
+  const editorDragHandleMoveRangeRef = useRef<EditorDragHandleMoveRange | null>(null)
   const editorShortcuts = useEditorShortcutStore((state) => state.shortcuts)
   const editorShortcutsRef = useRef(editorShortcuts)
   const editorShortcutHandlersRef = useRef<Partial<Record<EditorShortcutCommandId, (targetEditor: CoreEditor) => boolean>>>({})
@@ -960,6 +990,17 @@ export function TipTapEditor({
   const runEditorShortcutCommand = useCallback((id: EditorShortcutCommandId, targetEditor: CoreEditor) => {
     return editorShortcutHandlersRef.current[id]?.(targetEditor) ?? false
   }, [])
+
+  const clearEditorDragHandleMoveState = useCallback(() => {
+    isEditorDragHandleDraggingRef.current = false
+    editorDragHandleMoveRangeRef.current = null
+  }, [])
+
+  const scheduleClearEditorDragHandleMoveState = useCallback(() => {
+    window.setTimeout(() => {
+      clearEditorDragHandleMoveState()
+    }, 100)
+  }, [clearEditorDragHandleMoveState])
 
   // When file path changes, reset initialization state to avoid old file content overwriting new file
   useEffect(() => {
@@ -1021,6 +1062,31 @@ export function TipTapEditor({
         ? [
             DragHandle.configure({
               render: createDragHandleElement,
+              onNodeChange: (options) => {
+                const { node } = options
+                const pos = typeof (options as { pos?: unknown }).pos === 'number'
+                  ? (options as { pos: number }).pos
+                  : -1
+
+                editorDragHandleTargetRangeRef.current = node && pos >= 0
+                  ? {
+                      from: pos,
+                      to: pos + node.nodeSize,
+                    }
+                  : null
+              },
+              onElementDragStart: (event) => {
+                isEditorDragHandleDraggingRef.current = true
+                editorDragHandleMoveRangeRef.current = editorDragHandleTargetRangeRef.current
+
+                if (!event.dataTransfer) {
+                  return
+                }
+
+                event.dataTransfer.effectAllowed = 'move'
+                event.dataTransfer.dropEffect = 'move'
+              },
+              onElementDragEnd: scheduleClearEditorDragHandleMoveState,
               computePositionConfig: {
                 middleware: [
                   {
@@ -1276,6 +1342,74 @@ export function TipTapEditor({
     ],
     content: initialContent,
     contentType: 'markdown',
+    editorProps: {
+      dragCopies: (event) => {
+        if (isEditorDragHandleDraggingRef.current) {
+          return false
+        }
+
+        return shouldCopyInternalEditorDrag(event)
+      },
+      handleDrop: (view, event, slice) => {
+        const moveRange = editorDragHandleMoveRangeRef.current ?? getSelectionMoveRange(view.state.selection)
+        if (!isEditorDragHandleDraggingRef.current || !moveRange || moveRange.from === moveRange.to) {
+          return false
+        }
+
+        const eventPos = view.posAtCoords({ left: event.clientX, top: event.clientY })
+        if (!eventPos) {
+          clearEditorDragHandleMoveState()
+          return false
+        }
+
+        const insertPos = dropPoint(view.state.doc, eventPos.pos, slice) ?? eventPos.pos
+        if (insertPos >= moveRange.from && insertPos <= moveRange.to) {
+          event.preventDefault()
+          clearEditorDragHandleMoveState()
+          return true
+        }
+
+        const tr = view.state.tr
+        tr.deleteRange(moveRange.from, moveRange.to)
+
+        const mappedInsertPos = tr.mapping.map(insertPos)
+        const beforeInsert = tr.doc
+        const firstChild = slice.content.firstChild
+        const isNode = slice.openStart === 0 && slice.openEnd === 0 && slice.content.childCount === 1
+
+        if (isNode && firstChild) {
+          tr.replaceRangeWith(mappedInsertPos, mappedInsertPos, firstChild)
+        } else {
+          tr.replaceRange(mappedInsertPos, mappedInsertPos, slice)
+        }
+
+        if (tr.doc.eq(beforeInsert)) {
+          clearEditorDragHandleMoveState()
+          return false
+        }
+
+        const resolvedInsertPos = tr.doc.resolve(Math.min(mappedInsertPos, tr.doc.content.size))
+
+        if (
+          isNode &&
+          firstChild &&
+          NodeSelection.isSelectable(firstChild) &&
+          resolvedInsertPos.nodeAfter &&
+          resolvedInsertPos.nodeAfter.sameMarkup(firstChild)
+        ) {
+          tr.setSelection(new NodeSelection(resolvedInsertPos))
+        } else {
+          const selectionPos = Math.min(tr.doc.content.size, mappedInsertPos + slice.size)
+          tr.setSelection(TextSelection.near(tr.doc.resolve(selectionPos)))
+        }
+
+        view.focus()
+        view.dispatch(tr.setMeta('uiEvent', 'drop'))
+        event.preventDefault()
+        clearEditorDragHandleMoveState()
+        return true
+      },
+    },
     editable,
     onUpdate: ({ editor }) => {
       // Bug fix: Only trigger onChange if editor is ready (not during initialization)
