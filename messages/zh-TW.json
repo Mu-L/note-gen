@@ -1236,22 +1236,25 @@
     },
     "imageMethod": {
       "title": "圖像識別",
-      "desc": "在這裡，你可以配置圖像識別相關設置，支持 OCR 和 VLM 兩種方式。",
-      "setPrimary": "設置為默認",
-      "isPrimary": "{type} 已設置為默認",
+      "desc": "預設使用系統 OCR 識別圖片；設定 VLM 後會優先使用 VLM，失敗時自動回退 OCR。",
+      "enable": {
+        "title": "啟用圖像識別",
+        "desc": "開啟後，在截圖記錄和插圖記錄時會自動進行圖片識別。關閉後將跳過圖片識別步驟。"
+      },
       "ocr": {
-        "title": "OCR",
-        "languagePacks": "語言包",
-        "checkModels": "在此查詢全部模型",
-        "modelInstruction": "以逗號分隔，例如：eng,chi_sim"
+        "title": "系統 OCR",
+        "desc": "預設使用目前系統提供的 OCR 能力。",
+        "noProviders": "目前平台暫無內建 OCR 引擎",
+        "unknownVersion": "未知版本",
+        "ready": "可用",
+        "unavailable": "不可用",
+        "provider": "目前引擎"
       },
       "vlm": {
-        "title": "視覺語言模型",
-        "desc": "通過視覺語言模型識別圖片內容。"
-      },
-      "enable": {
-        "title": "启用图像识别",
-        "desc": "开启后，在截图记录和插图记录时会自动进行图片识别。关闭后将跳过图片识别步骤。"
+        "title": "VLM 增強（可選）",
+        "desc": "選擇視覺語言模型後，圖片會先走 VLM 識別；如果模型不可用、識別失敗或未返回內容，仍會自動回退系統 OCR。",
+        "noModel": "預設不使用模型",
+        "clearModel": "清除 VLM 模型"
       }
     },
     "file": {
@@ -1678,6 +1681,7 @@
       "screenshotRecognitionPending": "截圖已保存，正在進行圖片識別...",
       "screenshotRecognitionComplete": "圖片識別完成",
       "screenshotRecognitionFailed": "圖片識別失敗",
+      "screenshotRecognitionAuto": "自動",
       "screenshotRecognitionOff": "未識別",
       "screenshotRecognitionMethod": "識別方式",
       "screenshotNoText": "這張截圖未識別到文字",
@@ -1742,7 +1746,9 @@
       "createdAt": "創建於",
       "progress": {
         "cacheImage": "快取圖片",
+        "vlm": "VLM 識別",
         "ocr": "OCR 識別",
+        "description": "生成描述",
         "aiAnalysis": "AI 內容識別",
         "uploadImage": "上傳至圖床",
         "jsdelivrCache": "通知 jsdelivr 快取",

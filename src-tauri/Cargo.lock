@@ -3517,6 +3517,7 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-plugin-updater",
  "tauri-plugin-window-state",
+ "tauri-utils",
  "tokio",
  "tokio-util",
  "url",

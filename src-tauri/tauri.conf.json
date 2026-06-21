@@ -35,7 +35,8 @@
     "createUpdaterArtifacts": true,
     "targets": "all",
     "resources": [
-      "icons"
+      "icons",
+      "resources/ocr/*"
     ],
     "fileAssociations": [
       {

@@ -971,22 +971,25 @@
     },
     "imageMethod": {
       "title": "Reconhecimento de Imagem",
-      "desc": "Aqui, você pode configurar definições relacionadas ao reconhecimento de imagem, suportando OCR e VLM de duas maneiras.",
-      "setPrimary": "Definir como padrão",
-      "isPrimary": "{type} foi definido como padrão",
-      "ocr": {
-        "title": "OCR",
-        "languagePacks": "Pacote de Idioma",
-        "checkModels": "Aqui você pode pesquisar todos os modelos",
-        "modelInstruction": "Separados por vírgula, por exemplo: eng,chi_sim"
-      },
-      "vlm": {
-        "title": "Modelo de Linguagem Visual",
-        "desc": "Use o modelo de linguagem visual para reconhecer o conteúdo da imagem."
-      },
+      "desc": "As imagens são reconhecidas por OCR do sistema por padrão. Se um VLM estiver configurado, ele será tentado primeiro e voltará para OCR em caso de falha.",
       "enable": {
         "title": "Ativar reconhecimento de imagens",
         "desc": "Quando ativado, ao registrar uma captura de tela ou inserir uma imagem, o reconhecimento será feito automaticamente. Quando desativado, a etapa de reconhecimento de imagem será ignorada."
+      },
+      "ocr": {
+        "title": "OCR do Sistema",
+        "desc": "Usa por padrão a capacidade de OCR fornecida pelo sistema atual.",
+        "noProviders": "Nenhum mecanismo OCR integrado para esta plataforma",
+        "unknownVersion": "Versão desconhecida",
+        "ready": "Disponível",
+        "unavailable": "Indisponível",
+        "provider": "Mecanismo atual"
+      },
+      "vlm": {
+        "title": "Aprimoramento VLM (Opcional)",
+        "desc": "Depois de selecionar um modelo de linguagem visual, as imagens são reconhecidas primeiro pelo VLM. Se o modelo estiver indisponível, falhar ou não retornar conteúdo, o aplicativo ainda volta para o OCR do sistema.",
+        "noModel": "Nenhum modelo por padrão",
+        "clearModel": "Limpar modelo VLM"
       }
     },
     "backupSync": {
@@ -1671,6 +1674,7 @@
       "screenshotRecognitionPending": "Captura salva. Reconhecimento de imagem em andamento...",
       "screenshotRecognitionComplete": "Reconhecimento de imagem concluído",
       "screenshotRecognitionFailed": "Falha no reconhecimento de imagem",
+      "screenshotRecognitionAuto": "Automático",
       "screenshotRecognitionOff": "Reconhecimento desativado",
       "screenshotRecognitionMethod": "Reconhecimento",
       "screenshotNoText": "Nenhum texto foi reconhecido nesta captura",
@@ -1726,7 +1730,9 @@
       "content": "Conteúdo",
       "progress": {
         "cacheImage": "Armazenando imagem em cache",
+        "vlm": "Reconhecimento VLM",
         "ocr": "Reconhecimento OCR",
+        "description": "Gerando descrição",
         "aiAnalysis": "Análise de conteúdo por IA",
         "uploadImage": "Enviando para host de imagem",
         "jsdelivrCache": "Notificando cache jsdelivr",

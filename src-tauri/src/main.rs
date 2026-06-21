@@ -15,6 +15,9 @@ mod skills;
 mod tray;
 mod ai;
 mod file_open;
+mod ocr_packages;
+#[cfg(target_os = "android")]
+mod android_ocr;
 
 use screenshot::{cleanup_temp_screenshot_dir, screenshot};
 use fuzzy_search::{fuzzy_search, fuzzy_search_parallel};
@@ -27,6 +30,7 @@ use device::get_device_id;
 use fonts::list_system_fonts;
 use ai::{ai_binary_request, ai_chat_completion_stream, ai_json_request, ai_multipart_request, cancel_ai_request, AiRequestManager};
 use tray::update_tray_record_toolbar_config;
+use ocr_packages::{list_ocr_providers, run_ocr_provider};
 
 fn main() {
     tauri::Builder::default()
@@ -84,6 +88,8 @@ fn main() {
             ai_chat_completion_stream,
             cancel_ai_request,
             update_tray_record_toolbar_config,
+            list_ocr_providers,
+            run_ocr_provider,
             file_open::drain_pending_open_files,
         ])
 

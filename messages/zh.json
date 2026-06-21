@@ -1321,22 +1321,25 @@
     },
     "imageMethod": {
       "title": "图像识别",
-      "desc": "在这里，你可以配置图像识别相关设置，支持 OCR 和 VLM 两种方式。",
+      "desc": "默认使用系统 OCR 识别图片；配置 VLM 后会优先使用 VLM，失败时自动回退 OCR。",
       "enable": {
         "title": "启用图像识别",
         "desc": "开启后，在截图记录和插图记录时会自动进行图片识别。关闭后将跳过图片识别步骤。"
       },
-      "setPrimary": "设置为默认",
-      "isPrimary": "{type} 已设置为默认",
       "ocr": {
-        "title": "OCR",
-        "languagePacks": "语言包",
-        "checkModels": "在此查询全部模型",
-        "modelInstruction": "以逗号分隔，例如：eng,chi_sim"
+        "title": "系统 OCR",
+        "desc": "默认使用当前系统提供的 OCR 能力。",
+        "noProviders": "当前平台暂无内置 OCR 引擎",
+        "unknownVersion": "未知版本",
+        "ready": "可用",
+        "unavailable": "不可用",
+        "provider": "当前引擎"
       },
       "vlm": {
-        "title": "视觉语言模型",
-        "desc": "通过视觉语言模型识别图片内容。"
+        "title": "VLM 增强（可选）",
+        "desc": "选择视觉语言模型后，图片会先走 VLM 识别；如果模型不可用、识别失败或未返回内容，仍会自动回退系统 OCR。",
+        "noModel": "默认不使用模型",
+        "clearModel": "清除 VLM 模型"
       }
     },
     "file": {
@@ -1678,6 +1681,7 @@
       "screenshotRecognitionPending": "截图已保存，正在进行图片识别...",
       "screenshotRecognitionComplete": "图片识别完成",
       "screenshotRecognitionFailed": "图片识别失败",
+      "screenshotRecognitionAuto": "自动",
       "screenshotRecognitionOff": "未识别",
       "screenshotRecognitionMethod": "识别方式",
       "screenshotNoText": "这张截图未识别到文字",
@@ -1742,7 +1746,9 @@
       "createdAt": "创建于",
       "progress": {
         "cacheImage": "缓存图片",
+        "vlm": "VLM 识别",
         "ocr": "OCR 识别",
+        "description": "生成描述",
         "aiAnalysis": "AI 内容识别",
         "uploadImage": "上传至图床",
         "jsdelivrCache": "通知 jsdelivr 缓存",

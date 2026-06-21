@@ -1,8 +1,7 @@
 import { TooltipButton } from "@/components/tooltip-button"
 import { insertMark, Mark } from "@/db/marks"
 import { useTranslations } from 'next-intl'
-import { fetchAiDesc, fetchAiDescByImage } from "@/lib/ai/description"
-import ocr from "@/lib/ocr"
+import { recognizeImageWithFallback } from "@/lib/image-recognition"
 import useMarkStore from "@/stores/mark"
 import useTagStore from "@/stores/tag"
 import { BaseDirectory, copyFile, exists, mkdir, readFile, writeFile } from "@tauri-apps/plugin-fs"
@@ -16,11 +15,12 @@ import { isMobileDevice } from '@/lib/check'
 import emitter from '@/lib/emitter'
 import { toast } from '@/hooks/use-toast'
 import { useRecordCompletion } from './use-record-completion'
+import { getImageRecognitionProgressText } from "@/lib/image-recognition-progress"
 
 export function ControlImage() {
   const t = useTranslations();
   const { currentTagId } = useTagStore()
-  const { primaryModel, primaryImageMethod, enableImageRecognition } = useSettingStore()
+  const { primaryModel, enableImageRecognition } = useSettingStore()
   const { addQueue, setQueue, removeQueue } = useMarkStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isMobile = isMobileDevice()
@@ -115,22 +115,19 @@ export function ControlImage() {
         setQueue(queueId, { progress: t('record.mark.progress.save') });
         content = ''
         desc = ''
-      } else if (primaryImageMethod === 'vlm') {
-        // 使用 VLM 识别图片
-        setQueue(queueId, { progress: t('record.mark.progress.aiAnalysis') });
-        const base64 = await fileToBase64(file)
-        content = await fetchAiDescByImage(base64) || 'VLM Error'
-        desc = content
       } else {
-        // 使用 OCR 识别图片
-        setQueue(queueId, { progress: t('record.mark.progress.ocr') });
-        content = await ocr(`image/${filename}`)
-        setQueue(queueId, { progress: t('record.mark.progress.aiAnalysis') });
-        if (primaryModel) {
-          desc = await fetchAiDesc(content).then(res => res ? res : content) || content
-        } else {
-          desc = content
-        }
+        const result = await recognizeImageWithFallback({
+          imagePath: `image/${filename}`,
+          base64: await fileToBase64(file),
+          shouldGenerateDescription: Boolean(primaryModel),
+          onProgress: (stage) => {
+            setQueue(queueId, {
+              progress: getImageRecognitionProgressText(t, stage),
+            })
+          },
+        })
+        content = result.content
+        desc = result.desc
       }
       
       const mark: Partial<Mark> = {
@@ -201,22 +198,19 @@ export function ControlImage() {
       setQueue(queueId, { progress: t('record.mark.progress.save') });
       content = ''
       desc = ''
-    } else if (primaryImageMethod === 'vlm') {
-      // 使用 VLM 识别图片
-      setQueue(queueId, { progress: t('record.mark.progress.aiAnalysis') });
-      const base64 = `data:image/${ext};base64,${Buffer.from(fileData).toString('base64')}`
-      content = await fetchAiDescByImage(base64) || 'VLM Error'
-      desc = content
     } else {
-      // 使用 OCR 识别图片
-      setQueue(queueId, { progress: t('record.mark.progress.ocr') });
-      content = await ocr(`image/${filename}`)
-      setQueue(queueId, { progress: t('record.mark.progress.aiAnalysis') });
-      if (primaryModel) {
-        desc = await fetchAiDesc(content).then(res => res ? res : content) || content
-      } else {
-        desc = content
-      }
+      const result = await recognizeImageWithFallback({
+        imagePath: `image/${filename}`,
+        base64: `data:image/${ext};base64,${Buffer.from(fileData).toString('base64')}`,
+        shouldGenerateDescription: Boolean(primaryModel),
+        onProgress: (stage) => {
+          setQueue(queueId, {
+            progress: getImageRecognitionProgressText(t, stage),
+          })
+        },
+      })
+      content = result.content
+      desc = result.desc
     }
     
     const mark: Partial<Mark> = {

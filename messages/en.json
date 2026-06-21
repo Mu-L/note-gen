@@ -1032,22 +1032,25 @@
     },
     "imageMethod": {
       "title": "Image Recognition",
-      "desc": "Here, you can configure image recognition related settings, supporting OCR and VLM two ways.",
+      "desc": "Images are recognized with system OCR by default. If a VLM is configured, it is tried first and falls back to OCR on failure.",
       "enable": {
         "title": "Enable Image Recognition",
         "desc": "When enabled, images will be automatically recognized during screenshot and image recording. When disabled, image recognition will be skipped."
       },
-      "setPrimary": "Set as default",
-      "isPrimary": "{type} has been set as default",
       "ocr": {
-        "title": "OCR",
-        "languagePacks": "Language Pack",
-        "checkModels": "Here you can search all models",
-        "modelInstruction": "Comma separated, for example: eng,chi_sim"
+        "title": "System OCR",
+        "desc": "Uses the OCR capability provided by the current system by default.",
+        "noProviders": "No built-in OCR engine for this platform",
+        "unknownVersion": "Unknown version",
+        "ready": "Available",
+        "unavailable": "Unavailable",
+        "provider": "Current engine"
       },
       "vlm": {
-        "title": "Visual Language Model",
-        "desc": "Use visual language model to recognize image content."
+        "title": "VLM Enhancement (Optional)",
+        "desc": "After selecting a visual language model, images are recognized with VLM first. If the model is unavailable, fails, or returns no content, the app still falls back to system OCR.",
+        "noModel": "No model by default",
+        "clearModel": "Clear VLM model"
       }
     },
     "backupSync": {
@@ -1678,6 +1681,7 @@
       "screenshotRecognitionPending": "Screenshot saved. Image recognition is running...",
       "screenshotRecognitionComplete": "Image recognition complete",
       "screenshotRecognitionFailed": "Image recognition failed",
+      "screenshotRecognitionAuto": "Auto",
       "screenshotRecognitionOff": "Recognition off",
       "screenshotRecognitionMethod": "Recognition",
       "screenshotNoText": "No text was recognized from this screenshot",
@@ -1733,7 +1737,9 @@
       "content": "Content",
       "progress": {
         "cacheImage": "Caching image",
+        "vlm": "VLM recognition",
         "ocr": "OCR recognition",
+        "description": "Generating description",
         "aiAnalysis": "AI content analysis",
         "uploadImage": "Uploading to image host",
         "jsdelivrCache": "Notifying jsdelivr cache",

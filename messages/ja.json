@@ -946,22 +946,25 @@
     },
     "imageMethod": {
       "title": "画像認識",
-      "desc": "ここでは、画像認識に関する設定を配置できます。OCR と VLM の二つの方法をサポートします。",
+      "desc": "画像はデフォルトでシステム OCR により認識されます。VLM が設定されている場合は先に VLM を試し、失敗時に OCR へ戻ります。",
       "enable": {
         "title": "画像認識を有効にする",
         "desc": "有効にすると、スクリーンショット記録と画像記録時に自動的に画像認識が行われます。無効にすると、画像認識がスキップされます。"
       },
-      "setPrimary": "設定をデフォルト",
-      "isPrimary": "{type} がデフォルト設定",
       "ocr": {
-        "title": "OCR",
-        "languagePacks": "言語パック",
-        "checkModels": "ここでは、すべてのモデルを検索できます。",
-        "modelInstruction": "逗号分隔、例如：eng,chi_sim"
+        "title": "システム OCR",
+        "desc": "現在のシステムが提供する OCR 機能をデフォルトで使用します。",
+        "noProviders": "このプラットフォームには内蔵 OCR エンジンがありません",
+        "unknownVersion": "不明なバージョン",
+        "ready": "利用可能",
+        "unavailable": "利用不可",
+        "provider": "現在のエンジン"
       },
       "vlm": {
-        "title": "視覚的言語モデル",
-        "desc": "視覚的言語モデルを使用して画像内容を認識します。"
+        "title": "VLM 拡張（任意）",
+        "desc": "視覚言語モデルを選択すると、画像は先に VLM で認識されます。モデルが利用できない、失敗する、または内容が返らない場合でも、システム OCR に自動的に戻ります。",
+        "noModel": "デフォルトではモデルを使用しない",
+        "clearModel": "VLM モデルをクリア"
       }
     },
     "backupSync": {
@@ -1678,6 +1681,7 @@
       "screenshotRecognitionPending": "スクリーンショットを保存しました。画像認識中...",
       "screenshotRecognitionComplete": "画像認識が完了しました",
       "screenshotRecognitionFailed": "画像認識に失敗しました",
+      "screenshotRecognitionAuto": "自動",
       "screenshotRecognitionOff": "認識オフ",
       "screenshotRecognitionMethod": "認識",
       "screenshotNoText": "このスクリーンショットから文字を認識できませんでした",
@@ -1733,7 +1737,9 @@
       "createdAt": "作成日時",
       "progress": {
         "cacheImage": "画像をキャッシュ",
+        "vlm": "VLM 認識",
         "ocr": "OCR 認識",
+        "description": "説明を生成",
         "aiAnalysis": "AI 認識",
         "uploadImage": "画像ホストへアップロード",
         "jsdelivrCache": "jsdelivr キャッシュ通知",

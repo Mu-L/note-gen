@@ -30,8 +30,8 @@ import useTagStore from "@/stores/tag"
 import useMarkStore from "@/stores/mark"
 import { v4 as uuid } from "uuid"
 import useSettingStore from "@/stores/setting"
-import ocr from "@/lib/ocr"
-import { fetchAiDesc, fetchAiDescByImage } from "@/lib/ai/description"
+import { recognizeImageWithFallback } from "@/lib/image-recognition"
+import { getImageRecognitionProgressText } from "@/lib/image-recognition-progress"
 import { insertMark, Mark, updateMark as updateMarkDb } from "@/db/marks"
 import emitter from '@/lib/emitter'
 import { Button } from "@/components/ui/button"
@@ -116,7 +116,7 @@ export function ControlScan() {
   const captureRequestIdRef = useRef(0)
   const { currentTagId, tags } = useTagStore()
   const { addQueue, removeQueue, setQueue, fetchMarks } = useMarkStore()
-  const { primaryModel, primaryImageMethod, enableImageRecognition } = useSettingStore()
+  const { primaryModel, enableImageRecognition } = useSettingStore()
   const completeRecord = useRecordCompletion()
 
   const visibleFiles = useMemo(() => (
@@ -134,7 +134,7 @@ export function ControlScan() {
     return tags[0]?.id ?? currentTagId ?? null
   }, [currentTagId, selectedSaveTagId, tags])
   const recognitionLabel = enableImageRecognition
-    ? primaryImageMethod.toUpperCase()
+    ? t('record.capture.screenshotRecognitionAuto')
     : t('record.capture.screenshotRecognitionOff')
   const saveButtonLabel = enableImageRecognition
     ? t('record.capture.screenshotSaveAndRecognize')
@@ -267,22 +267,18 @@ export function ControlScan() {
       let content = ''
       let desc = ''
 
-      if (primaryImageMethod === 'vlm') {
-        setQueue(queueId, { progress: t('record.mark.progress.aiAnalysis') })
-        const base64 = `data:image/png;base64,${bytesToBase64(bytes)}`
-        content = await fetchAiDescByImage(base64) || ''
-        desc = content
-      } else {
-        setQueue(queueId, { progress: t('record.mark.progress.ocr') })
-        content = await ocr(`${SCREENSHOT_DIR}/${filename}`) || ''
-
-        if (primaryModel && content.trim()) {
-          setQueue(queueId, { progress: t('record.mark.progress.aiAnalysis') });
-          desc = await fetchAiDesc(content).then(res => res ? res : content) || content
-        } else {
-          desc = content
-        }
-      }
+      const result = await recognizeImageWithFallback({
+        imagePath: `${SCREENSHOT_DIR}/${filename}`,
+        base64: `data:image/png;base64,${bytesToBase64(bytes)}`,
+        shouldGenerateDescription: Boolean(primaryModel),
+        onProgress: (stage) => {
+          setQueue(queueId, {
+            progress: getImageRecognitionProgressText(t, stage),
+          })
+        },
+      })
+      content = result.content
+      desc = result.desc
 
       nextMark = {
         ...nextMark,
@@ -310,7 +306,6 @@ export function ControlScan() {
     }
   }, [
     enableImageRecognition,
-    primaryImageMethod,
     primaryModel,
     removeQueue,
     setQueue,

@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 3456 -H 0.0.0.0",
-    "build": "next build --turbopack",
+    "build": "next build --turbopack && pnpm build:prune-maps",
+    "build:prune-maps": "find out .next -type f -name '*.map' -delete && find out .next -type f \\( -name '*.js' -o -name '*.css' \\) -exec perl -0pi -e 's/\\n?\\/\\/# sourceMappingURL=[^\\n\\r]*//g; s@/\\*# sourceMappingURL=[^*]*\\*/@@g' {} +",
     "start": "next start --turbopack -p 3456",
     "lint": "next lint",
     "tauri": "tauri",
@@ -136,7 +137,6 @@
     "tailwind-merge": "^2.5.4",
     "tailwindcss-safe-area": "^0.6.0",
     "tauri-plugin-clipboard-api": "^2.1.11",
-    "tesseract.js": "^5.1.1",
     "tippy.js": "^6.3.7",
     "usehooks-ts": "^3.1.1",
     "uuid": "^11.0.3",

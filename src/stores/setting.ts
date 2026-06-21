@@ -113,9 +113,6 @@ interface SettingState {
   codeTheme: string
   setCodeTheme: (codeTheme: string) => void
 
-  tesseractList: string
-  setTesseractList: (tesseractList: string) => void
-
   // Github 相关设置
   githubUsername: string
   setGithubUsername: (githubUsername: string) => Promise<void>
@@ -226,8 +223,6 @@ interface SettingState {
   // 图片识别设置
   enableImageRecognition: boolean
   setEnableImageRecognition: (enable: boolean) => Promise<void>
-  primaryImageMethod: 'ocr' | 'vlm'
-  setPrimaryImageMethod: (method: 'ocr' | 'vlm') => Promise<void>
 
   // 界面缩放设置
   uiScale: number
@@ -399,23 +394,6 @@ const useSettingStore = create<SettingState>((set, get) => ({
       } else {
         await store.set('embeddingModel', 'note-gen-embedding')
         set({ embeddingModel: 'note-gen-embedding' })
-      }
-    }
-
-    // 检查是否设置了视觉语言模型，如果没有且存在note-gen-vlm，则设置为默认视觉语言模型
-    const currentImageMethodModel = await store.get('imageMethodModel') as string
-    const hasNoteGenVlm = finalAiModelList.some(config => 
-      config.models?.some(model => model.id === 'note-gen-vlm') || config.key === 'note-gen-vlm'
-    )
-    
-    if (!currentImageMethodModel && hasNoteGenVlm) {
-      const noteGenFreeConfig = finalAiModelList.find(config => config.key === 'note-gen-free')
-      if (noteGenFreeConfig?.models?.some(model => model.id === 'note-gen-vlm')) {
-        await store.set('imageMethodModel', 'note-gen-vlm')
-        set({ imageMethodModel: 'note-gen-vlm' })
-      } else {
-        await store.set('imageMethodModel', 'note-gen-vlm')
-        set({ imageMethodModel: 'note-gen-vlm' })
       }
     }
 
@@ -808,9 +786,6 @@ const useSettingStore = create<SettingState>((set, get) => ({
   codeTheme: 'github',
   setCodeTheme: (codeTheme) => set({ codeTheme }),
 
-  tesseractList: 'eng,chi_sim',
-  setTesseractList: (tesseractList) => set({ tesseractList }),
-
   githubUsername: '',
   setGithubUsername: async (githubUsername) => {
     set({ githubUsername })
@@ -1083,13 +1058,6 @@ const useSettingStore = create<SettingState>((set, get) => ({
     set({ enableImageRecognition: enable })
     const store = await Store.load('store.json');
     await store.set('enableImageRecognition', enable)
-    await store.save()
-  },
-  primaryImageMethod: 'vlm',
-  setPrimaryImageMethod: async (method: 'ocr' | 'vlm') => {
-    set({ primaryImageMethod: method })
-    const store = await Store.load('store.json');
-    await store.set('primaryImageMethod', method)
     await store.save()
   },
 

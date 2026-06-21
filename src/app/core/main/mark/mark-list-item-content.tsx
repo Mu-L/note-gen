@@ -76,10 +76,15 @@ export function getMarkListItemContent(mark: Mark): MarkListItemContent {
   }
   case 'scan':
   case 'image': {
-    const title = compactText(mark.desc) || compactText(mark.content)
+    const desc = compactText(mark.desc)
+    const content = compactText(mark.content)
+    const hasAiDescription = Boolean(desc && desc !== content)
+    const displayText = hasAiDescription ? desc : content || desc
+    const { title, preview } = splitTitleAndPreview(displayText)
+
     return {
-      title,
-      preview: compactText(mark.content) || title,
+      title: title || displayText,
+      preview: preview || '',
       imageUrl: mark.url,
     }
   }

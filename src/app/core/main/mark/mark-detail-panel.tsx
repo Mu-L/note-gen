@@ -30,8 +30,8 @@ import useSettingStore from "@/stores/setting"
 import { parseTodoMarkContent } from "./mark-list-item-content"
 import type { Priority } from "./todo-form"
 import { BaseDirectory, readFile } from "@tauri-apps/plugin-fs"
-import ocr from "@/lib/ocr"
-import { fetchAiDesc, fetchAiDescByImage } from "@/lib/ai/description"
+import { ImageRecognitionStage, recognizeImageWithFallback } from "@/lib/image-recognition"
+import { getImageRecognitionProgressText } from "@/lib/image-recognition-progress"
 import { toast } from "@/hooks/use-toast"
 import { appDataDir } from "@tauri-apps/api/path"
 import { openPath, revealItemInDir } from "@tauri-apps/plugin-opener"
@@ -257,10 +257,11 @@ function MarkDetailBody({ mark }: { mark: Mark }) {
   const t = useTranslations()
   const markT = useTranslations('record.mark')
   const { updateMark } = useMarkStore()
-  const { recordTextSize, primaryImageMethod, primaryModel } = useSettingStore()
+  const { recordTextSize, primaryModel } = useSettingStore()
   const [value, setValue] = useState('')
   const [descValue, setDescValue] = useState('')
   const [isRecognizingImage, setIsRecognizingImage] = useState(false)
+  const [recognizingStage, setRecognizingStage] = useState<ImageRecognitionStage | null>(null)
   const [detailImagePreviewSrc, setDetailImagePreviewSrc] = useState('')
   const imageSrc = getImageSrc(mark)
   const wordCount = getWordCount(mark.content || '')
@@ -307,36 +308,28 @@ function MarkDetailBody({ mark }: { mark: Mark }) {
     }
 
     setIsRecognizingImage(true)
+    setRecognizingStage(null)
 
     try {
       const localImagePath = getLocalImagePath(mark)
-      let content = ''
-      let desc = ''
+      let imageUrl = mark.url
 
-      if (primaryImageMethod === 'ocr' && localImagePath) {
-        content = await ocr(localImagePath) || ''
-
-        if (primaryModel && content.trim()) {
-          desc = await fetchAiDesc(content).then(res => res ? res : content) || content
-        } else {
-          desc = content
-        }
-      } else {
-        let imageUrl = mark.url
-
-        if (localImagePath) {
-          const bytes = await readFile(localImagePath, { baseDir: BaseDirectory.AppData })
-          imageUrl = `data:${getImageMimeType(mark.url)};base64,${bytesToBase64(bytes)}`
-        }
-
-        content = await fetchAiDescByImage(imageUrl) || ''
-        desc = content
+      if (localImagePath) {
+        const bytes = await readFile(localImagePath, { baseDir: BaseDirectory.AppData })
+        imageUrl = `data:${getImageMimeType(mark.url)};base64,${bytesToBase64(bytes)}`
       }
+
+      const result = await recognizeImageWithFallback({
+        imagePath: localImagePath,
+        base64: imageUrl,
+        shouldGenerateDescription: Boolean(primaryModel),
+        onProgress: setRecognizingStage,
+      })
 
       await updateMark({
         ...mark,
-        content,
-        desc: desc || content || t('record.capture.screenshotNoText'),
+        content: result.content,
+        desc: result.desc || result.content || t('record.capture.screenshotNoText'),
       })
     } catch (error) {
       toast({
@@ -346,8 +339,9 @@ function MarkDetailBody({ mark }: { mark: Mark }) {
       })
     } finally {
       setIsRecognizingImage(false)
+      setRecognizingStage(null)
     }
-  }, [mark, primaryImageMethod, primaryModel, t, updateMark])
+  }, [mark, primaryModel, t, updateMark])
 
   const handleCopyImageLink = useCallback(async () => {
     if (!mark.url) {
@@ -443,7 +437,11 @@ function MarkDetailBody({ mark }: { mark: Mark }) {
                 disabled={isRecognizingImage}
               >
                 <RefreshCw className={cn("h-4 w-4", isRecognizingImage && "animate-spin")} />
-                {isRecognizingImage ? t('record.capture.screenshotRecognizing') : t('record.capture.screenshotRecognizeAgain')}
+                {isRecognizingImage
+                  ? recognizingStage
+                    ? getImageRecognitionProgressText(t, recognizingStage)
+                    : t('record.capture.screenshotRecognizing')
+                  : t('record.capture.screenshotRecognizeAgain')}
               </Button>
             </div>
             <div className="flex min-h-56 w-full min-w-0 max-w-full items-center justify-center overflow-hidden rounded-md bg-muted/20 p-2">
