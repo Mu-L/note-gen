@@ -95,10 +95,17 @@ jobs:
           test -f "$MANIFEST_PATH"
           test -f "src-tauri/gen/android/app/src/main/java/com/codexu/NoteGen/OcrPlugin.kt"
           test -f "src-tauri/gen/android/app/src/main/java/com/codexu/NoteGen/SystemBarsPlugin.kt"
+          test -f "src-tauri/gen/android/app/src/main/res/values/colors.xml"
           test -f "src-tauri/gen/android/app/src/main/res/values/themes.xml"
+          test -f "src-tauri/gen/android/app/src/main/res/values-night/themes.xml"
           grep -q 'android.permission.RECORD_AUDIO' "$MANIFEST_PATH"
           grep -q 'Theme.note_gen' "$MANIFEST_PATH"
+          grep -q 'class OcrPlugin' "src-tauri/gen/android/app/src/main/java/com/codexu/NoteGen/OcrPlugin.kt"
+          grep -q 'class SystemBarsPlugin' "src-tauri/gen/android/app/src/main/java/com/codexu/NoteGen/SystemBarsPlugin.kt"
+          grep -q 'Theme.MaterialComponents.DayNight.NoActionBar' "src-tauri/gen/android/app/src/main/res/values/themes.xml"
+          grep -q 'text-recognition:16.0.1' "src-tauri/gen/android/app/build.gradle.kts"
           grep -q 'text-recognition-chinese' "src-tauri/gen/android/app/build.gradle.kts"
+          grep -q 'text-recognition-japanese' "src-tauri/gen/android/app/build.gradle.kts"
           
           # Set custom Android icon
           echo "🎨 Setting custom Android icon..."
